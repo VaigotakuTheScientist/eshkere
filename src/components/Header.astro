@@ -76,15 +76,6 @@ const secondaryActive = section ? activeChild(section, Astro.url.pathname) : und
             </li>
           ))
         }
-        <li class="site-menu__group">
-          <a
-            class="site-menu__primary"
-            href={url('/search')}
-            aria-current={path === '/search' ? 'page' : undefined}
-          >
-            Search
-          </a>
-        </li>
       </ul>
     </nav>
   </div>
@@ -238,7 +229,7 @@ const secondaryActive = section ? activeChild(section, Astro.url.pathname) : und
     margin: 0;
     padding-block: clamp(1.75rem, 4vh, 3rem);
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 2rem 1.5rem;
   }
 

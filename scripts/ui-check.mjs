@@ -118,8 +118,8 @@ for (const viewport of viewports) {
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
   await openMenu();
   const menuLinks = await page.locator('#site-menu a').count();
-  // 4 primary + 3 research children + 6 about children + search = 14
-  note(menuLinks === 14, `menu exposes complete hierarchy (${menuLinks} links)`);
+  // 4 primary + 3 research children + 6 about children = 13 (search lives in the header icon)
+  note(menuLinks === 13, `menu exposes complete hierarchy (${menuLinks} links)`);
 
   // Primary destinations via the menu
   for (const [label, path] of [
@@ -196,8 +196,8 @@ for (const viewport of viewports) {
   note(menuVisible, 'mobile menu opens');
 
   const menuLinks = await page.locator('#site-menu a').count();
-  // 4 primary + 3 research children + 6 about children + search = 14
-  note(menuLinks === 14, `mobile menu exposes complete hierarchy (${menuLinks} links)`);
+  // 4 primary + 3 research children + 6 about children = 13 (search lives in the header icon)
+  note(menuLinks === 13, `mobile menu exposes complete hierarchy (${menuLinks} links)`);
 
   await page.click('#site-menu a:has-text("Media Center")');
   await page.waitForLoadState('networkidle');
