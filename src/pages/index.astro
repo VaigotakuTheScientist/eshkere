@@ -10,6 +10,7 @@ import PrototypeBadge from '../components/PrototypeBadge.astro';
 import { siteConfig } from '../data/site';
 import { url } from '../lib/url';
 import { titleCase } from '../lib/format';
+import { heroArtworks } from '../data/hero-art';
 
 const portfolio = (await getCollection('portfolio')).filter((entry) => !entry.data.prototype);
 
@@ -23,7 +24,7 @@ const hasSamples = research.some((entry) => entry.data.prototype);
 
 <BaseLayout title={siteConfig.name} overlayHeader>
   <!-- ============================================================ hero -->
-  <section class="hero" aria-labelledby="hero-heading">
+  <section class="hero" aria-labelledby="hero-heading" data-hero-theme={heroArtworks[0].theme}>
     <HeroArt />
     <div class="hero__vignette" aria-hidden="true"></div>
 
@@ -260,6 +261,19 @@ const hasSamples = research.some((entry) => entry.data.prototype);
     line-height: 1.06;
     letter-spacing: 0.012em;
     text-transform: uppercase;
+  }
+
+  /* Exactly two lines, at every width. */
+  .hero__heading span {
+    white-space: nowrap;
+  }
+
+  /* --- artwork themes -------------------------------------------------
+     Each hero artwork picks the treatment that survives its backdrop;
+     the switcher swaps them live. */
+
+  /* Quiet dark space behind the text: brushed silver reads beautifully. */
+  .hero[data-hero-theme='silver'] .hero__heading {
     background: linear-gradient(178deg, #ffffff 20%, #eceafb 55%, #b0adcc 100%);
     -webkit-background-clip: text;
     background-clip: text;
@@ -267,9 +281,28 @@ const hasSamples = research.some((entry) => entry.data.prototype);
     filter: drop-shadow(0 4px 30px rgba(5, 5, 8, 0.9));
   }
 
-  /* Exactly two lines, at every width. */
-  .hero__heading span {
-    white-space: nowrap;
+  /* Busy nebula behind the text: solid white with a chromatic split and a
+     glow, so the letters hold their edges over stars and colour. */
+  .hero[data-hero-theme='neon'] .hero__heading {
+    background: none;
+    color: #ffffff;
+    text-shadow:
+      0.045em 0 rgba(255, 79, 200, 0.9),
+      -0.03em 0 rgba(77, 227, 255, 0.85),
+      0 0 0.7em rgba(157, 107, 255, 0.5),
+      0 0.06em 0.5em rgba(5, 5, 8, 0.95);
+  }
+
+  .hero[data-hero-theme='neon'] .hero__support {
+    color: var(--ink);
+    text-shadow: 0 0.06em 0.6em rgba(5, 5, 8, 0.95);
+  }
+
+  /* The nebula reaches further into the text column, so darken behind it. */
+  .hero[data-hero-theme='neon'] .hero__vignette {
+    background:
+      linear-gradient(90deg, rgba(5, 5, 8, 0.62) 0%, rgba(5, 5, 8, 0.22) 45%, rgba(5, 5, 8, 0.08) 100%),
+      linear-gradient(0deg, var(--space-black) 0%, rgba(5, 5, 8, 0.42) 22%, rgba(5, 5, 8, 0) 48%);
   }
 
   .hero__support {

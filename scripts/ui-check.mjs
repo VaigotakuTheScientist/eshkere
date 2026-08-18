@@ -333,13 +333,71 @@ for (const viewport of viewports) {
   note(page.url().includes('/our-approach'), `hero CTA still clickable → ${page.url()}`);
 
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  // Only the selected artwork's layer is live; the others stay hidden.
   const names = await page
-    .locator('.hero__hotspot')
+    .locator('[data-art-hotspots]:not([hidden]) .hero__hotspot')
     .evaluateAll((els) => els.map((el) => el.textContent.trim()));
   note(
     names.length === 2 && names.every((name) => name.length > 10),
     `hero hotspots carry accessible names (${names.length})`
   );
+
+  await context.close();
+}
+
+// ------------------------------------------------- artwork switcher
+{
+  const context = await browser.newContext({
+    ...CTX,
+    viewport: { width: 1440, height: 900 },
+    reducedMotion: 'reduce',
+  });
+  const page = await context.newPage();
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+
+  const choices = await page.locator('[data-art-choice]').count();
+  note(choices >= 2, `artwork switcher offers ${choices} artworks`);
+
+  if (choices >= 2) {
+    const ids = await page
+      .locator('[data-art-choice]')
+      .evaluateAll((els) => els.map((el) => el.dataset.artChoice));
+
+    for (const id of ids) {
+      await page.click(`[data-art-choice="${id}"]`);
+      await page.waitForTimeout(400);
+      const state = await page.evaluate((artId) => {
+        const shown = [...document.querySelectorAll('[data-art-image]')].filter((el) => !el.hidden);
+        const spots = [...document.querySelectorAll('[data-art-hotspots]')].filter((el) => !el.hidden);
+        return {
+          visible: shown.length === 1 && shown[0].dataset.artImage === artId,
+          hotspotLayers: spots.length,
+          theme: document.querySelector('.hero').dataset.heroTheme,
+          expectedTheme: shown[0]?.dataset.artTheme,
+        };
+      }, id);
+      note(state.visible, `switcher shows only "${id}"`);
+      note(state.hotspotLayers === 1, `"${id}" exposes one hotspot layer (${state.hotspotLayers})`);
+      note(state.theme === state.expectedTheme, `"${id}" applies its theme (${state.theme})`);
+
+      // Hotspots of the selected artwork still reach their sections.
+      await page.locator('.hero__hotspot:visible').first().click({ timeout: 15000 });
+      await page.waitForLoadState('networkidle');
+      note(page.url().includes('/our-approach'), `"${id}" hotspot navigates (${page.url().split('/eshkere')[1]})`);
+      await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+      await page.waitForTimeout(200);
+    }
+
+    // The choice survives a reload.
+    await page.click(`[data-art-choice="${ids[1]}"]`);
+    await page.waitForTimeout(300);
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForTimeout(400);
+    const remembered = await page.evaluate(
+      () => [...document.querySelectorAll('[data-art-image]')].find((el) => !el.hidden)?.dataset.artImage
+    );
+    note(remembered === ids[1], `switcher remembers the choice (${remembered})`);
+  }
 
   await context.close();
 }

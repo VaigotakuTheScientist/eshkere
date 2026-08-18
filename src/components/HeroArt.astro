@@ -18,7 +18,14 @@ const showSwitcher = artworks.length > 1;
 <div class="hero__stage">
   {
     artworks.map((art, index) => (
-      <div class="hero__art" data-art-image={art.id} hidden={index > 0} aria-hidden="true">
+      <div
+        class="hero__art"
+        data-art-image={art.id}
+        data-art-theme={art.theme}
+        style={`--focus-desktop: ${art.focus.desktop}; --focus-mobile: ${art.focus.mobile}`}
+        hidden={index > 0}
+        aria-hidden="true"
+      >
         <Picture
           src={art.src}
           formats={['avif', 'webp']}
@@ -119,9 +126,14 @@ const showSwitcher = artworks.length > 1;
       layers.filter((layer) => !layer.hidden).forEach(placeHotspots);
     };
 
+    const hero = document.querySelector<HTMLElement>('.hero');
+
     const select = (id: string) => {
       images.forEach((image) => {
         image.hidden = image.dataset.artImage !== id;
+        if (hero && image.dataset.artImage === id && image.dataset.artTheme) {
+          hero.dataset.heroTheme = image.dataset.artTheme;
+        }
       });
       layers.forEach((layer) => {
         layer.hidden = layer.dataset.artHotspots !== id;
@@ -195,7 +207,7 @@ const showSwitcher = artworks.length > 1;
 
   .hero__art :global(img) {
     object-fit: cover;
-    object-position: 62% 38%;
+    object-position: var(--focus-desktop, 62% 38%);
   }
 
   /* ------------------------------------------------------------ hotspots */
@@ -270,7 +282,7 @@ const showSwitcher = artworks.length > 1;
 
   @media (max-width: 900px) {
     .hero__art :global(img) {
-      object-position: 68% 30%;
+      object-position: var(--focus-mobile, 68% 30%);
     }
   }
 
