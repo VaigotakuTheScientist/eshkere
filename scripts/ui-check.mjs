@@ -104,68 +104,74 @@ for (const viewport of viewports) {
   await context.close();
 }
 
-// ------------------------------------------------- desktop navigation
+// ---------------------------------------------- menu navigation (desktop)
 {
   const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });
   const page = await context.newPage();
-  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
 
+  const openMenu = async () => {
+    await page.click('.menu-toggle');
+    await page.waitForSelector('#site-menu:not([hidden])');
+  };
+
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await openMenu();
+  const menuLinks = await page.locator('#site-menu a').count();
+  // 4 primary + 3 research children + 6 about children + search = 14
+  note(menuLinks === 14, `menu exposes complete hierarchy (${menuLinks} links)`);
+
+  // Primary destinations via the menu
   for (const [label, path] of [
     ['Portfolio', '/portfolio'],
-    ['Research & News', '/research-and-news'],
     ['Our Approach', '/our-approach'],
     ['About Us', '/about-us'],
   ]) {
     await page.goto(BASE + '/', { waitUntil: 'networkidle' });
-    await page.click(`.primary-nav a:has-text("${label}")`);
+    await openMenu();
+    await page.click(`.site-menu__primary:has-text("${label}")`);
     await page.waitForLoadState('networkidle');
-    note(page.url().startsWith(BASE + path), `primary nav "${label}" → ${page.url()}`);
+    note(page.url().startsWith(BASE + path), `menu primary "${label}" → ${page.url()}`);
   }
 
-  // Secondary nav under Research & News
-  await page.goto(BASE + '/research-and-news', { waitUntil: 'networkidle' });
-  const rnSecondary = await page.locator('.secondary-nav a').allTextContents();
-  note(
-    JSON.stringify(rnSecondary) ===
-      JSON.stringify(['Research & News', 'Blog', 'Staff Publications & Projects']),
-    `Research secondary nav: ${JSON.stringify(rnSecondary)}`
-  );
+  // Section children via the menu
   for (const [label, path] of [
+    ['Research & News', '/research-and-news'],
     ['Blog', '/research-and-news/blog'],
     ['Staff Publications & Projects', '/research-and-news/staff-publications-and-projects'],
-  ]) {
-    await page.goto(BASE + '/research-and-news', { waitUntil: 'networkidle' });
-    await page.click(`.secondary-nav a:has-text("${label}")`);
-    await page.waitForLoadState('networkidle');
-    note(page.url().startsWith(BASE + path), `secondary nav "${label}" → ${page.url()}`);
-  }
-
-  // Secondary nav under About Us
-  await page.goto(BASE + '/about-us', { waitUntil: 'networkidle' });
-  const aboutSecondary = await page.locator('.secondary-nav a').allTextContents();
-  note(
-    JSON.stringify(aboutSecondary) ===
-      JSON.stringify(['Who We Are', 'Our History', 'Partner With Us', 'Team', 'Careers', 'Media Center']),
-    `About secondary nav: ${JSON.stringify(aboutSecondary)}`
-  );
-  for (const [label, path] of [
+    ['Who We Are', '/about-us'],
     ['Our History', '/about-us/history'],
     ['Partner With Us', '/about-us/partner-with-us'],
     ['Team', '/about-us/team'],
     ['Careers', '/about-us/careers'],
     ['Media Center', '/about-us/media-center'],
   ]) {
-    await page.goto(BASE + '/about-us', { waitUntil: 'networkidle' });
-    await page.click(`.secondary-nav a:has-text("${label}")`);
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await openMenu();
+    await page.click(`.site-menu__children a:has-text("${label}")`);
     await page.waitForLoadState('networkidle');
-    note(page.url().startsWith(BASE + path), `secondary nav "${label}" → ${page.url()}`);
+    note(page.url().startsWith(BASE + path), `menu child "${label}" → ${page.url()}`);
   }
+
+  // Current page is marked inside the menu
+  await page.goto(BASE + '/research-and-news/blog', { waitUntil: 'networkidle' });
+  await openMenu();
+  const current = await page.locator('#site-menu a[aria-current="page"]').textContent();
+  note(current?.trim() === 'Blog', `menu marks current page (${current?.trim()})`);
+
+  // Header follows with a backdrop once scrolled
+  await page.keyboard.press('Escape');
+  await page.mouse.wheel(0, 900);
+  await page.waitForTimeout(400);
+  const scrolled = await page.evaluate(() =>
+    document.querySelector('.site-header')?.classList.contains('is-scrolled')
+  );
+  note(scrolled === true, 'header gains backdrop after scrolling');
 
   // Logo links home; search icon reaches /search
   await page.goto(BASE + '/about-us', { waitUntil: 'networkidle' });
   await page.click('.logo');
   await page.waitForLoadState('networkidle');
-  note(new URL(page.url()).pathname.replace(/\/$/, '') === new URL(BASE + '/x', 'http://x').pathname.replace('/x', '') || page.url().replace(/\/$/, '') === BASE, `logo → home (${page.url()})`);
+  note(page.url().replace(/\/$/, '') === BASE, `logo → home (${page.url()})`);
   await page.click('.search-link');
   await page.waitForLoadState('networkidle');
   note(page.url().startsWith(BASE + '/search'), `header search icon → ${page.url()}`);
@@ -179,22 +185,22 @@ for (const viewport of viewports) {
   const page = await context.newPage();
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
 
-  await page.click('.menu-button');
-  const menuVisible = await page.locator('#mobile-menu').isVisible();
+  await page.click('.menu-toggle');
+  const menuVisible = await page.locator('#site-menu').isVisible();
   note(menuVisible, 'mobile menu opens');
 
-  const menuLinks = await page.locator('#mobile-menu a').count();
+  const menuLinks = await page.locator('#site-menu a').count();
   // 4 primary + 3 research children + 6 about children + search = 14
   note(menuLinks === 14, `mobile menu exposes complete hierarchy (${menuLinks} links)`);
 
-  await page.click('#mobile-menu a:has-text("Media Center")');
+  await page.click('#site-menu a:has-text("Media Center")');
   await page.waitForLoadState('networkidle');
   note(page.url().startsWith(BASE + '/about-us/media-center'), `mobile menu deep link → ${page.url()}`);
 
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
-  await page.click('.menu-button');
+  await page.click('.menu-toggle');
   await page.keyboard.press('Escape');
-  const menuHidden = await page.locator('#mobile-menu').isHidden();
+  const menuHidden = await page.locator('#site-menu').isHidden();
   note(menuHidden, 'mobile menu closes on Escape');
   await page.screenshot({ path: `${SHOT_DIR}/mobile-menu.png` });
 

@@ -121,6 +121,11 @@ a:hover {
   padding-block: var(--section-gap);
 }
 
+/* Interior pages clear the fixed header; the homepage hero floats under it. */
+.main--offset {
+  padding-top: 4.9rem;
+}
+
 /* ------------------------------------------------------------- utilities */
 .eyebrow {
   font-family: var(--font-body);

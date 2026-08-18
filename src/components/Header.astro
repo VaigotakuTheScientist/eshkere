@@ -4,104 +4,63 @@ import { primaryNav } from '../data/nav';
 import { activeSection, activeChild, normalizePath } from '../lib/paths';
 import { url } from '../lib/url';
 
-interface Props {
-  /** Transparent header floated over the homepage hero. */
-  overlay?: boolean;
-}
-
-const { overlay = false } = Astro.props;
 const path = normalizePath(Astro.url.pathname);
 const section = activeSection(Astro.url.pathname);
 const secondaryActive = section ? activeChild(section, Astro.url.pathname) : undefined;
 ---
 
-<header class:list={['site-header', { 'site-header--overlay': overlay }]}>
+<header class="site-header">
   <div class="site-header__bar container">
+    <button
+      class="menu-toggle"
+      type="button"
+      aria-expanded="false"
+      aria-controls="site-menu"
+    >
+      <span class="menu-toggle__line" aria-hidden="true"></span>
+      <span class="menu-toggle__line" aria-hidden="true"></span>
+      <span class="visually-hidden">Menu</span>
+    </button>
+
     <Logo />
 
-    <nav class="primary-nav" aria-label="Primary">
-      <ul>
-        {
-          primaryNav.map((item) => (
-            <li>
-              <a
-                href={url(item.href)}
-                aria-current={section?.href === item.href ? 'true' : undefined}
-                class:list={{ 'is-active': section?.href === item.href }}
-              >
-                {item.label}
-              </a>
-            </li>
-          ))
-        }
-      </ul>
-    </nav>
-
-    <div class="site-header__actions">
-      <a
-        class="search-link"
-        href={url('/search')}
-        aria-current={path === '/search' ? 'page' : undefined}
-        aria-label="Search"
-      >
-        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none"
-          stroke="currentColor" stroke-width="2" stroke-linecap="round">
-          <circle cx="10.5" cy="10.5" r="6.5" />
-          <path d="m15.5 15.5 5.5 5.5" />
-        </svg>
-      </a>
-
-      <button
-        class="menu-button"
-        type="button"
-        aria-expanded="false"
-        aria-controls="mobile-menu"
-      >
-        <span class="menu-button__label">Menu</span>
-        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none"
-          stroke="currentColor" stroke-width="2" stroke-linecap="round">
-          <path class="menu-icon-open" d="M3 6h18M3 12h18M3 18h18" />
-          <path class="menu-icon-close" d="M5 5l14 14M19 5L5 19" />
-        </svg>
-      </button>
-    </div>
+    <a
+      class="search-link"
+      href={url('/search')}
+      aria-current={path === '/search' ? 'page' : undefined}
+      aria-label="Search"
+    >
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <circle cx="10.5" cy="10.5" r="6.5" />
+        <path d="m15.5 15.5 5.5 5.5" />
+      </svg>
+    </a>
   </div>
 
-  {
-    section?.children && (
-      <nav class="secondary-nav" aria-label={`${section.label} section`}>
-        <ul class="container">
-          {section.children.map((child) => (
-            <li>
-              <a
-                href={url(child.href)}
-                aria-current={secondaryActive === child.href ? 'page' : undefined}
-                class:list={{ 'is-active': secondaryActive === child.href }}
-              >
-                {child.label}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav>
-    )
-  }
-
-  <div class="mobile-menu" id="mobile-menu" hidden>
-    <nav aria-label="Complete site navigation">
-      <ul class="mobile-menu__list">
+  <div class="site-menu" id="site-menu" hidden>
+    <nav aria-label="Site navigation">
+      <ul class="site-menu__list container">
         {
           primaryNav.map((item) => (
-            <li class="mobile-menu__group">
+            <li class="site-menu__group">
               <a
-                class="mobile-menu__primary"
+                class="site-menu__primary"
                 href={url(item.href)}
-                aria-current={section?.href === item.href && !item.children ? 'page' : undefined}
+                aria-current={
+                  item.children
+                    ? section?.href === item.href
+                      ? 'true'
+                      : undefined
+                    : path === item.href
+                      ? 'page'
+                      : undefined
+                }
               >
                 {item.label}
               </a>
               {item.children && (
-                <ul class="mobile-menu__children">
+                <ul class="site-menu__children">
                   {item.children.map((child) => (
                     <li>
                       <a
@@ -117,8 +76,14 @@ const secondaryActive = section ? activeChild(section, Astro.url.pathname) : und
             </li>
           ))
         }
-        <li class="mobile-menu__group">
-          <a class="mobile-menu__primary" href={url('/search')}>Search</a>
+        <li class="site-menu__group">
+          <a
+            class="site-menu__primary"
+            href={url('/search')}
+            aria-current={path === '/search' ? 'page' : undefined}
+          >
+            Search
+          </a>
         </li>
       </ul>
     </nav>
@@ -127,8 +92,8 @@ const secondaryActive = section ? activeChild(section, Astro.url.pathname) : und
 
 <script>
   const header = document.querySelector('.site-header');
-  const button = document.querySelector<HTMLButtonElement>('.menu-button');
-  const menu = document.getElementById('mobile-menu');
+  const button = document.querySelector<HTMLButtonElement>('.menu-toggle');
+  const menu = document.getElementById('site-menu');
 
   if (header && button && menu) {
     const close = () => {
@@ -157,233 +122,163 @@ const secondaryActive = section ? activeChild(section, Astro.url.pathname) : und
         button.focus();
       }
     });
+
+    const updateScrolled = () => {
+      header.classList.toggle('is-scrolled', window.scrollY > 12);
+    };
+    updateScrolled();
+    window.addEventListener('scroll', updateScrolled, { passive: true });
   }
 </script>
 
 <style>
   .site-header {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    background: rgba(7, 6, 15, 0.78);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border-bottom: 1px solid var(--line-soft);
-  }
-
-  .site-header--overlay {
-    position: absolute;
+    position: fixed;
     inset-inline: 0;
     top: 0;
-    background: transparent;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    border-bottom: 0;
+    z-index: 100;
+    transition: background-color var(--speed-quick) var(--ease-out),
+      box-shadow var(--speed-quick) var(--ease-out);
+  }
+
+  /* The bar keeps following with a legible backdrop once the page scrolls. */
+  .site-header.is-scrolled,
+  .site-header.menu-open {
+    background: rgba(5, 5, 8, 0.82);
+    box-shadow: 0 1px 0 var(--line-soft), 0 12px 40px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
   }
 
   .site-header__bar {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    justify-content: space-between;
-    gap: 1.5rem;
     padding-block: 1.15rem;
   }
 
-  .primary-nav ul {
-    display: flex;
-    gap: clamp(1.1rem, 2.4vw, 2.2rem);
-    list-style: none;
-    margin: 0;
-    padding: 0;
+  /* --------------------------------------------------------- more button */
+  .menu-toggle {
+    justify-self: start;
+    display: grid;
+    align-content: center;
+    gap: 0.5rem;
+    width: 2.8rem;
+    height: 2.8rem;
+    padding: 0.5rem;
+    border: 0;
+    background: transparent;
+    color: var(--pink);
+    cursor: pointer;
   }
 
-  .primary-nav a {
-    display: inline-block;
-    padding: 0.35rem 0.1rem;
-    font-size: var(--text-sm);
-    font-weight: 500;
-    letter-spacing: 0.05em;
-    text-decoration: none;
-    color: var(--ink-soft);
-    position: relative;
-  }
-
-  .primary-nav a::after {
-    content: '';
-    position: absolute;
-    inset-inline: 0;
-    bottom: -0.15rem;
+  .menu-toggle__line {
+    display: block;
     height: 2px;
+    background: currentColor;
     border-radius: 2px;
-    background: linear-gradient(90deg, var(--cyan), var(--pink));
-    transform: scaleX(0);
-    transform-origin: left;
-    transition: transform var(--speed-quick) var(--ease-out);
+    box-shadow: 0 0 10px rgba(255, 79, 200, 0.55);
+    transition: transform var(--speed-quick) var(--ease-out),
+      width var(--speed-quick) var(--ease-out);
   }
 
-  .primary-nav a:hover,
-  .primary-nav a.is-active {
-    color: var(--ink);
+  .menu-toggle__line:nth-of-type(1) {
+    width: 1.7rem;
   }
 
-  .primary-nav a:hover::after,
-  .primary-nav a.is-active::after {
-    transform: scaleX(1);
+  .menu-toggle__line:nth-of-type(2) {
+    width: 1.2rem;
   }
 
-  .site-header__actions {
-    display: flex;
-    align-items: center;
-    gap: 0.9rem;
+  .menu-toggle:hover .menu-toggle__line {
+    width: 1.7rem;
   }
 
-  .search-link,
-  .menu-button {
+  .menu-toggle[aria-expanded='true'] .menu-toggle__line {
+    width: 1.7rem;
+  }
+
+  .menu-toggle[aria-expanded='true'] .menu-toggle__line:nth-of-type(1) {
+    transform: translateY(0.32rem) rotate(45deg);
+  }
+
+  .menu-toggle[aria-expanded='true'] .menu-toggle__line:nth-of-type(2) {
+    transform: translateY(-0.32rem) rotate(-45deg);
+  }
+
+  /* -------------------------------------------------------------- search */
+  .search-link {
+    justify-self: end;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
     width: 2.6rem;
     height: 2.6rem;
     border-radius: 50%;
     border: 1px solid transparent;
-    background: transparent;
     color: var(--ink-soft);
-    cursor: pointer;
     transition: all var(--speed-quick) var(--ease-out);
   }
 
-  .search-link:hover,
-  .menu-button:hover {
+  .search-link:hover {
     color: var(--cyan);
     border-color: var(--line-strong);
     box-shadow: var(--glow-cyan);
   }
 
-  .menu-button {
-    display: none;
-  }
-
-  .menu-button__label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-  }
-
-  .menu-icon-close {
-    display: none;
-  }
-
-  .site-header.menu-open .menu-icon-open {
-    display: none;
-  }
-
-  .site-header.menu-open .menu-icon-close {
-    display: initial;
-  }
-
-  /* ------------------------------------------------------ secondary nav */
-  .secondary-nav {
-    border-top: 1px solid var(--line-soft);
-  }
-
-  .secondary-nav ul {
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 0.25rem clamp(1rem, 2.5vw, 2.4rem);
-    list-style: none;
-    padding-block: 0.7rem;
-    margin: 0;
-  }
-
-  .secondary-nav a {
-    display: inline-block;
-    padding: 0.3rem 0.1rem;
-    font-size: var(--text-sm);
-    text-decoration: none;
-    color: var(--ink-faint);
-    position: relative;
-  }
-
-  .secondary-nav a::after {
-    content: '';
-    position: absolute;
-    inset-inline: 0;
-    bottom: 0;
-    height: 1px;
-    background: linear-gradient(90deg, var(--pink), var(--violet));
-    transform: scaleX(0);
-    transition: transform var(--speed-quick) var(--ease-out);
-  }
-
-  .secondary-nav a:hover {
-    color: var(--ink);
-  }
-
-  .secondary-nav a:hover::after {
-    transform: scaleX(1);
-  }
-
-  .secondary-nav a.is-active {
-    color: var(--ink);
-    font-weight: 600;
-  }
-
-  .secondary-nav a.is-active::after {
-    transform: scaleX(1);
-  }
-
-  /* -------------------------------------------------------- mobile menu */
-  .mobile-menu {
+  /* ---------------------------------------------------------------- menu */
+  .site-menu {
     position: fixed;
-    inset: 0;
+    inset-inline: 0;
     top: 4.9rem;
     z-index: 90;
+    max-height: calc(100dvh - 4.9rem);
     overflow-y: auto;
-    background: linear-gradient(180deg, rgba(13, 10, 36, 0.98), rgba(7, 6, 15, 0.99));
-    padding: 1.5rem var(--gutter) 4rem;
+    background: rgba(5, 5, 8, 0.96);
+    border-bottom: 1px solid var(--line-soft);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
   }
 
-  .mobile-menu__list {
+  .site-menu__list {
     list-style: none;
     margin: 0;
-    padding: 0;
+    padding-block: clamp(1.75rem, 4vh, 3rem);
     display: grid;
-    gap: 1.6rem;
-    max-width: 30rem;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 2rem 1.5rem;
   }
 
-  .mobile-menu__primary {
+  .site-menu__primary {
+    display: inline-block;
     font-family: var(--font-display);
-    font-size: 1.6rem;
+    font-size: 1.35rem;
     text-decoration: none;
     color: var(--ink);
+    margin-bottom: 0.8rem;
   }
 
-  .mobile-menu__children {
+  .site-menu__children {
     list-style: none;
-    margin: 0.6rem 0 0;
-    padding: 0 0 0 1rem;
+    margin: 0;
+    padding: 0 0 0 0.9rem;
     border-left: 1px solid var(--line-strong);
     display: grid;
-    gap: 0.45rem;
+    gap: 0.5rem;
   }
 
-  .mobile-menu__children a {
+  .site-menu__children a {
     text-decoration: none;
     color: var(--ink-soft);
-    font-size: var(--text-base);
+    font-size: var(--text-sm);
   }
 
-  .mobile-menu__children a:hover,
-  .mobile-menu__primary:hover {
+  .site-menu__children a:hover,
+  .site-menu__primary:hover {
     color: var(--cyan);
   }
 
-  .mobile-menu a[aria-current] {
+  .site-menu a[aria-current] {
     color: var(--pink);
   }
 
@@ -392,20 +287,25 @@ const secondaryActive = section ? activeChild(section, Astro.url.pathname) : und
   }
 
   @media (max-width: 900px) {
-    .primary-nav,
-    .secondary-nav {
-      display: none;
+    .site-menu {
+      bottom: 0;
+      border-bottom: 0;
     }
 
-    .menu-button {
-      display: inline-flex;
+    .site-menu__list {
+      grid-template-columns: 1fr;
+      gap: 1.6rem;
+      max-width: 30rem;
+      padding-bottom: 4rem;
     }
 
-    .site-header--overlay {
-      position: sticky;
-      background: rgba(7, 6, 15, 0.78);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
+    .site-menu__primary {
+      font-size: 1.6rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .site-menu__children a {
+      font-size: var(--text-base);
     }
   }
 </style>

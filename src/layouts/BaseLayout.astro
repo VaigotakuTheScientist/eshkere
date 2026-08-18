@@ -12,7 +12,7 @@ import { url } from '../lib/url';
 interface Props {
   title: string;
   description?: string;
-  /** Float a transparent header over the page (homepage hero). */
+  /** Let the fixed header float over full-bleed art (homepage hero) instead of offsetting the page. */
   overlayHeader?: boolean;
 }
 
@@ -44,8 +44,8 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
-    <Header overlay={overlayHeader} />
-    <main id="main">
+    <Header />
+    <main id="main" class:list={{ 'main--offset': !overlayHeader }}>
       <slot />
     </main>
     <Footer />

@@ -1,8 +1,8 @@
 ---
 import { getCollection } from 'astro:content';
+import { Picture } from 'astro:assets';
+import heroPlanet from '../assets/hero-planet.png';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import Starfield from '../components/Starfield.astro';
-import Planet from '../components/Planet.astro';
 import Sparkle from '../components/Sparkle.astro';
 import PixelHeart from '../components/PixelHeart.astro';
 import ContentCard from '../components/ContentCard.astro';
@@ -25,39 +25,19 @@ const hasSamples = research.some((entry) => entry.data.prototype);
 <BaseLayout title={siteConfig.name} overlayHeader>
   <!-- ============================================================ hero -->
   <section class="hero" aria-labelledby="hero-heading">
-    <Starfield />
-    <div class="hero__planet" aria-hidden="true">
-      <Planet />
-      <p class="hero__holo-tag">
-        Health<br />first<br /><span>always</span>
-      </p>
-      <svg class="hero__badge" viewBox="0 0 120 120" aria-hidden="true">
-        <defs>
-          <path id="badge-circle" d="M60 12a48 48 0 1 1 0 96 48 48 0 1 1 0-96z"></path>
-        </defs>
-        <circle cx="60" cy="60" r="58" fill="rgba(13,10,36,0.55)" stroke="var(--line-strong)" stroke-width="1"></circle>
-        <g class="hero__badge-spin">
-          <text font-family="Silkscreen, monospace" font-size="10.5" letter-spacing="3.5" fill="var(--ink-soft)">
-            <textPath href="#badge-circle">LEVEL UP YOUR LIFE ✦ PLAY ✦</textPath>
-          </text>
-        </g>
-        <g fill="var(--pink)" transform="translate(46.5 49) scale(3.8)">
-          <rect x="1" y="0" width="2" height="1"></rect>
-          <rect x="4" y="0" width="2" height="1"></rect>
-          <rect x="0" y="1" width="7" height="2"></rect>
-          <rect x="1" y="3" width="5" height="1"></rect>
-          <rect x="2" y="4" width="3" height="1"></rect>
-          <rect x="3" y="5" width="1" height="1"></rect>
-        </g>
-      </svg>
-      <span class="hero__deco hero__deco--heart-a"><PixelHeart size={22} color="var(--violet)" /></span>
-      <span class="hero__deco hero__deco--heart-b"><PixelHeart size={15} color="var(--pink)" /></span>
-      <span class="hero__deco hero__deco--spark-a"><Sparkle size={22} color="var(--cyan)" /></span>
-      <span class="hero__deco hero__deco--spark-b"><Sparkle size={14} color="var(--pink)" /></span>
-      <svg class="hero__deco hero__deco--plus" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
-        <path d="M8 0h8v8h8v8h-8v8H8v-8H0V8h8z" fill="var(--lime)"></path>
-      </svg>
+    <div class="hero__art" aria-hidden="true">
+      <Picture
+        src={heroPlanet}
+        formats={['avif', 'webp']}
+        fallbackFormat="png"
+        widths={[768, 1280, 1672]}
+        sizes="100vw"
+        alt=""
+        loading="eager"
+        fetchpriority="high"
+      />
     </div>
+    <div class="hero__vignette" aria-hidden="true"></div>
 
     <div class="container hero__content">
       <h1 class="hero__heading" id="hero-heading">
@@ -262,65 +242,42 @@ const hasSamples = research.some((entry) => entry.data.prototype);
     padding-bottom: clamp(3rem, 6vh, 5rem);
   }
 
-  .hero__planet {
+  .hero__art,
+  .hero__art :global(picture),
+  .hero__art :global(img) {
     position: absolute;
-    top: 55%;
-    right: -9%;
-    width: min(56vw, 52rem);
-    transform: translateY(-50%);
-    pointer-events: none;
+    inset: 0;
+    width: 100%;
+    height: 100%;
   }
 
-  .hero__holo-tag {
-    position: absolute;
-    top: 18%;
-    left: -4%;
-    padding: 0.9rem 1.2rem;
-    border: 1px solid rgba(244, 241, 255, 0.35);
-    border-radius: 10px;
-    background: linear-gradient(120deg, rgba(255, 100, 205, 0.14), rgba(92, 232, 255, 0.12), rgba(206, 245, 77, 0.1));
-    backdrop-filter: blur(3px);
-    font-family: var(--font-pixel);
-    font-size: 0.72rem;
-    letter-spacing: 0.3em;
-    line-height: 1.9;
-    text-transform: uppercase;
-    color: var(--ink);
-    transform: rotate(-8deg);
+  .hero__art {
+    overflow: hidden;
   }
 
-  .hero__holo-tag span {
-    color: var(--lime);
+  .hero__art :global(img) {
+    object-fit: cover;
+    object-position: 62% 38%;
+    transform: scale(1.02);
+    animation: planet-drift 24s ease-in-out infinite alternate;
   }
 
-  .hero__badge {
-    position: absolute;
-    bottom: 18%;
-    right: 34%;
-    width: clamp(5.5rem, 9vw, 8rem);
-    height: auto;
-  }
-
-  .hero__badge-spin {
-    animation: badge-spin 40s linear infinite;
-    transform-origin: 60px 60px;
-  }
-
-  @keyframes badge-spin {
+  @keyframes planet-drift {
+    from {
+      transform: scale(1.02) translateY(0);
+    }
     to {
-      transform: rotate(360deg);
+      transform: scale(1.045) translateY(-0.6%);
     }
   }
 
-  .hero__deco {
+  .hero__vignette {
     position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(90deg, rgba(5, 5, 8, 0.55) 0%, rgba(5, 5, 8, 0.05) 42%, rgba(5, 5, 8, 0.1) 100%),
+      linear-gradient(0deg, var(--space-black) 0%, rgba(5, 5, 8, 0.25) 18%, rgba(5, 5, 8, 0) 40%);
   }
-
-  .hero__deco--heart-a { top: 6%; right: 22%; }
-  .hero__deco--heart-b { top: 30%; left: 2%; }
-  .hero__deco--spark-a { top: 12%; left: 16%; }
-  .hero__deco--spark-b { top: 66%; right: 47%; }
-  .hero__deco--plus { top: 46%; right: 4%; filter: drop-shadow(0 0 10px var(--lime)); }
 
   .hero__content {
     position: relative;
@@ -373,17 +330,14 @@ const hasSamples = research.some((entry) => entry.data.prototype);
       padding-top: 0;
     }
 
-    .hero__planet {
-      top: -6%;
-      right: -30%;
-      width: 34rem;
-      transform: none;
-      opacity: 0.9;
+    .hero__art :global(img) {
+      object-position: 68% 30%;
     }
 
-    .hero__holo-tag { display: none; }
-    .hero__badge { right: 6%; bottom: 45%; }
-    .hero__deco--spark-a { top: 12%; }
+    .hero__vignette {
+      background:
+        linear-gradient(0deg, var(--space-black) 0%, rgba(5, 5, 8, 0.45) 30%, rgba(5, 5, 8, 0.05) 60%);
+    }
   }
 
   /* -------------------------------------------------- health & games */
@@ -588,7 +542,7 @@ const hasSamples = research.some((entry) => entry.data.prototype);
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .hero__badge-spin {
+    .hero__art :global(img) {
       animation: none;
     }
   }
