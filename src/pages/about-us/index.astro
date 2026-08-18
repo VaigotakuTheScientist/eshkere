@@ -1,0 +1,105 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageHero from '../../components/PageHero.astro';
+import { url } from '../../lib/url';
+---
+
+<BaseLayout
+  title="Who We Are"
+  description="Eshkere is an early-stage exploratory organization concept built around one thesis: Maximize Health, Play Games."
+>
+  <PageHero
+    eyebrow="About Us"
+    title="Who We Are"
+    lead="Eshkere is an early-stage exploratory organization concept. That sentence is doing honest work: there is a thesis, a name, a visual identity and this website — and not yet much more."
+  />
+
+  <article class="who section">
+    <div class="container--narrow prose">
+      <p>
+        <strong>Eshkere is built around one idea: Maximize Health, Play Games.</strong> Health —
+        physical, mental and social well-being — is the non-optional foundation of human
+        flourishing. Games are everything people can choose to pursue on top of that foundation:
+        enjoyment, achievement, identity, exploration, creativity, relationships, knowledge,
+        meaning and play.
+      </p>
+      <p>
+        What kind of organization that idea deserves is exactly what is being explored. Eshkere
+        might become a company, a fund, a studio, a research group, a community — or some
+        combination that doesn't have a clean name yet. The exploration is happening in public,
+        which is why this site exists before the answers do.
+      </p>
+
+      <h2>What exists today</h2>
+      <ul>
+        <li>The thesis, developed in <a href={url('/our-approach')}>Our Approach</a>.</li>
+        <li>A visual identity and this website — built as a serious institutional prototype.</li>
+        <li>
+          A commitment to honesty about stage: no invented staff, partners, funding, portfolio or
+          history anywhere on this site.
+        </li>
+      </ul>
+
+      <h2>What does not exist yet</h2>
+      <p>
+        A team roster, a funded portfolio, formal partnerships, offices, a publication record.
+        Where those things would appear, you will find deliberate empty states instead — each one a
+        placeholder for something real, not a performance of maturity.
+      </p>
+
+      <h2>Why the name sounds like that</h2>
+      <p>
+        “Eshkere” carries the energy of the games layer — an exclamation, a let's-go. The visual
+        language of the brand borrows from video games and hyperpop on purpose: play is allowed to
+        look joyful. The seriousness lives underneath, in the health-first ordering the whole
+        project stands on.
+      </p>
+    </div>
+
+    <div class="container who__links">
+      <a class="who__link panel" href={url('/about-us/history')}>
+        <span class="eyebrow">Our History</span>
+        <span>How the story is being documented</span>
+      </a>
+      <a class="who__link panel" href={url('/about-us/partner-with-us')}>
+        <span class="eyebrow eyebrow--pink">Partner With Us</span>
+        <span>Shape what Eshkere becomes</span>
+      </a>
+      <a class="who__link panel" href={url('/about-us/team')}>
+        <span class="eyebrow eyebrow--lime">Team</span>
+        <span>Who is behind this (so far)</span>
+      </a>
+    </div>
+  </article>
+</BaseLayout>
+
+<style>
+  .who {
+    display: grid;
+    gap: 4rem;
+  }
+
+  .who__links {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: 1.5rem;
+  }
+
+  .who__link {
+    display: grid;
+    gap: 0.6rem;
+    padding: 1.6rem;
+    text-decoration: none;
+    color: var(--ink);
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    transition: transform var(--speed-quick) var(--ease-out),
+      border-color var(--speed-quick) var(--ease-out);
+  }
+
+  .who__link:hover {
+    transform: translateY(-4px);
+    border-color: var(--line-strong);
+    color: var(--ink);
+  }
+</style>

@@ -1,0 +1,10 @@
+{
+  "note": "Only confirmed events belong here. Do not add speculative or invented milestones.",
+  "events": [
+    {
+      "year": "2026",
+      "title": "A first public prototype",
+      "description": "The first version of the Eshkere website is published, setting out the working philosophy — Maximize Health, Play Games — while the organization itself is still taking shape."
+    }
+  ]
+}

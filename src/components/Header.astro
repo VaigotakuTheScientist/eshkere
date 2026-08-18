@@ -1,0 +1,411 @@
+---
+import Logo from './Logo.astro';
+import { primaryNav } from '../data/nav';
+import { activeSection, activeChild, normalizePath } from '../lib/paths';
+import { url } from '../lib/url';
+
+interface Props {
+  /** Transparent header floated over the homepage hero. */
+  overlay?: boolean;
+}
+
+const { overlay = false } = Astro.props;
+const path = normalizePath(Astro.url.pathname);
+const section = activeSection(Astro.url.pathname);
+const secondaryActive = section ? activeChild(section, Astro.url.pathname) : undefined;
+---
+
+<header class:list={['site-header', { 'site-header--overlay': overlay }]}>
+  <div class="site-header__bar container">
+    <Logo />
+
+    <nav class="primary-nav" aria-label="Primary">
+      <ul>
+        {
+          primaryNav.map((item) => (
+            <li>
+              <a
+                href={url(item.href)}
+                aria-current={section?.href === item.href ? 'true' : undefined}
+                class:list={{ 'is-active': section?.href === item.href }}
+              >
+                {item.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+
+    <div class="site-header__actions">
+      <a
+        class="search-link"
+        href={url('/search')}
+        aria-current={path === '/search' ? 'page' : undefined}
+        aria-label="Search"
+      >
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="10.5" cy="10.5" r="6.5" />
+          <path d="m15.5 15.5 5.5 5.5" />
+        </svg>
+      </a>
+
+      <button
+        class="menu-button"
+        type="button"
+        aria-expanded="false"
+        aria-controls="mobile-menu"
+      >
+        <span class="menu-button__label">Menu</span>
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path class="menu-icon-open" d="M3 6h18M3 12h18M3 18h18" />
+          <path class="menu-icon-close" d="M5 5l14 14M19 5L5 19" />
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  {
+    section?.children && (
+      <nav class="secondary-nav" aria-label={`${section.label} section`}>
+        <ul class="container">
+          {section.children.map((child) => (
+            <li>
+              <a
+                href={url(child.href)}
+                aria-current={secondaryActive === child.href ? 'page' : undefined}
+                class:list={{ 'is-active': secondaryActive === child.href }}
+              >
+                {child.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    )
+  }
+
+  <div class="mobile-menu" id="mobile-menu" hidden>
+    <nav aria-label="Complete site navigation">
+      <ul class="mobile-menu__list">
+        {
+          primaryNav.map((item) => (
+            <li class="mobile-menu__group">
+              <a
+                class="mobile-menu__primary"
+                href={url(item.href)}
+                aria-current={section?.href === item.href && !item.children ? 'page' : undefined}
+              >
+                {item.label}
+              </a>
+              {item.children && (
+                <ul class="mobile-menu__children">
+                  {item.children.map((child) => (
+                    <li>
+                      <a
+                        href={url(child.href)}
+                        aria-current={secondaryActive === child.href ? 'page' : undefined}
+                      >
+                        {child.label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          ))
+        }
+        <li class="mobile-menu__group">
+          <a class="mobile-menu__primary" href={url('/search')}>Search</a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<script>
+  const header = document.querySelector('.site-header');
+  const button = document.querySelector<HTMLButtonElement>('.menu-button');
+  const menu = document.getElementById('mobile-menu');
+
+  if (header && button && menu) {
+    const close = () => {
+      button.setAttribute('aria-expanded', 'false');
+      menu.hidden = true;
+      header.classList.remove('menu-open');
+      document.documentElement.classList.remove('menu-locked');
+    };
+
+    button.addEventListener('click', () => {
+      const open = button.getAttribute('aria-expanded') === 'true';
+      if (open) {
+        close();
+      } else {
+        button.setAttribute('aria-expanded', 'true');
+        menu.hidden = false;
+        header.classList.add('menu-open');
+        document.documentElement.classList.add('menu-locked');
+        menu.querySelector<HTMLAnchorElement>('a')?.focus();
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && button.getAttribute('aria-expanded') === 'true') {
+        close();
+        button.focus();
+      }
+    });
+  }
+</script>
+
+<style>
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(7, 6, 15, 0.78);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--line-soft);
+  }
+
+  .site-header--overlay {
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-bottom: 0;
+  }
+
+  .site-header__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding-block: 1.15rem;
+  }
+
+  .primary-nav ul {
+    display: flex;
+    gap: clamp(1.1rem, 2.4vw, 2.2rem);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .primary-nav a {
+    display: inline-block;
+    padding: 0.35rem 0.1rem;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-decoration: none;
+    color: var(--ink-soft);
+    position: relative;
+  }
+
+  .primary-nav a::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    bottom: -0.15rem;
+    height: 2px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--cyan), var(--pink));
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform var(--speed-quick) var(--ease-out);
+  }
+
+  .primary-nav a:hover,
+  .primary-nav a.is-active {
+    color: var(--ink);
+  }
+
+  .primary-nav a:hover::after,
+  .primary-nav a.is-active::after {
+    transform: scaleX(1);
+  }
+
+  .site-header__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+  }
+
+  .search-link,
+  .menu-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 2.6rem;
+    height: 2.6rem;
+    border-radius: 50%;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: all var(--speed-quick) var(--ease-out);
+  }
+
+  .search-link:hover,
+  .menu-button:hover {
+    color: var(--cyan);
+    border-color: var(--line-strong);
+    box-shadow: var(--glow-cyan);
+  }
+
+  .menu-button {
+    display: none;
+  }
+
+  .menu-button__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .menu-icon-close {
+    display: none;
+  }
+
+  .site-header.menu-open .menu-icon-open {
+    display: none;
+  }
+
+  .site-header.menu-open .menu-icon-close {
+    display: initial;
+  }
+
+  /* ------------------------------------------------------ secondary nav */
+  .secondary-nav {
+    border-top: 1px solid var(--line-soft);
+  }
+
+  .secondary-nav ul {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.25rem clamp(1rem, 2.5vw, 2.4rem);
+    list-style: none;
+    padding-block: 0.7rem;
+    margin: 0;
+  }
+
+  .secondary-nav a {
+    display: inline-block;
+    padding: 0.3rem 0.1rem;
+    font-size: var(--text-sm);
+    text-decoration: none;
+    color: var(--ink-faint);
+    position: relative;
+  }
+
+  .secondary-nav a::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(90deg, var(--pink), var(--violet));
+    transform: scaleX(0);
+    transition: transform var(--speed-quick) var(--ease-out);
+  }
+
+  .secondary-nav a:hover {
+    color: var(--ink);
+  }
+
+  .secondary-nav a:hover::after {
+    transform: scaleX(1);
+  }
+
+  .secondary-nav a.is-active {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .secondary-nav a.is-active::after {
+    transform: scaleX(1);
+  }
+
+  /* -------------------------------------------------------- mobile menu */
+  .mobile-menu {
+    position: fixed;
+    inset: 0;
+    top: 4.9rem;
+    z-index: 90;
+    overflow-y: auto;
+    background: linear-gradient(180deg, rgba(13, 10, 36, 0.98), rgba(7, 6, 15, 0.99));
+    padding: 1.5rem var(--gutter) 4rem;
+  }
+
+  .mobile-menu__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 1.6rem;
+    max-width: 30rem;
+  }
+
+  .mobile-menu__primary {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    text-decoration: none;
+    color: var(--ink);
+  }
+
+  .mobile-menu__children {
+    list-style: none;
+    margin: 0.6rem 0 0;
+    padding: 0 0 0 1rem;
+    border-left: 1px solid var(--line-strong);
+    display: grid;
+    gap: 0.45rem;
+  }
+
+  .mobile-menu__children a {
+    text-decoration: none;
+    color: var(--ink-soft);
+    font-size: var(--text-base);
+  }
+
+  .mobile-menu__children a:hover,
+  .mobile-menu__primary:hover {
+    color: var(--cyan);
+  }
+
+  .mobile-menu a[aria-current] {
+    color: var(--pink);
+  }
+
+  :global(html.menu-locked) {
+    overflow: hidden;
+  }
+
+  @media (max-width: 900px) {
+    .primary-nav,
+    .secondary-nav {
+      display: none;
+    }
+
+    .menu-button {
+      display: inline-flex;
+    }
+
+    .site-header--overlay {
+      position: sticky;
+      background: rgba(7, 6, 15, 0.78);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+  }
+</style>

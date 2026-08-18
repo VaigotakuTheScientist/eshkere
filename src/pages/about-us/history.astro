@@ -1,0 +1,53 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageHero from '../../components/PageHero.astro';
+import Timeline from '../../components/Timeline.astro';
+import history from '../../data/history.json';
+
+const events = history.events;
+---
+
+<BaseLayout
+  title="Our History"
+  description="The Eshkere timeline — populated only with confirmed events. The public history is still being documented."
+>
+  <PageHero
+    eyebrow="About Us"
+    title="Our History"
+    lead="This timeline holds only confirmed events. Eshkere is young enough that its public history is still being documented — the timeline below is short because the truth is short."
+  />
+
+  <section class="section">
+    <div class="container--narrow">
+      {
+        events.length > 0 ? (
+          <Timeline events={events} />
+        ) : (
+          <p class="history-empty">
+            The public history of Eshkere is still being documented. Confirmed milestones will
+            appear here as they happen — none will be invented retroactively.
+          </p>
+        )
+      }
+      <p class="history-note">
+        Future milestones will be added here as they actually occur — announcements land first in
+        Research &amp; News, then settle into this timeline.
+      </p>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .history-empty {
+    color: var(--ink-soft);
+    font-size: var(--text-lg);
+  }
+
+  .history-note {
+    margin-top: 3rem;
+    color: var(--ink-faint);
+    font-size: var(--text-sm);
+    border-top: 1px solid var(--line-soft);
+    padding-top: 1.5rem;
+  }
+</style>

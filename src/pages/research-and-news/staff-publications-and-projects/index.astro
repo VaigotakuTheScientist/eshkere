@@ -1,0 +1,142 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import PageHero from '../../../components/PageHero.astro';
+import ContentCard from '../../../components/ContentCard.astro';
+import EmptyState from '../../../components/EmptyState.astro';
+import PrototypeBadge from '../../../components/PrototypeBadge.astro';
+import { url } from '../../../lib/url';
+import { titleCase } from '../../../lib/format';
+
+const works = (await getCollection('staffWork')).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
+);
+
+const kinds = ['publication', 'research', 'tool', 'project', 'external'] as const;
+const kindLabel: Record<string, string> = {
+  publication: 'Publications',
+  research: 'Research',
+  tool: 'Tools',
+  project: 'Projects',
+  external: 'External work',
+};
+const presentKinds = kinds.filter((kind) => works.some((w) => w.data.kind === kind));
+const hasSamples = works.some((w) => w.data.prototype);
+---
+
+<BaseLayout
+  title="Staff Publications & Projects"
+  description="Work by the people of Eshkere — publications, research, tools, projects and external work. Listed only when it really exists."
+>
+  <PageHero
+    eyebrow="Staff Publications & Projects"
+    title="Made by hand"
+    lead="Publications, research, tools, projects and external work by the people behind Eshkere. There is no staff roster yet, so this page holds the organization’s own output — and clearly labelled samples of what personal entries will look like."
+  />
+
+  <section class="section">
+    <div class="container">
+      {
+        works.length === 0 ? (
+          <EmptyState
+            title="Nothing published yet."
+            body="When people at Eshkere ship publications, tools or projects, they will be collected here — attributed to real people, never invented ones."
+          />
+        ) : (
+          <>
+            <div class="filter-bar" role="group" aria-label="Filter by kind of work">
+              <button class="filter-toggle" type="button" data-kind="all" aria-pressed="true">
+                All
+              </button>
+              {presentKinds.map((kind) => (
+                <button class="filter-toggle" type="button" data-kind={kind} aria-pressed="false">
+                  {kindLabel[kind]}
+                </button>
+              ))}
+            </div>
+
+            <div class="card-grid" data-work-grid>
+              {works.map((work) => (
+                <div class="work-item" data-kind={work.data.kind}>
+                  <ContentCard
+                    href={
+                      work.data.url ??
+                      url(`/research-and-news/staff-publications-and-projects/${work.id}`)
+                    }
+                    title={work.data.title}
+                    excerpt={work.data.excerpt}
+                    type={titleCase(work.data.kind)}
+                    date={work.data.date}
+                    author={work.data.author}
+                    tags={work.data.topics}
+                    prototype={work.data.prototype}
+                  />
+                </div>
+              ))}
+            </div>
+            <p class="work-none" data-work-none hidden>Nothing of that kind yet.</p>
+
+            {hasSamples && (
+              <p class="sample-note">
+                <PrototypeBadge /> entries are placeholder content demonstrating the format — no
+                staff publication record exists yet.
+              </p>
+            )}
+          </>
+        )
+      }
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  const buttons = document.querySelectorAll<HTMLButtonElement>('.filter-toggle[data-kind]');
+  const grid = document.querySelector<HTMLElement>('[data-work-grid]');
+  const none = document.querySelector<HTMLElement>('[data-work-none]');
+
+  buttons.forEach((button) => {
+    button.addEventListener('click', () => {
+      const kind = button.dataset.kind;
+      buttons.forEach((b) => b.setAttribute('aria-pressed', String(b === button)));
+      let visible = 0;
+      grid?.querySelectorAll<HTMLElement>('.work-item').forEach((item) => {
+        const show = kind === 'all' || item.dataset.kind === kind;
+        item.hidden = !show;
+        if (show) visible += 1;
+      });
+      if (none) none.hidden = visible > 0;
+    });
+  });
+</script>
+
+<style>
+  .filter-bar {
+    margin-bottom: 2rem;
+  }
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+    gap: 1.5rem;
+  }
+
+  .work-item {
+    display: grid;
+  }
+
+  .work-none {
+    margin-top: 2rem;
+    text-align: center;
+    color: var(--ink-faint);
+  }
+
+  .sample-note {
+    margin-top: 1.75rem;
+    color: var(--ink-faint);
+    font-size: var(--text-sm);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+</style>

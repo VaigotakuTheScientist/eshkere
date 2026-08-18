@@ -1,0 +1,255 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import { url } from '../lib/url';
+
+const sections = [
+  'All',
+  'Pages',
+  'Research & News',
+  'Blog',
+  'Staff Publications & Projects',
+  'Portfolio',
+  'People',
+];
+---
+
+<BaseLayout
+  title="Search"
+  description="Search everything on the Eshkere site: pages, research, blog posts, publications, portfolio entries and people."
+>
+  <PageHero
+    eyebrow="Search"
+    title="Find anything"
+    lead="Search across every page, article, post, project and person on this site."
+  />
+
+  <section class="section search" data-index-url={url('/search-index.json')}>
+    <div class="container--narrow">
+      <form class="search__form" role="search" aria-label="Site search" data-search-form>
+        <label class="visually-hidden" for="search-input">Search this site</label>
+        <input
+          id="search-input"
+          name="q"
+          type="search"
+          placeholder="Try “health”, “games”, “portfolio”…"
+          autocomplete="off"
+        />
+        <button class="btn btn--solid" type="submit">Search</button>
+      </form>
+
+      <div class="search__filters" role="group" aria-label="Filter results by section">
+        {
+          sections.map((section, index) => (
+            <button
+              class="filter-toggle"
+              type="button"
+              data-section={section}
+              aria-pressed={index === 0 ? 'true' : 'false'}
+            >
+              {section}
+            </button>
+          ))
+        }
+      </div>
+
+      <div class="search__status" data-search-status aria-live="polite"></div>
+      <ol class="search__results" data-search-results></ol>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  interface SearchDoc {
+    title: string;
+    href: string;
+    section: string;
+    excerpt: string;
+    text: string;
+    prototype?: boolean;
+  }
+
+  const root = document.querySelector<HTMLElement>('.search');
+  const form = document.querySelector<HTMLFormElement>('[data-search-form]');
+  const input = document.querySelector<HTMLInputElement>('#search-input');
+  const status = document.querySelector<HTMLElement>('[data-search-status]');
+  const results = document.querySelector<HTMLOListElement>('[data-search-results]');
+  const filters = document.querySelectorAll<HTMLButtonElement>('.filter-toggle[data-section]');
+
+  if (root && form && input && status && results) {
+    let docs: SearchDoc[] = [];
+    let activeSection = 'All';
+    let loaded = false;
+
+    const load = async () => {
+      if (loaded) return;
+      try {
+        const response = await fetch(root.dataset.indexUrl ?? '/search-index.json');
+        docs = ((await response.json()) as { docs: SearchDoc[] }).docs;
+        loaded = true;
+      } catch {
+        status.textContent = 'Search index failed to load. Please refresh and try again.';
+      }
+    };
+
+    const score = (doc: SearchDoc, terms: string[]): number => {
+      let total = 0;
+      const title = doc.title.toLowerCase();
+      for (const term of terms) {
+        if (title.includes(term)) total += 5;
+        if (doc.excerpt.toLowerCase().includes(term)) total += 2;
+        if (doc.text.includes(term)) total += 1;
+      }
+      return total;
+    };
+
+    const render = () => {
+      const query = input.value.trim().toLowerCase();
+      const terms = query.split(/\s+/).filter(Boolean);
+      results.innerHTML = '';
+
+      if (terms.length === 0) {
+        status.textContent = 'Type to search the whole site.';
+        return;
+      }
+
+      const matches = docs
+        .map((doc) => ({ doc, score: score(doc, terms) }))
+        .filter(({ doc, score }) => score > 0 && (activeSection === 'All' || doc.section === activeSection))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 30);
+
+      status.textContent =
+        matches.length === 0
+          ? `Nothing found for “${input.value.trim()}”. The site is young — there genuinely isn't much yet.`
+          : `${matches.length} result${matches.length === 1 ? '' : 's'} for “${input.value.trim()}”.`;
+
+      for (const { doc } of matches) {
+        const item = document.createElement('li');
+        item.className = 'search__result';
+
+        const meta = document.createElement('p');
+        meta.className = 'search__result-section';
+        meta.textContent = doc.section + (doc.prototype ? ' · sample content' : '');
+
+        const heading = document.createElement('h2');
+        const link = document.createElement('a');
+        link.href = doc.href;
+        link.textContent = doc.title;
+        heading.appendChild(link);
+
+        const excerpt = document.createElement('p');
+        excerpt.className = 'search__result-excerpt';
+        excerpt.textContent = doc.excerpt;
+
+        item.append(meta, heading, excerpt);
+        results.appendChild(item);
+      }
+    };
+
+    const run = async () => {
+      await load();
+      render();
+    };
+
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      run();
+    });
+    input.addEventListener('input', run);
+    filters.forEach((button) => {
+      button.addEventListener('click', () => {
+        activeSection = button.dataset.section ?? 'All';
+        filters.forEach((b) => b.setAttribute('aria-pressed', String(b === button)));
+        run();
+      });
+    });
+
+    // Support /search?q=… deep links (e.g. from the header).
+    const params = new URLSearchParams(window.location.search);
+    const initial = params.get('q');
+    if (initial) {
+      input.value = initial;
+      run();
+    }
+    input.focus();
+  }
+</script>
+
+<style>
+  .search__form {
+    display: flex;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+  }
+
+  .search__form input {
+    flex: 1;
+    min-width: 14rem;
+    background: var(--indigo-panel);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-pill);
+    padding: 0.85rem 1.4rem;
+    font-size: var(--text-base);
+    color: var(--ink);
+  }
+
+  .search__form input:focus-visible {
+    outline: 2px solid var(--cyan);
+    outline-offset: 2px;
+  }
+
+  .search__filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 1.5rem;
+  }
+
+  .search__status {
+    margin-top: 2rem;
+    color: var(--ink-faint);
+    min-height: 1.5rem;
+  }
+
+  .search__results {
+    list-style: none;
+    margin: 1.5rem 0 0;
+    padding: 0;
+    display: grid;
+    gap: 1.75rem;
+  }
+
+  .search__result {
+    border-bottom: 1px solid var(--line-soft);
+    padding-bottom: 1.5rem;
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .search__result-section {
+    font-family: var(--font-pixel);
+    font-size: 0.65rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--cyan);
+  }
+
+  .search__result h2 {
+    font-size: var(--text-xl);
+  }
+
+  .search__result h2 a {
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .search__result h2 a:hover {
+    color: var(--pink);
+  }
+
+  .search__result-excerpt {
+    color: var(--ink-soft);
+    font-size: var(--text-sm);
+  }
+</style>

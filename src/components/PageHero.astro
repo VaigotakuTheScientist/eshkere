@@ -1,0 +1,79 @@
+---
+import Sparkle from './Sparkle.astro';
+
+/**
+ * Calm editorial page opening for interior pages: eyebrow, oversized title,
+ * generous lead paragraph, small cosmic accents. Not a full-screen spectacle.
+ */
+interface Props {
+  eyebrow?: string;
+  title: string;
+  lead?: string;
+}
+
+const { eyebrow, title, lead } = Astro.props;
+---
+
+<div class="page-hero">
+  <span class="page-hero__spark page-hero__spark--a" aria-hidden="true"><Sparkle size={14} color="var(--pink)" /></span>
+  <span class="page-hero__spark page-hero__spark--b" aria-hidden="true"><Sparkle size={10} color="var(--lime)" /></span>
+  <div class="container page-hero__inner">
+    {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+    <h1 class="page-hero__title">{title}</h1>
+    {lead && <p class="page-hero__lead">{lead}</p>}
+    <slot />
+  </div>
+  <hr class="rule-iridescent container" />
+</div>
+
+<style>
+  .page-hero {
+    position: relative;
+    padding-top: clamp(3.5rem, 7vw, 6.5rem);
+    background:
+      radial-gradient(60rem 30rem at 85% -20%, rgba(160, 110, 255, 0.14), transparent 70%),
+      radial-gradient(40rem 22rem at 5% 10%, rgba(92, 232, 255, 0.07), transparent 70%);
+  }
+
+  .page-hero__inner {
+    display: grid;
+    gap: 1.4rem;
+    padding-bottom: clamp(2.5rem, 5vw, 4rem);
+    text-align: center;
+    justify-items: center;
+  }
+
+  .page-hero__title {
+    font-size: var(--text-title);
+    font-weight: 500;
+    max-width: 20ch;
+  }
+
+  .page-hero__lead {
+    max-width: 44rem;
+    font-size: var(--text-lg);
+    color: var(--ink-soft);
+    line-height: 1.6;
+  }
+
+  .page-hero__spark {
+    position: absolute;
+    opacity: 0.8;
+  }
+
+  .page-hero__spark--a {
+    top: 22%;
+    left: 12%;
+  }
+
+  .page-hero__spark--b {
+    top: 40%;
+    right: 10%;
+  }
+
+  @media (max-width: 700px) {
+    .page-hero__spark {
+      display: none;
+    }
+  }
+</style>

@@ -1,0 +1,258 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageHero from '../../components/PageHero.astro';
+import ContentCard from '../../components/ContentCard.astro';
+import EmptyState from '../../components/EmptyState.astro';
+import PrototypeBadge from '../../components/PrototypeBadge.astro';
+import { url } from '../../lib/url';
+import { titleCase } from '../../lib/format';
+
+const entries = (await getCollection('research')).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
+);
+
+const featured = entries.find((entry) => entry.data.featured) ?? entries[0];
+const types = [...new Set(entries.map((e) => e.data.type))];
+const topics = [...new Set(entries.flatMap((e) => e.data.topics))].sort();
+const authors = [...new Set(entries.map((e) => e.data.author))].sort();
+const years = [...new Set(entries.map((e) => e.data.date.getUTCFullYear()))].sort((a, b) => b - a);
+const hasSamples = entries.some((e) => e.data.prototype);
+---
+
+<BaseLayout
+  title="Research & News"
+  description="Research reports, working notes and announcements from Eshkere — published honestly, with placeholder samples clearly labelled."
+>
+  <PageHero
+    eyebrow="Research & News"
+    title="Thinking in public"
+    lead="This is where Eshkere will publish research, working notes and announcements about the Maximize Health, Play Games thesis. The organization is early — so the standard starts now: stated uncertainty before stated conclusions, and no content pretending to be further along than it is."
+  />
+
+  <section class="section">
+    <div class="container">
+      {
+        entries.length === 0 ? (
+          <EmptyState
+            title="Research forthcoming."
+            body="Nothing has been published yet. Real writing will land here as the thinking matures."
+          />
+        ) : (
+          <>
+            {featured && (
+              <div class="rn-featured">
+                <p class="eyebrow eyebrow--lime">Featured</p>
+                <div class="rn-featured__card">
+                  <ContentCard
+                    featured
+                    href={url(`/research-and-news/${featured.id}`)}
+                    title={featured.data.title}
+                    excerpt={featured.data.excerpt}
+                    type={titleCase(featured.data.type)}
+                    date={featured.data.date}
+                    author={featured.data.author}
+                    tags={featured.data.topics}
+                    prototype={featured.data.prototype}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div class="rn-browse">
+              <h2 class="rn-browse__heading">Browse everything</h2>
+
+              <form class="filter-bar rn-filters" data-rn-filters role="search" aria-label="Search and filter research and news">
+                <div class="filter-field rn-filters__search">
+                  <label for="rn-q">Search</label>
+                  <input id="rn-q" name="q" type="search" placeholder="Keywords…" autocomplete="off" />
+                </div>
+                <div class="filter-field">
+                  <label for="rn-type">Type</label>
+                  <select id="rn-type" name="type">
+                    <option value="">All types</option>
+                    {types.map((type) => (
+                      <option value={type}>{titleCase(type)}</option>
+                    ))}
+                  </select>
+                </div>
+                <div class="filter-field">
+                  <label for="rn-topic">Topic</label>
+                  <select id="rn-topic" name="topic">
+                    <option value="">All topics</option>
+                    {topics.map((topic) => (
+                      <option value={topic}>{titleCase(topic)}</option>
+                    ))}
+                  </select>
+                </div>
+                <div class="filter-field">
+                  <label for="rn-author">Author</label>
+                  <select id="rn-author" name="author">
+                    <option value="">All authors</option>
+                    {authors.map((author) => (
+                      <option value={author}>{author}</option>
+                    ))}
+                  </select>
+                </div>
+                <div class="filter-field">
+                  <label for="rn-year">Date</label>
+                  <select id="rn-year" name="year">
+                    <option value="">All years</option>
+                    {years.map((year) => (
+                      <option value={String(year)}>{year}</option>
+                    ))}
+                  </select>
+                </div>
+                <div class="filter-field">
+                  <label for="rn-sort">Sort by</label>
+                  <select id="rn-sort" name="sort">
+                    <option value="newest">Newest first</option>
+                    <option value="oldest">Oldest first</option>
+                    <option value="relevance">Relevance</option>
+                  </select>
+                </div>
+              </form>
+
+              <div class="card-grid" data-rn-grid>
+                {entries.map((entry) => (
+                  <ContentCard
+                    href={url(`/research-and-news/${entry.id}`)}
+                    title={entry.data.title}
+                    excerpt={entry.data.excerpt}
+                    type={titleCase(entry.data.type)}
+                    date={entry.data.date}
+                    author={entry.data.author}
+                    tags={entry.data.topics}
+                    prototype={entry.data.prototype}
+                  />
+                ))}
+              </div>
+              <p class="rn-none" data-rn-none hidden>Nothing matches those filters yet.</p>
+
+              {hasSamples && (
+                <p class="sample-note">
+                  <PrototypeBadge /> entries are placeholder content demonstrating the editorial
+                  system — not real publications.
+                </p>
+              )}
+            </div>
+          </>
+        )
+      }
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  const form = document.querySelector<HTMLFormElement>('[data-rn-filters]');
+  const grid = document.querySelector<HTMLElement>('[data-rn-grid]');
+  const none = document.querySelector<HTMLElement>('[data-rn-none]');
+
+  if (form && grid) {
+    const cards = [...grid.querySelectorAll<HTMLElement>('.content-card')];
+
+    const score = (card: HTMLElement, query: string): number => {
+      if (!query) return 0;
+      const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+      const title = (card.dataset.title ?? '').toLowerCase();
+      const topics = (card.dataset.topics ?? '').toLowerCase();
+      const text = card.textContent?.toLowerCase() ?? '';
+      let total = 0;
+      for (const term of terms) {
+        if (title.includes(term)) total += 3;
+        if (topics.includes(term)) total += 2;
+        if (text.includes(term)) total += 1;
+      }
+      return total;
+    };
+
+    const apply = () => {
+      const data = new FormData(form);
+      const query = String(data.get('q') ?? '').trim();
+      const type = String(data.get('type') ?? '');
+      const topic = String(data.get('topic') ?? '');
+      const author = String(data.get('author') ?? '');
+      const year = String(data.get('year') ?? '');
+      const sort = String(data.get('sort') ?? 'newest');
+
+      let visible: { card: HTMLElement; score: number }[] = [];
+      for (const card of cards) {
+        const cardTopics = (card.dataset.topics ?? '').split('|');
+        const cardScore = score(card, query);
+        const show =
+          (!type || card.dataset.type === type) &&
+          (!topic || cardTopics.includes(topic)) &&
+          (!author || card.dataset.author === author) &&
+          (!year || (card.dataset.date ?? '').startsWith(year)) &&
+          (!query || cardScore > 0);
+        card.hidden = !show;
+        if (show) visible.push({ card, score: cardScore });
+      }
+
+      visible.sort((a, b) => {
+        if (sort === 'relevance') return b.score - a.score;
+        const dateA = a.card.dataset.date ?? '';
+        const dateB = b.card.dataset.date ?? '';
+        return sort === 'oldest' ? dateA.localeCompare(dateB) : dateB.localeCompare(dateA);
+      });
+      for (const { card } of visible) grid.appendChild(card);
+
+      if (none) none.hidden = visible.length > 0;
+    };
+
+    form.addEventListener('input', apply);
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      apply();
+    });
+  }
+</script>
+
+<style>
+  .rn-featured {
+    margin-bottom: 3.5rem;
+  }
+
+  .rn-featured__card {
+    margin-top: 1rem;
+  }
+
+  .rn-browse__heading {
+    font-size: var(--text-2xl);
+    margin-bottom: 1.75rem;
+  }
+
+  .rn-filters {
+    margin-bottom: 2.25rem;
+    padding: 1.25rem 1.5rem;
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius);
+    background: rgba(22, 17, 58, 0.35);
+  }
+
+  .rn-filters__search input {
+    min-width: 13rem;
+  }
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+    gap: 1.5rem;
+  }
+
+  .rn-none {
+    margin-top: 2rem;
+    text-align: center;
+    color: var(--ink-faint);
+  }
+
+  .sample-note {
+    margin-top: 1.75rem;
+    color: var(--ink-faint);
+    font-size: var(--text-sm);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+</style>

@@ -1,0 +1,83 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageHero from '../../components/PageHero.astro';
+import EmptyState from '../../components/EmptyState.astro';
+import careers from '../../data/careers.json';
+import { url } from '../../lib/url';
+
+interface Role {
+  title: string;
+  location?: string;
+  type?: string;
+  href?: string;
+}
+
+const roles = careers.roles as Role[];
+---
+
+<BaseLayout
+  title="Careers"
+  description="Open roles at Eshkere. None are currently published — and none will be invented."
+>
+  <PageHero
+    eyebrow="About Us"
+    title="Careers"
+    lead="Working at Eshkere should feel like the thesis: a foundation that is protected, and games worth playing wholeheartedly. Roles will be listed here when they genuinely exist."
+  />
+
+  <section class="section">
+    <div class="container--narrow">
+      {
+        roles.length > 0 ? (
+          <ul class="roles">
+            {roles.map((role) => (
+              <li class="roles__item panel">
+                <h2>{role.href ? <a href={role.href}>{role.title}</a> : role.title}</h2>
+                <p class="roles__meta">
+                  {role.type && <span>{role.type}</span>}
+                  {role.location && <span>{role.location}</span>}
+                </p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <EmptyState
+            title="No open roles are currently published."
+            body="Eshkere is too early for a jobs board, and fabricating vacancies would break the one rule this site keeps everywhere: nothing pretends to be further along than it is. When real roles open, they will be listed here."
+          >
+            <a class="btn btn--ghost" href={url('/about-us/partner-with-us')}>
+              Until then — partner with us
+            </a>
+          </EmptyState>
+        )
+      }
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .roles {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  .roles__item {
+    padding: 1.6rem;
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .roles__item h2 {
+    font-size: var(--text-xl);
+  }
+
+  .roles__meta {
+    display: flex;
+    gap: 1.25rem;
+    color: var(--ink-faint);
+    font-size: var(--text-sm);
+  }
+</style>

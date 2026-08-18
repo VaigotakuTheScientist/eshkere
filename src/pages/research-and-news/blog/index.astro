@@ -1,0 +1,164 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import PageHero from '../../../components/PageHero.astro';
+import ContentCard from '../../../components/ContentCard.astro';
+import EmptyState from '../../../components/EmptyState.astro';
+import PrototypeBadge from '../../../components/PrototypeBadge.astro';
+import { url } from '../../../lib/url';
+import { titleCase } from '../../../lib/format';
+
+const posts = (await getCollection('blog')).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
+);
+const topics = [...new Set(posts.flatMap((p) => p.data.topics))].sort();
+const hasSamples = posts.some((p) => p.data.prototype);
+const PAGE_SIZE = 6;
+---
+
+<BaseLayout
+  title="Blog"
+  description="Shorter, looser writing from Eshkere — the blog beside the research: metaphors, notes and thinking out loud."
+>
+  <PageHero
+    eyebrow="Blog"
+    title="Notes from the games layer"
+    lead="Shorter and looser than the research: metaphors, observations and thinking out loud about health, play and everything people choose to pursue."
+  />
+
+  <section class="section">
+    <div class="container">
+      {
+        posts.length === 0 ? (
+          <EmptyState
+            title="No posts yet."
+            body="The blog starts when there is something worth saying. Real posts will appear here, newest first."
+          />
+        ) : (
+          <>
+            <div class="filter-bar blog-filters" role="group" aria-label="Filter posts by topic">
+              <button class="filter-toggle" type="button" data-topic="all" aria-pressed="true">
+                All topics
+              </button>
+              {topics.map((topic) => (
+                <button class="filter-toggle" type="button" data-topic={topic} aria-pressed="false">
+                  {titleCase(topic)}
+                </button>
+              ))}
+            </div>
+
+            <div class="blog-list" data-blog-list>
+              {posts.map((post, index) => (
+                <div
+                  class="blog-list__item"
+                  data-topics={post.data.topics.join('|')}
+                  data-beyond-fold={index >= PAGE_SIZE ? 'true' : undefined}
+                  hidden={index >= PAGE_SIZE}
+                >
+                  <ContentCard
+                    href={url(`/research-and-news/blog/${post.id}`)}
+                    title={post.data.title}
+                    excerpt={post.data.excerpt}
+                    type="Blog"
+                    date={post.data.date}
+                    author={post.data.author}
+                    tags={post.data.topics}
+                    prototype={post.data.prototype}
+                  />
+                </div>
+              ))}
+            </div>
+
+            <p class="blog-none" data-blog-none hidden>No posts under that topic yet.</p>
+
+            {posts.length > PAGE_SIZE && (
+              <div class="blog-more">
+                <button class="btn btn--ghost" type="button" data-blog-more>
+                  Load more posts
+                </button>
+              </div>
+            )}
+
+            {hasSamples && (
+              <p class="sample-note">
+                <PrototypeBadge /> posts are placeholder writing demonstrating the blog format.
+              </p>
+            )}
+          </>
+        )
+      }
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  const list = document.querySelector<HTMLElement>('[data-blog-list]');
+  const buttons = document.querySelectorAll<HTMLButtonElement>('.filter-toggle[data-topic]');
+  const more = document.querySelector<HTMLButtonElement>('[data-blog-more]');
+  const none = document.querySelector<HTMLElement>('[data-blog-none]');
+
+  if (list) {
+    const items = [...list.querySelectorAll<HTMLElement>('.blog-list__item')];
+    let activeTopic = 'all';
+    let expanded = false;
+
+    const apply = () => {
+      // A topic filter shows every match; the fold only applies to "all".
+      const limit = expanded || activeTopic !== 'all' ? Infinity : 6;
+      let shown = 0;
+      for (const item of items) {
+        const topics = (item.dataset.topics ?? '').split('|');
+        const matches = activeTopic === 'all' || topics.includes(activeTopic);
+        const show = matches && shown < limit;
+        item.hidden = !show;
+        if (show) shown += 1;
+      }
+      if (none) none.hidden = shown > 0;
+      if (more) more.hidden = expanded || activeTopic !== 'all';
+    };
+
+    buttons.forEach((button) => {
+      button.addEventListener('click', () => {
+        activeTopic = button.dataset.topic ?? 'all';
+        buttons.forEach((b) => b.setAttribute('aria-pressed', String(b === button)));
+        apply();
+      });
+    });
+
+    more?.addEventListener('click', () => {
+      expanded = true;
+      apply();
+    });
+  }
+</script>
+
+<style>
+  .blog-filters {
+    margin-bottom: 2rem;
+  }
+
+  .blog-list {
+    display: grid;
+    gap: 1.5rem;
+    max-width: 52rem;
+  }
+
+  .blog-none {
+    margin-top: 2rem;
+    color: var(--ink-faint);
+  }
+
+  .blog-more {
+    margin-top: 2.25rem;
+  }
+
+  .sample-note {
+    margin-top: 1.75rem;
+    color: var(--ink-faint);
+    font-size: var(--text-sm);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+</style>

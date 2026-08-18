@@ -1,0 +1,83 @@
+---
+import PixelHeart from './PixelHeart.astro';
+
+interface TimelineEvent {
+  year: string;
+  title: string;
+  description: string;
+}
+
+interface Props {
+  events: TimelineEvent[];
+}
+
+const { events } = Astro.props;
+---
+
+<ol class="timeline">
+  {
+    events.map((event) => (
+      <li class="timeline__item">
+        <div class="timeline__marker" aria-hidden="true">
+          <PixelHeart size={13} />
+        </div>
+        <p class="timeline__year">{event.year}</p>
+        <h3 class="timeline__title">{event.title}</h3>
+        <p class="timeline__description">{event.description}</p>
+      </li>
+    ))
+  }
+</ol>
+
+<style>
+  .timeline {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 2.5rem;
+    position: relative;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    top: 0.4rem;
+    bottom: 0.4rem;
+    left: 0.55rem;
+    width: 1px;
+    background: linear-gradient(180deg, var(--cyan), var(--pink), var(--violet));
+    opacity: 0.6;
+  }
+
+  .timeline__item {
+    position: relative;
+    padding-left: 2.6rem;
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .timeline__marker {
+    position: absolute;
+    left: 0;
+    top: 0.3rem;
+    background: var(--space-black);
+    padding-block: 0.25rem;
+  }
+
+  .timeline__year {
+    font-family: var(--font-pixel);
+    font-size: var(--text-xs);
+    letter-spacing: 0.28em;
+    color: var(--lime);
+  }
+
+  .timeline__title {
+    font-size: var(--text-xl);
+  }
+
+  .timeline__description {
+    color: var(--ink-soft);
+    max-width: 56ch;
+  }
+</style>

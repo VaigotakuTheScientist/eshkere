@@ -1,0 +1,594 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Starfield from '../components/Starfield.astro';
+import Planet from '../components/Planet.astro';
+import Sparkle from '../components/Sparkle.astro';
+import PixelHeart from '../components/PixelHeart.astro';
+import ContentCard from '../components/ContentCard.astro';
+import EmptyState from '../components/EmptyState.astro';
+import PrototypeBadge from '../components/PrototypeBadge.astro';
+import { siteConfig } from '../data/site';
+import { url } from '../lib/url';
+import { titleCase } from '../lib/format';
+
+const portfolio = (await getCollection('portfolio')).filter((entry) => !entry.data.prototype);
+
+const research = (await getCollection('research')).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
+);
+const featured = research.find((entry) => entry.data.featured) ?? research[0];
+const secondary = research.filter((entry) => entry.id !== featured?.id).slice(0, 3);
+const hasSamples = research.some((entry) => entry.data.prototype);
+---
+
+<BaseLayout title={siteConfig.name} overlayHeader>
+  <!-- ============================================================ hero -->
+  <section class="hero" aria-labelledby="hero-heading">
+    <Starfield />
+    <div class="hero__planet" aria-hidden="true">
+      <Planet />
+      <p class="hero__holo-tag">
+        Health<br />first<br /><span>always</span>
+      </p>
+      <svg class="hero__badge" viewBox="0 0 120 120" aria-hidden="true">
+        <defs>
+          <path id="badge-circle" d="M60 12a48 48 0 1 1 0 96 48 48 0 1 1 0-96z"></path>
+        </defs>
+        <circle cx="60" cy="60" r="58" fill="rgba(13,10,36,0.55)" stroke="var(--line-strong)" stroke-width="1"></circle>
+        <g class="hero__badge-spin">
+          <text font-family="Silkscreen, monospace" font-size="10.5" letter-spacing="3.5" fill="var(--ink-soft)">
+            <textPath href="#badge-circle">LEVEL UP YOUR LIFE ✦ PLAY ✦</textPath>
+          </text>
+        </g>
+        <g fill="var(--pink)" transform="translate(46.5 49) scale(3.8)">
+          <rect x="1" y="0" width="2" height="1"></rect>
+          <rect x="4" y="0" width="2" height="1"></rect>
+          <rect x="0" y="1" width="7" height="2"></rect>
+          <rect x="1" y="3" width="5" height="1"></rect>
+          <rect x="2" y="4" width="3" height="1"></rect>
+          <rect x="3" y="5" width="1" height="1"></rect>
+        </g>
+      </svg>
+      <span class="hero__deco hero__deco--heart-a"><PixelHeart size={22} color="var(--violet)" /></span>
+      <span class="hero__deco hero__deco--heart-b"><PixelHeart size={15} color="var(--pink)" /></span>
+      <span class="hero__deco hero__deco--spark-a"><Sparkle size={22} color="var(--cyan)" /></span>
+      <span class="hero__deco hero__deco--spark-b"><Sparkle size={14} color="var(--pink)" /></span>
+      <svg class="hero__deco hero__deco--plus" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+        <path d="M8 0h8v8h8v8h-8v8H8v-8H0V8h8z" fill="var(--lime)"></path>
+      </svg>
+    </div>
+
+    <div class="container hero__content">
+      <h1 class="hero__heading" id="hero-heading">
+        Maximize<br />Health, Play&nbsp;Games
+      </h1>
+      <p class="hero__support">Health is non-optional. Everything else is a game.</p>
+      <div class="hero__ctas">
+        <a class="btn btn--solid" href={url('/our-approach')}>Explore our approach</a>
+        <a class="btn btn--ghost" href={url('/portfolio')}>View portfolio</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================== health & games -->
+  <section class="section duality" aria-labelledby="duality-heading">
+    <div class="container">
+      <p class="eyebrow">The thesis</p>
+      <h2 class="duality__heading" id="duality-heading">One foundation. Infinite games.</h2>
+
+      <div class="duality__grid">
+        <article class="duality__card duality__card--health panel">
+          <p class="duality__label duality__label--health">
+            <svg viewBox="0 0 40 12" width="40" height="12" aria-hidden="true">
+              <polyline points="0,7 12,7 16,1 21,11 25,4 28,7 40,7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"></polyline>
+            </svg>
+            Health
+          </p>
+          <h3 class="duality__title">The non-optional foundation</h3>
+          <p class="duality__body">
+            The conditions and needs underlying physical, mental and social flourishing. Sleep,
+            movement, nourishment, connection, a mind that works. Health is serious because nobody
+            can opt out of needing it — and everything else stands on top of it.
+          </p>
+        </article>
+
+        <article class="duality__card duality__card--games panel">
+          <p class="duality__label duality__label--games">
+            <PixelHeart size={15} color="currentColor" />
+            Games
+          </p>
+          <h3 class="duality__title">Everything you choose on top</h3>
+          <p class="duality__body">
+            The optional ways people pursue enjoyment, achievement, relationships, exploration,
+            creativity, knowledge, identity and meaning. Optional by definition — and where almost
+            everything people cherish about being alive actually lives.
+          </p>
+        </article>
+      </div>
+
+      <p class="duality__bridge">
+        Games depend on health. That is why the foundation comes
+        first — <em>and why it is never the whole point.</em>
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================== featured portfolio -->
+  <section class="section portfolio-teaser" aria-labelledby="portfolio-heading">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow eyebrow--pink">Portfolio</p>
+          <h2 id="portfolio-heading">What we're building</h2>
+        </div>
+        <a class="section-head__link" href={url('/portfolio')}>Browse the portfolio →</a>
+      </div>
+
+      {
+        portfolio.length > 0 ? (
+          <div class="card-grid">
+            {portfolio.slice(0, 3).map((entry) => (
+              <ContentCard
+                href={url(`/portfolio/${entry.id}`)}
+                title={entry.data.title}
+                excerpt={entry.data.summary}
+                type={titleCase(entry.data.category)}
+                date={entry.data.date}
+                tags={entry.data.tags}
+              />
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            title="Eshkere’s portfolio is taking shape."
+            body="No projects, programs or supported work are published yet. When real entries exist, they will appear here — nothing on this site is invented to look further along than it is."
+          >
+            <a class="btn btn--ghost" href={url('/portfolio')}>See how the portfolio will work</a>
+          </EmptyState>
+        )
+      }
+    </div>
+  </section>
+
+  <!-- ================================================= research & news -->
+  <section class="section research-teaser" aria-labelledby="research-heading">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow eyebrow--lime">Research &amp; News</p>
+          <h2 id="research-heading">Thinking in public</h2>
+        </div>
+        <a class="section-head__link" href={url('/research-and-news')}>All research &amp; news →</a>
+      </div>
+
+      {
+        featured ? (
+          <div class="research-teaser__grid">
+            <ContentCard
+              featured
+              href={url(`/research-and-news/${featured.id}`)}
+              title={featured.data.title}
+              excerpt={featured.data.excerpt}
+              type={titleCase(featured.data.type)}
+              date={featured.data.date}
+              author={featured.data.author}
+              tags={featured.data.topics}
+              prototype={featured.data.prototype}
+            />
+            <div class="research-teaser__stack">
+              {secondary.map((entry) => (
+                <ContentCard
+                  href={url(`/research-and-news/${entry.id}`)}
+                  title={entry.data.title}
+                  excerpt={entry.data.excerpt}
+                  type={titleCase(entry.data.type)}
+                  date={entry.data.date}
+                  author={entry.data.author}
+                  prototype={entry.data.prototype}
+                />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <EmptyState
+            title="Research forthcoming."
+            body="Nothing has been published yet. Real writing will land here as the thinking matures."
+          />
+        )
+      }
+
+      {
+        hasSamples && (
+          <p class="sample-note">
+            <PrototypeBadge /> entries are placeholder content demonstrating the editorial system —
+            not real publications.
+          </p>
+        )
+      }
+    </div>
+  </section>
+
+  <!-- ================================================= approach teaser -->
+  <section class="section approach-teaser" aria-labelledby="approach-heading">
+    <div class="container--narrow approach-teaser__inner">
+      <Sparkle size={16} color="var(--lime)" />
+      <h2 id="approach-heading">Health is the floor. Games are the point.</h2>
+      <p>
+        Eshkere is built on a single ordering: secure the non-optional foundation of physical,
+        mental and social well-being — then choose your games and play them wholeheartedly. How
+        that becomes projects, programs and support is still being worked out, in public.
+      </p>
+      <a class="btn btn--ghost" href={url('/our-approach')}>Read the complete approach</a>
+    </div>
+  </section>
+
+  <!-- ================================================ partner with us -->
+  <section class="section partner-cta" aria-labelledby="partner-heading">
+    <div class="container partner-cta__inner panel">
+      <div>
+        <p class="eyebrow eyebrow--pink">Partner with us</p>
+        <h2 id="partner-heading">Early is the interesting part.</h2>
+        <p class="partner-cta__body">
+          Eshkere is an early-stage exploration, which means collaborators can still shape what it
+          becomes — builders, researchers, funders and creative partners alike.
+        </p>
+        {
+          !siteConfig.partnershipContact && (
+            <p class="partner-cta__forthcoming">
+              Partnership details forthcoming — a real contact channel will be published here once
+              it exists.
+            </p>
+          )
+        }
+      </div>
+      <a class="btn btn--solid" href={url('/about-us/partner-with-us')}>How partnership could work</a>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  /* ------------------------------------------------------------- hero */
+  .hero {
+    position: relative;
+    min-height: max(92vh, 44rem);
+    display: flex;
+    align-items: flex-end;
+    overflow: hidden;
+    background:
+      radial-gradient(70rem 45rem at 68% 30%, rgba(49, 64, 217, 0.18), transparent 65%),
+      var(--space-black);
+    padding-top: 7rem;
+    padding-bottom: clamp(3rem, 6vh, 5rem);
+  }
+
+  .hero__planet {
+    position: absolute;
+    top: 55%;
+    right: -9%;
+    width: min(56vw, 52rem);
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+
+  .hero__holo-tag {
+    position: absolute;
+    top: 18%;
+    left: -4%;
+    padding: 0.9rem 1.2rem;
+    border: 1px solid rgba(244, 241, 255, 0.35);
+    border-radius: 10px;
+    background: linear-gradient(120deg, rgba(255, 100, 205, 0.14), rgba(92, 232, 255, 0.12), rgba(206, 245, 77, 0.1));
+    backdrop-filter: blur(3px);
+    font-family: var(--font-pixel);
+    font-size: 0.72rem;
+    letter-spacing: 0.3em;
+    line-height: 1.9;
+    text-transform: uppercase;
+    color: var(--ink);
+    transform: rotate(-8deg);
+  }
+
+  .hero__holo-tag span {
+    color: var(--lime);
+  }
+
+  .hero__badge {
+    position: absolute;
+    bottom: 18%;
+    right: 34%;
+    width: clamp(5.5rem, 9vw, 8rem);
+    height: auto;
+  }
+
+  .hero__badge-spin {
+    animation: badge-spin 40s linear infinite;
+    transform-origin: 60px 60px;
+  }
+
+  @keyframes badge-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .hero__deco {
+    position: absolute;
+  }
+
+  .hero__deco--heart-a { top: 6%; right: 22%; }
+  .hero__deco--heart-b { top: 30%; left: 2%; }
+  .hero__deco--spark-a { top: 12%; left: 16%; }
+  .hero__deco--spark-b { top: 66%; right: 47%; }
+  .hero__deco--plus { top: 46%; right: 4%; filter: drop-shadow(0 0 10px var(--lime)); }
+
+  .hero__content {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    gap: 1.5rem;
+    justify-items: start;
+  }
+
+  .hero__heading {
+    font-size: var(--text-hero);
+    font-weight: 480;
+    line-height: 0.98;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    max-width: 12ch;
+    background: linear-gradient(115deg, #ffffff 30%, #f3d9ff 60%, #cfeaff 90%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 2px 24px rgba(160, 110, 255, 0.35));
+  }
+
+  .hero__support {
+    font-size: var(--text-lg);
+    color: var(--ink-soft);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .hero__support::after {
+    content: '⟶';
+    color: var(--pink);
+    font-size: 1.4em;
+    line-height: 1;
+  }
+
+  .hero__ctas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.9rem;
+    margin-top: 0.5rem;
+  }
+
+  @media (max-width: 900px) {
+    .hero {
+      align-items: flex-end;
+      min-height: 100svh;
+      padding-top: 0;
+    }
+
+    .hero__planet {
+      top: -6%;
+      right: -30%;
+      width: 34rem;
+      transform: none;
+      opacity: 0.9;
+    }
+
+    .hero__holo-tag { display: none; }
+    .hero__badge { right: 6%; bottom: 45%; }
+    .hero__deco--spark-a { top: 12%; }
+  }
+
+  /* -------------------------------------------------- health & games */
+  .duality .eyebrow {
+    text-align: center;
+    display: block;
+  }
+
+  .duality__heading {
+    text-align: center;
+    font-size: var(--text-2xl);
+    margin: 0.75rem auto 3rem;
+    max-width: 24ch;
+  }
+
+  .duality__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    align-items: stretch;
+  }
+
+  .duality__card {
+    padding: clamp(1.75rem, 3.5vw, 2.75rem);
+    display: grid;
+    gap: 1rem;
+    align-content: start;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .duality__card--health {
+    border-color: rgba(92, 232, 255, 0.35);
+    background:
+      radial-gradient(28rem 16rem at 15% 0%, rgba(92, 232, 255, 0.12), transparent 70%),
+      linear-gradient(160deg, rgba(30, 24, 73, 0.55), rgba(13, 10, 36, 0.85));
+  }
+
+  .duality__card--games {
+    border-color: rgba(255, 100, 205, 0.35);
+    background:
+      radial-gradient(28rem 16rem at 85% 0%, rgba(255, 100, 205, 0.13), transparent 70%),
+      linear-gradient(160deg, rgba(30, 24, 73, 0.55), rgba(13, 10, 36, 0.85));
+    /* Games sit on top of the foundation — nudged up on desktop. */
+    transform: translateY(-1.25rem);
+  }
+
+  .duality__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: var(--font-pixel);
+    font-size: 0.78rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+  }
+
+  .duality__label--health { color: var(--cyan); }
+  .duality__label--games { color: var(--pink); }
+
+  .duality__title {
+    font-size: var(--text-xl);
+  }
+
+  .duality__body {
+    color: var(--ink-soft);
+  }
+
+  .duality__bridge {
+    text-align: center;
+    max-width: 44rem;
+    margin: 3rem auto 0;
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    color: var(--ink);
+  }
+
+  .duality__bridge em {
+    color: var(--peach);
+    font-style: italic;
+  }
+
+  @media (max-width: 800px) {
+    .duality__grid {
+      grid-template-columns: 1fr;
+    }
+
+    .duality__card--games {
+      transform: none;
+    }
+  }
+
+  /* -------------------------------------------------- section heads */
+  .section-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 2.25rem;
+  }
+
+  .section-head h2 {
+    font-size: var(--text-2xl);
+    margin-top: 0.5rem;
+  }
+
+  .section-head__link {
+    font-size: var(--text-sm);
+    color: var(--ink-soft);
+    text-decoration: none;
+    letter-spacing: 0.04em;
+  }
+
+  .section-head__link:hover {
+    color: var(--cyan);
+  }
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+    gap: 1.5rem;
+  }
+
+  /* ---------------------------------------------------- research grid */
+  .research-teaser__grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  .research-teaser__stack {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  .sample-note {
+    margin-top: 1.75rem;
+    color: var(--ink-faint);
+    font-size: var(--text-sm);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 900px) {
+    .research-teaser__grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* -------------------------------------------------- approach teaser */
+  .approach-teaser {
+    background:
+      radial-gradient(50rem 24rem at 50% 0%, rgba(160, 110, 255, 0.12), transparent 70%);
+  }
+
+  .approach-teaser__inner {
+    display: grid;
+    justify-items: center;
+    text-align: center;
+    gap: 1.25rem;
+  }
+
+  .approach-teaser h2 {
+    font-size: var(--text-2xl);
+    max-width: 22ch;
+  }
+
+  .approach-teaser p {
+    color: var(--ink-soft);
+    max-width: 40rem;
+  }
+
+  /* ------------------------------------------------------ partner cta */
+  .partner-cta__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    flex-wrap: wrap;
+    padding: clamp(2rem, 4vw, 3.25rem);
+  }
+
+  .partner-cta__inner h2 {
+    font-size: var(--text-2xl);
+    margin-block: 0.6rem 0.9rem;
+  }
+
+  .partner-cta__body {
+    color: var(--ink-soft);
+    max-width: 34rem;
+  }
+
+  .partner-cta__forthcoming {
+    margin-top: 0.9rem;
+    font-size: var(--text-sm);
+    color: var(--peach);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero__badge-spin {
+      animation: none;
+    }
+  }
+</style>

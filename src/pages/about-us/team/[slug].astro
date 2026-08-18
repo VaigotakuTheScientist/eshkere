@@ -1,0 +1,110 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { url } from '../../../lib/url';
+
+export async function getStaticPaths() {
+  const people = await getCollection('team');
+  return people.map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+const initials = entry.data.name
+  .split(/\s+/)
+  .map((part: string) => part.charAt(0))
+  .slice(0, 2)
+  .join('')
+  .toUpperCase();
+---
+
+<BaseLayout title={entry.data.name} description={`${entry.data.name} — ${entry.data.role} at Eshkere.`}>
+  <article class="profile section">
+    <header class="profile__header container--narrow">
+      <p class="profile__avatar" aria-hidden="true">{initials}</p>
+      <h1>{entry.data.name}</h1>
+      <p class="profile__role">{entry.data.role}</p>
+      {entry.data.focus && <p class="profile__focus">{entry.data.focus}</p>}
+      {
+        entry.data.links.length > 0 && (
+          <ul class="profile__links">
+            {entry.data.links.map((link: { label: string; url: string }) => (
+              <li>
+                <a href={link.url}>{link.label}</a>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+      <hr class="rule-iridescent" />
+    </header>
+    <div class="prose container--narrow">
+      <Content />
+    </div>
+    <footer class="container--narrow profile__footer">
+      <a href={url('/about-us/team')}>← Back to team</a>
+    </footer>
+  </article>
+</BaseLayout>
+
+<style>
+  .profile__header {
+    display: grid;
+    gap: 0.7rem;
+    margin-bottom: 2.25rem;
+  }
+
+  .profile__avatar {
+    width: 4.5rem;
+    height: 4.5rem;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--pink), var(--violet), var(--cyan));
+    color: var(--ink-on-bright);
+    font-weight: 700;
+    font-size: 1.3rem;
+    letter-spacing: 0.05em;
+  }
+
+  .profile__header h1 {
+    font-size: var(--text-title);
+    font-weight: 500;
+  }
+
+  .profile__role {
+    font-family: var(--font-pixel);
+    font-size: 0.72rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--cyan);
+  }
+
+  .profile__focus {
+    color: var(--ink-soft);
+  }
+
+  .profile__links {
+    display: flex;
+    gap: 1.25rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: var(--text-sm);
+  }
+
+  .profile__header .rule-iridescent {
+    margin-top: 1rem;
+    width: 100%;
+  }
+
+  .profile__footer {
+    margin-top: 3rem;
+    font-size: var(--text-sm);
+  }
+
+  .profile__footer a {
+    text-decoration: none;
+    color: var(--ink-soft);
+  }
+</style>

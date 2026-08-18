@@ -1,0 +1,27 @@
+---
+import { getCollection, render } from 'astro:content';
+import ArticleLayout from '../../layouts/ArticleLayout.astro';
+import { titleCase } from '../../lib/format';
+
+export async function getStaticPaths() {
+  const entries = await getCollection('research');
+  return entries.map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+---
+
+<ArticleLayout
+  title={entry.data.title}
+  description={entry.data.excerpt}
+  typeLabel={titleCase(entry.data.type)}
+  date={entry.data.date}
+  author={entry.data.author}
+  tags={entry.data.topics}
+  prototype={entry.data.prototype}
+  backHref="/research-and-news"
+  backLabel="Back to Research & News"
+>
+  <Content />
+</ArticleLayout>

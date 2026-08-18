@@ -1,0 +1,141 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import PrototypeBadge from '../components/PrototypeBadge.astro';
+import { formatDate, isoDate } from '../lib/format';
+import { url } from '../lib/url';
+
+interface Props {
+  title: string;
+  description: string;
+  /** Display label, e.g. “Research”, “Blog”, “Announcement”. */
+  typeLabel: string;
+  date?: Date;
+  author?: string;
+  tags?: string[];
+  prototype?: boolean;
+  backHref: string;
+  backLabel: string;
+}
+
+const {
+  title,
+  description,
+  typeLabel,
+  date,
+  author,
+  tags = [],
+  prototype = false,
+  backHref,
+  backLabel,
+} = Astro.props;
+---
+
+<BaseLayout title={title} description={description}>
+  <article class="article">
+    <header class="article__header container--narrow">
+      <p class="article__meta">
+        <span class="eyebrow">{typeLabel}</span>
+        {prototype && <PrototypeBadge label="Sample content" />}
+      </p>
+      <h1 class="article__title">{title}</h1>
+      <p class="article__byline">
+        {date && <time datetime={isoDate(date)}>{formatDate(date)}</time>}
+        {author && <span>· {author}</span>}
+      </p>
+      {
+        tags.length > 0 && (
+          <ul class="article__tags" aria-label="Topics">
+            {tags.map((tag) => (
+              <li class="chip">{tag}</li>
+            ))}
+          </ul>
+        )
+      }
+      <hr class="rule-iridescent" />
+    </header>
+
+    {
+      prototype && (
+        <aside class="article__prototype-note container--narrow" aria-label="About this sample entry">
+          <p>
+            This is a labelled sample entry demonstrating the editorial format. It is not a real
+            publication from a mature organization — Eshkere is still early-stage.
+          </p>
+        </aside>
+      )
+    }
+
+    <div class="prose container--narrow">
+      <slot />
+    </div>
+
+    <footer class="article__footer container--narrow">
+      <a class="article__back" href={url(backHref)}>← {backLabel}</a>
+    </footer>
+  </article>
+</BaseLayout>
+
+<style>
+  .article {
+    padding-top: clamp(3rem, 6vw, 5.5rem);
+  }
+
+  .article__header {
+    display: grid;
+    gap: 1rem;
+    margin-bottom: 2.25rem;
+  }
+
+  .article__meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .article__title {
+    font-size: var(--text-title);
+    font-weight: 500;
+  }
+
+  .article__byline {
+    color: var(--ink-faint);
+    font-size: var(--text-sm);
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .article__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .article__header .rule-iridescent {
+    margin-top: 1rem;
+    width: 100%;
+  }
+
+  .article__prototype-note {
+    margin-bottom: 2.25rem;
+    padding: 1rem 1.25rem;
+    border: 1px dashed var(--peach);
+    border-radius: var(--radius-sm);
+    color: var(--peach);
+    font-size: var(--text-sm);
+  }
+
+  .article__footer {
+    margin-top: 3.5rem;
+  }
+
+  .article__back {
+    font-size: var(--text-sm);
+    text-decoration: none;
+    color: var(--ink-soft);
+  }
+</style>

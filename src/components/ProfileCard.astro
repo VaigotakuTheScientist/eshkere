@@ -1,0 +1,90 @@
+---
+/**
+ * Team profile card. Populated only from the `team` content collection —
+ * confirmed people, never invented ones.
+ */
+interface Props {
+  href?: string;
+  name: string;
+  role: string;
+  focus?: string;
+}
+
+const { href, name, role, focus } = Astro.props;
+const initials = name
+  .split(/\s+/)
+  .map((part) => part.charAt(0))
+  .slice(0, 2)
+  .join('')
+  .toUpperCase();
+---
+
+<article class="profile-card panel">
+  <p class="profile-card__avatar" aria-hidden="true">{initials}</p>
+  <h3 class="profile-card__name">
+    {href ? <a href={href}>{name}</a> : name}
+  </h3>
+  <p class="profile-card__role">{role}</p>
+  {focus && <p class="profile-card__focus">{focus}</p>}
+</article>
+
+<style>
+  .profile-card {
+    position: relative;
+    display: grid;
+    gap: 0.4rem;
+    padding: 1.75rem;
+    transition: transform var(--speed-quick) var(--ease-out),
+      border-color var(--speed-quick) var(--ease-out);
+  }
+
+  .profile-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--line-strong);
+  }
+
+  .profile-card__avatar {
+    width: 3.4rem;
+    height: 3.4rem;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--pink), var(--violet), var(--cyan));
+    color: var(--ink-on-bright);
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.6rem;
+  }
+
+  .profile-card__name {
+    font-size: var(--text-lg);
+  }
+
+  .profile-card__name a {
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .profile-card__name a::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+
+  .profile-card__name a:hover {
+    color: var(--pink);
+  }
+
+  .profile-card__role {
+    font-family: var(--font-pixel);
+    font-size: 0.68rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--cyan);
+  }
+
+  .profile-card__focus {
+    color: var(--ink-soft);
+    font-size: var(--text-sm);
+  }
+</style>

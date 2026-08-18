@@ -1,0 +1,26 @@
+---
+import { getCollection, render } from 'astro:content';
+import ArticleLayout from '../../layouts/ArticleLayout.astro';
+import { titleCase } from '../../lib/format';
+
+export async function getStaticPaths() {
+  const entries = await getCollection('portfolio');
+  return entries.map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+---
+
+<ArticleLayout
+  title={entry.data.title}
+  description={entry.data.summary}
+  typeLabel={`Portfolio · ${titleCase(entry.data.category)} · ${titleCase(entry.data.status)}`}
+  date={entry.data.date}
+  tags={entry.data.tags}
+  prototype={entry.data.prototype}
+  backHref="/portfolio"
+  backLabel="Back to portfolio"
+>
+  <Content />
+</ArticleLayout>

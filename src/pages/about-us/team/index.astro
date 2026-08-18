@@ -1,0 +1,57 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import PageHero from '../../../components/PageHero.astro';
+import ProfileCard from '../../../components/ProfileCard.astro';
+import EmptyState from '../../../components/EmptyState.astro';
+import { url } from '../../../lib/url';
+
+const people = (await getCollection('team')).sort((a, b) => a.data.order - b.data.order);
+---
+
+<BaseLayout
+  title="Team"
+  description="The people of Eshkere. Profiles appear here only when real, confirmed people join — none are invented."
+>
+  <PageHero
+    eyebrow="About Us"
+    title="Team"
+    lead="Profiles appear here only for real, confirmed people. Eshkere does not pad this page with invented faces."
+  />
+
+  <section class="section">
+    <div class="container">
+      {
+        people.length > 0 ? (
+          <div class="team-grid">
+            {people.map((person) => (
+              <ProfileCard
+                href={url(`/about-us/team/${person.id}`)}
+                name={person.data.name}
+                role={person.data.role}
+                focus={person.data.focus}
+              />
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            title="No public team roster yet."
+            body="Eshkere is an early-stage exploration and has not published a team page. When real people take on public roles, their profiles will appear here — with their consent, and never before."
+          >
+            <a class="btn btn--ghost" href={url('/about-us/partner-with-us')}>
+              Interested in being early? Partner with us
+            </a>
+          </EmptyState>
+        )
+      }
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .team-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: 1.5rem;
+  }
+</style>

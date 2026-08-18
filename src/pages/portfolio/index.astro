@@ -1,0 +1,251 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageHero from '../../components/PageHero.astro';
+import EmptyState from '../../components/EmptyState.astro';
+import PrototypeBadge from '../../components/PrototypeBadge.astro';
+import { url } from '../../lib/url';
+import { titleCase, formatDate, isoDate } from '../../lib/format';
+
+const entries = (await getCollection('portfolio')).sort(
+  (a, b) => (b.data.date?.valueOf() ?? 0) - (a.data.date?.valueOf() ?? 0)
+);
+
+const categories = [...new Set(entries.map((entry) => entry.data.category))];
+const allCategories = ['project', 'program', 'experiment', 'supported-work'] as const;
+
+const statusLabel: Record<string, string> = {
+  exploring: 'Exploring',
+  'in-progress': 'In progress',
+  active: 'Active',
+  paused: 'Paused',
+  completed: 'Completed',
+};
+---
+
+<BaseLayout
+  title="Portfolio"
+  description="Eshkere’s portfolio of projects, programs, experiments and supported work — published only when real entries exist."
+>
+  <PageHero
+    eyebrow="Portfolio"
+    title="Work worth playing for"
+    lead="The Eshkere portfolio is broader than investments: it will hold projects, programs, experiments and supported work — anything that strengthens the health foundation or makes the games layer richer."
+  />
+
+  <section class="section portfolio">
+    <div class="container">
+      {
+        entries.length > 0 ? (
+          <>
+            <div class="filter-bar" role="group" aria-label="Filter portfolio by category">
+              <button class="filter-toggle" type="button" data-filter="all" aria-pressed="true">
+                All
+              </button>
+              {categories.map((category) => (
+                <button class="filter-toggle" type="button" data-filter={category} aria-pressed="false">
+                  {titleCase(category)}
+                </button>
+              ))}
+            </div>
+
+            <ul class="portfolio__grid" data-portfolio-grid>
+              {entries.map((entry) => (
+                <li data-category={entry.data.category}>
+                  <article class="portfolio-card panel">
+                    <p class="portfolio-card__meta">
+                      <span class="portfolio-card__category">{titleCase(entry.data.category)}</span>
+                      <span class:list={['portfolio-card__status', `is-${entry.data.status}`]}>
+                        {statusLabel[entry.data.status]}
+                      </span>
+                      {entry.data.prototype && <PrototypeBadge />}
+                    </p>
+                    <h2 class="portfolio-card__title">
+                      <a href={url(`/portfolio/${entry.id}`)}>{entry.data.title}</a>
+                    </h2>
+                    <p class="portfolio-card__summary">{entry.data.summary}</p>
+                    {entry.data.date && (
+                      <time class="portfolio-card__date" datetime={isoDate(entry.data.date)}>
+                        {formatDate(entry.data.date)}
+                      </time>
+                    )}
+                  </article>
+                </li>
+              ))}
+            </ul>
+            <p class="portfolio__none" data-portfolio-none hidden>
+              No entries in this category yet.
+            </p>
+          </>
+        ) : (
+          <>
+            <EmptyState
+              title="Eshkere’s portfolio is taking shape."
+              body="No projects, programs, experiments or supported work are published yet. This page already knows how to present them — filters, categories and status labels are built and waiting — but nothing here will be invented to fill the space."
+            >
+              <a class="btn btn--ghost" href={url('/about-us/partner-with-us')}>
+                Want to build something? Partner with us
+              </a>
+            </EmptyState>
+
+            <div class="portfolio__preview" aria-label="How portfolio entries will be organized">
+              <p class="portfolio__preview-label">When entries exist, they will be filterable by:</p>
+              <ul class="portfolio__preview-chips">
+                {allCategories.map((category) => (
+                  <li class="chip">{titleCase(category)}</li>
+                ))}
+              </ul>
+            </div>
+          </>
+        )
+      }
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  const buttons = document.querySelectorAll<HTMLButtonElement>('.filter-toggle[data-filter]');
+  const grid = document.querySelector('[data-portfolio-grid]');
+  const none = document.querySelector<HTMLElement>('[data-portfolio-none]');
+
+  buttons.forEach((button) => {
+    button.addEventListener('click', () => {
+      const filter = button.dataset.filter;
+      buttons.forEach((b) => b.setAttribute('aria-pressed', String(b === button)));
+      let visible = 0;
+      grid?.querySelectorAll<HTMLElement>('[data-category]').forEach((item) => {
+        const show = filter === 'all' || item.dataset.category === filter;
+        item.hidden = !show;
+        if (show) visible += 1;
+      });
+      if (none) none.hidden = visible > 0;
+    });
+  });
+</script>
+
+<style>
+  .portfolio .filter-bar {
+    margin-bottom: 2rem;
+  }
+
+  .portfolio__grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+    gap: 1.5rem;
+  }
+
+  .portfolio-card {
+    position: relative;
+    display: grid;
+    gap: 0.8rem;
+    padding: 1.75rem;
+    height: 100%;
+    transition: transform var(--speed-quick) var(--ease-out),
+      border-color var(--speed-quick) var(--ease-out);
+  }
+
+  .portfolio-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--line-strong);
+  }
+
+  .portfolio-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.9rem;
+  }
+
+  .portfolio-card__category {
+    font-family: var(--font-pixel);
+    font-size: 0.68rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--cyan);
+  }
+
+  .portfolio-card__status {
+    font-size: var(--text-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.15rem 0.6rem;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--line-soft);
+    color: var(--ink-soft);
+  }
+
+  .portfolio-card__status.is-active,
+  .portfolio-card__status.is-in-progress {
+    border-color: var(--lime);
+    color: var(--lime);
+  }
+
+  .portfolio-card__status.is-exploring {
+    border-color: var(--cyan);
+    color: var(--cyan);
+  }
+
+  .portfolio-card__status.is-paused {
+    border-color: var(--peach);
+    color: var(--peach);
+  }
+
+  .portfolio-card__title {
+    font-size: var(--text-xl);
+  }
+
+  .portfolio-card__title a {
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .portfolio-card__title a::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+
+  .portfolio-card__title a:hover {
+    color: var(--pink);
+  }
+
+  .portfolio-card__summary {
+    color: var(--ink-soft);
+    font-size: var(--text-sm);
+  }
+
+  .portfolio-card__date {
+    color: var(--ink-faint);
+    font-size: var(--text-xs);
+  }
+
+  .portfolio__none {
+    margin-top: 2rem;
+    color: var(--ink-faint);
+    text-align: center;
+  }
+
+  .portfolio__preview {
+    margin-top: 2.5rem;
+    text-align: center;
+  }
+
+  .portfolio__preview-label {
+    color: var(--ink-faint);
+    font-size: var(--text-sm);
+    margin-bottom: 0.9rem;
+  }
+
+  .portfolio__preview-chips {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+</style>

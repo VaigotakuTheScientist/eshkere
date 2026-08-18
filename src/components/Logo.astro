@@ -1,0 +1,61 @@
+---
+import { url } from '../lib/url';
+
+interface Props {
+  /** Renders the pixel-sparkle after the wordmark. */
+  sparkle?: boolean;
+}
+
+const { sparkle = true } = Astro.props;
+---
+
+<a class="logo" href={url('/')} aria-label="Eshkere — home">
+  <span class="logo__word">ESHKERE</span>
+  {
+    sparkle && (
+      <svg class="logo__sparkle" viewBox="0 0 24 24" width="13" height="13" aria-hidden="true">
+        <path
+          d="M12 0Q13 10 24 12Q13 14 12 24Q11 14 0 12Q11 10 12 0Z"
+          fill="var(--pink)"
+        />
+        <rect x="18" y="2" width="3" height="3" fill="var(--cyan)" />
+      </svg>
+    )
+  }
+</a>
+
+<style>
+  .logo {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 0.3rem;
+    text-decoration: none;
+    color: var(--ink);
+  }
+
+  .logo:hover {
+    color: var(--ink);
+  }
+
+  .logo__word {
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 1.3rem;
+    letter-spacing: 0.34em;
+    line-height: 1;
+    padding-top: 0.35rem;
+  }
+
+  .logo:hover .logo__word {
+    text-shadow: 0 0 18px rgba(255, 100, 205, 0.6);
+  }
+
+  .logo__sparkle {
+    flex-shrink: 0;
+    transition: transform var(--speed-slow) var(--ease-out);
+  }
+
+  .logo:hover .logo__sparkle {
+    transform: rotate(90deg) scale(1.15);
+  }
+</style>

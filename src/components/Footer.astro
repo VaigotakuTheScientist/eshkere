@@ -1,0 +1,156 @@
+---
+import { primaryNav } from '../data/nav';
+import { siteConfig } from '../data/site';
+import { url } from '../lib/url';
+
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="site-footer__top">
+      <div class="site-footer__brand">
+        <img src={url('/brand/eshkere-logomark.svg')} alt="" width="52" height="52" loading="lazy" />
+        <p class="site-footer__wordmark">ESHKERE</p>
+        <p class="site-footer__tagline">Maximize Health, Play Games.</p>
+      </div>
+
+      <nav class="site-footer__nav" aria-label="Footer">
+        <ul class="site-footer__columns">
+          {
+            primaryNav.map((item) => (
+              <li>
+                <a class="site-footer__heading" href={url(item.href)}>
+                  {item.label}
+                </a>
+                {item.children && (
+                  <ul class="site-footer__links">
+                    {item.children.map((child) => (
+                      <li>
+                        <a href={url(child.href)}>{child.label}</a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            ))
+          }
+          <li>
+            <a class="site-footer__heading" href={url('/search')}>Search</a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+
+    <hr class="rule-iridescent" />
+
+    <div class="site-footer__bottom">
+      <p>&copy; {year} Eshkere</p>
+      {
+        siteConfig.socialLinks.length > 0 && (
+          <ul class="site-footer__social">
+            {siteConfig.socialLinks.map((link) => (
+              <li>
+                <a href={link.url}>{link.label}</a>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+      <p class="site-footer__note">An early-stage exploratory organization.</p>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    margin-top: 3rem;
+    border-top: 1px solid var(--line-soft);
+    background: linear-gradient(180deg, var(--space-black), var(--indigo-deep));
+    padding-block: clamp(3rem, 5vw, 4.5rem) 2rem;
+  }
+
+  .site-footer__top {
+    display: grid;
+    grid-template-columns: minmax(14rem, 1fr) 2.5fr;
+    gap: 3rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .site-footer__wordmark {
+    font-weight: 600;
+    letter-spacing: 0.34em;
+    font-size: 1.15rem;
+    margin-top: 1rem;
+  }
+
+  .site-footer__tagline {
+    color: var(--ink-faint);
+    font-size: var(--text-sm);
+    margin-top: 0.4rem;
+  }
+
+  .site-footer__columns {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+    gap: 2rem 1.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .site-footer__heading {
+    display: inline-block;
+    font-weight: 600;
+    font-size: var(--text-sm);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: var(--ink);
+    margin-bottom: 0.75rem;
+  }
+
+  .site-footer__links {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.45rem;
+  }
+
+  .site-footer__links a {
+    font-size: var(--text-sm);
+    text-decoration: none;
+    color: var(--ink-faint);
+  }
+
+  .site-footer__links a:hover,
+  .site-footer__heading:hover {
+    color: var(--cyan);
+  }
+
+  .site-footer__bottom {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.75rem 2rem;
+    margin-top: 1.75rem;
+    color: var(--ink-faint);
+    font-size: var(--text-sm);
+  }
+
+  .site-footer__social {
+    display: flex;
+    gap: 1.25rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  @media (max-width: 760px) {
+    .site-footer__top {
+      grid-template-columns: 1fr;
+      gap: 2.25rem;
+    }
+  }
+</style>

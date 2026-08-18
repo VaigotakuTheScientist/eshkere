@@ -1,0 +1,52 @@
+---
+/**
+ * A deliberate, branded empty state for sections whose real content does not
+ * exist yet. Honest by design: it names what is missing instead of faking it.
+ */
+interface Props {
+  title: string;
+  body?: string;
+}
+
+const { title, body } = Astro.props;
+---
+
+<div class="empty-state panel">
+  <svg class="empty-state__mark" viewBox="0 0 48 48" width="44" height="44" aria-hidden="true">
+    <circle cx="24" cy="24" r="21" fill="none" stroke="var(--line-strong)" stroke-width="1.5"
+      stroke-dasharray="4 6" stroke-linecap="round" />
+    <g fill="var(--pink)" transform="translate(13 16) scale(3.1)">
+      <rect x="1" y="0" width="2" height="1" />
+      <rect x="4" y="0" width="2" height="1" />
+      <rect x="0" y="1" width="7" height="2" />
+      <rect x="1" y="3" width="5" height="1" />
+      <rect x="2" y="4" width="3" height="1" />
+      <rect x="3" y="5" width="1" height="1" />
+    </g>
+  </svg>
+  <p class="empty-state__title">{title}</p>
+  {body && <p class="empty-state__body">{body}</p>}
+  <slot />
+</div>
+
+<style>
+  .empty-state {
+    display: grid;
+    justify-items: center;
+    gap: 0.9rem;
+    text-align: center;
+    padding: clamp(2.5rem, 5vw, 4rem) clamp(1.5rem, 4vw, 3rem);
+  }
+
+  .empty-state__title {
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    color: var(--ink);
+    text-wrap: balance;
+  }
+
+  .empty-state__body {
+    max-width: 38rem;
+    color: var(--ink-faint);
+  }
+</style>

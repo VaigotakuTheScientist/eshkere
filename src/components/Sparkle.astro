@@ -1,0 +1,28 @@
+---
+/** A four-point hyperpop sparkle. Decorative only. */
+interface Props {
+  size?: number;
+  color?: string;
+  class?: string;
+  style?: string;
+}
+
+const { size = 20, color = 'var(--cyan)', class: className, style } = Astro.props;
+---
+
+<svg
+  class:list={['sparkle', className]}
+  viewBox="0 0 24 24"
+  width={size}
+  height={size}
+  style={style}
+  aria-hidden="true"
+>
+  <path d="M12 0Q13 10 24 12Q13 14 12 24Q11 14 0 12Q11 10 12 0Z" fill={color}></path>
+</svg>
+
+<style>
+  .sparkle {
+    filter: drop-shadow(0 0 6px currentColor);
+  }
+</style>

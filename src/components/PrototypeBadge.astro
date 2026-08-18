@@ -1,0 +1,40 @@
+---
+/**
+ * Marks sample content that exists to demonstrate the editorial system.
+ * Every entry with `prototype: true` must carry this badge wherever it
+ * appears, so placeholder material is never mistaken for a real publication.
+ */
+interface Props {
+  label?: string;
+}
+
+const { label = 'Sample' } = Astro.props;
+---
+
+<span class="prototype-badge">
+  <svg viewBox="0 0 8 8" width="8" height="8" aria-hidden="true">
+    <rect x="0" y="0" width="3" height="3" fill="currentColor" />
+    <rect x="5" y="0" width="3" height="3" fill="currentColor" opacity="0.55" />
+    <rect x="0" y="5" width="3" height="3" fill="currentColor" opacity="0.55" />
+    <rect x="5" y="5" width="3" height="3" fill="currentColor" />
+  </svg>
+  {label}
+  <span class="visually-hidden">— placeholder content demonstrating the format, not a real publication</span>
+</span>
+
+<style>
+  .prototype-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.18rem 0.65rem;
+    border-radius: var(--radius-pill);
+    border: 1px dashed var(--peach);
+    color: var(--peach);
+    font-family: var(--font-pixel);
+    font-size: 0.62rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+</style>

@@ -1,0 +1,246 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageHero from '../../components/PageHero.astro';
+import { siteConfig } from '../../data/site';
+import { url } from '../../lib/url';
+import { formatDate, isoDate } from '../../lib/format';
+
+const announcements = (await getCollection('research'))
+  .filter((entry) => entry.data.type === 'announcement' && !entry.data.prototype)
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+
+const brandColors = [
+  { name: 'Space Black', hex: '#07060f' },
+  { name: 'Deep Indigo', hex: '#0d0a24' },
+  { name: 'Electric Cyan', hex: '#5ce8ff' },
+  { name: 'Bubblegum Pink', hex: '#ff64cd' },
+  { name: 'Ultraviolet', hex: '#a06eff' },
+  { name: 'Acid Lime', hex: '#cef54d' },
+  { name: 'Peach', hex: '#ffb992' },
+];
+---
+
+<BaseLayout
+  title="Media Center"
+  description="Press materials for Eshkere: organization description, logo assets and brand colors. Only real, existing materials are offered."
+>
+  <PageHero
+    eyebrow="About Us"
+    title="Media Center"
+    lead="Everything on this page actually exists and may be used to describe Eshkere accurately. What doesn't exist yet says so."
+  />
+
+  <div class="media section">
+    <!-- Organization description -->
+    <section class="container--narrow media__block" aria-labelledby="desc-heading">
+      <h2 id="desc-heading">Organization description</h2>
+      <figure class="media__boilerplate panel">
+        <blockquote>
+          <p>
+            Eshkere is an early-stage exploratory organization built around one idea — Maximize
+            Health, Play Games. It treats health (physical, mental and social well-being) as the
+            non-optional foundation of human flourishing, and games — every pursuit people can
+            freely choose, from careers to creativity to play — as the valuable, optional layer on
+            top. Eshkere is currently a public prototype: a thesis, a brand and a website, with its
+            organizational form still being explored.
+          </p>
+        </blockquote>
+        <figcaption>Approved boilerplate — accurate as of August 2026.</figcaption>
+      </figure>
+    </section>
+
+    <!-- Logo assets -->
+    <section class="container--narrow media__block" aria-labelledby="logo-heading">
+      <h2 id="logo-heading">Logo assets</h2>
+      <div class="media__logos">
+        <div class="media__logo-card panel">
+          <img src={url('/brand/eshkere-logomark.svg')} alt="Eshkere logomark: a heartbeat line and pixel heart inside a gradient circle" width="96" height="96" loading="lazy" />
+          <a href={url('/brand/eshkere-logomark.svg')} download="eshkere-logomark.svg">Download logomark (SVG)</a>
+        </div>
+        <div class="media__logo-card panel">
+          <img src={url('/favicon.svg')} alt="Eshkere icon: a pixel heart on a dark tile" width="96" height="96" loading="lazy" />
+          <a href={url('/favicon.svg')} download="eshkere-icon.svg">Download icon (SVG)</a>
+        </div>
+      </div>
+      <p class="media__note">
+        The wordmark is set in Space Grotesk, letter-spaced. Additional formats will be added when
+        they exist.
+      </p>
+    </section>
+
+    <!-- Brand colors -->
+    <section class="container--narrow media__block" aria-labelledby="colors-heading">
+      <h2 id="colors-heading">Brand colors</h2>
+      <ul class="media__swatches">
+        {
+          brandColors.map((color) => (
+            <li class="media__swatch">
+              <span class="media__swatch-chip" style={`background:${color.hex}`} aria-hidden="true" />
+              <span class="media__swatch-name">{color.name}</span>
+              <code>{color.hex}</code>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <!-- Press contact -->
+    <section class="container--narrow media__block" aria-labelledby="press-heading">
+      <h2 id="press-heading">Press contact</h2>
+      {
+        siteConfig.pressContact ? (
+          <p>
+            <a href={`mailto:${siteConfig.pressContact}`}>{siteConfig.pressContact}</a>
+          </p>
+        ) : (
+          <p class="media__forthcoming">
+            A press contact is forthcoming. Eshkere will not publish an address nobody answers.
+          </p>
+        )
+      }
+    </section>
+
+    <!-- Announcements -->
+    <section class="container--narrow media__block" aria-labelledby="ann-heading">
+      <h2 id="ann-heading">Announcements</h2>
+      {
+        announcements.length > 0 ? (
+          <ul class="media__announcements">
+            {announcements.map((entry) => (
+              <li>
+                <time datetime={isoDate(entry.data.date)}>{formatDate(entry.data.date)}</time>
+                <a href={url(`/research-and-news/${entry.id}`)}>{entry.data.title}</a>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p class="media__forthcoming">No announcements have been published yet.</p>
+        )
+      }
+    </section>
+
+    <!-- Media coverage -->
+    <section class="container--narrow media__block" aria-labelledby="coverage-heading">
+      <h2 id="coverage-heading">Media coverage</h2>
+      <p class="media__forthcoming">
+        Eshkere has no media coverage yet. Real coverage will be listed here when it exists — none
+        will be invented.
+      </p>
+    </section>
+  </div>
+</BaseLayout>
+
+<style>
+  .media {
+    display: grid;
+    gap: clamp(3rem, 5vw, 4.5rem);
+  }
+
+  .media__block {
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  .media__block h2 {
+    font-size: var(--text-2xl);
+  }
+
+  .media__boilerplate {
+    padding: clamp(1.5rem, 3vw, 2.25rem);
+    display: grid;
+    gap: 1rem;
+  }
+
+  .media__boilerplate blockquote {
+    border-left: 2px solid var(--pink);
+    padding-left: 1.25rem;
+    color: var(--ink-soft);
+  }
+
+  .media__boilerplate figcaption {
+    color: var(--ink-faint);
+    font-size: var(--text-sm);
+  }
+
+  .media__logos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+    gap: 1.5rem;
+  }
+
+  .media__logo-card {
+    display: grid;
+    justify-items: center;
+    gap: 1.1rem;
+    padding: 2rem;
+  }
+
+  .media__logo-card a {
+    font-size: var(--text-sm);
+  }
+
+  .media__note {
+    color: var(--ink-faint);
+    font-size: var(--text-sm);
+  }
+
+  .media__swatches {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+    gap: 1rem;
+  }
+
+  .media__swatch {
+    display: grid;
+    gap: 0.4rem;
+    padding: 1rem;
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius-sm);
+  }
+
+  .media__swatch-chip {
+    display: block;
+    height: 3rem;
+    border-radius: 8px;
+    border: 1px solid rgba(244, 241, 255, 0.15);
+  }
+
+  .media__swatch-name {
+    font-size: var(--text-sm);
+    color: var(--ink);
+  }
+
+  .media__swatch code {
+    font-size: var(--text-xs);
+    color: var(--ink-faint);
+  }
+
+  .media__forthcoming {
+    color: var(--peach);
+  }
+
+  .media__announcements {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.9rem;
+  }
+
+  .media__announcements li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.25rem;
+    align-items: baseline;
+  }
+
+  .media__announcements time {
+    color: var(--ink-faint);
+    font-size: var(--text-sm);
+    min-width: 9rem;
+  }
+</style>

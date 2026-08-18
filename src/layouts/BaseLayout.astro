@@ -1,0 +1,53 @@
+---
+import '@fontsource-variable/fraunces';
+import '@fontsource-variable/space-grotesk';
+import '@fontsource/silkscreen';
+import '../styles/global.css';
+
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { siteConfig } from '../data/site';
+import { url } from '../lib/url';
+
+interface Props {
+  title: string;
+  description?: string;
+  /** Float a transparent header over the page (homepage hero). */
+  overlayHeader?: boolean;
+}
+
+const { title, description = siteConfig.description, overlayHeader = false } = Astro.props;
+const pageTitle = title === siteConfig.name ? `${siteConfig.name} — ${siteConfig.tagline}` : `${title} — ${siteConfig.name}`;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <meta name="generator" content={Astro.generator} />
+    <link rel="icon" type="image/svg+xml" href={url('/favicon.svg')} />
+    <link rel="canonical" href={canonical} />
+    <meta name="theme-color" content="#07060f" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={siteConfig.name} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={description} />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <Header overlay={overlayHeader} />
+    <main id="main">
+      <slot />
+    </main>
+    <Footer />
+  </body>
+</html>

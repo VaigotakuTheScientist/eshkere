@@ -1,0 +1,60 @@
+/* ---------------------------------------------------------------------------
+   Eshkere design tokens
+   Dark cosmic ground, hyperpop accents, premium editorial type.
+--------------------------------------------------------------------------- */
+:root {
+  /* Surfaces */
+  --space-black: #07060f;
+  --indigo-deep: #0d0a24;
+  --indigo-panel: #16113a;
+  --indigo-raised: #1e1849;
+  --lavender-pale: #efeafe;
+
+  /* Ink */
+  --ink: #f4f1ff;
+  --ink-soft: #c6bfe0;
+  --ink-faint: #9c95bd;
+  --ink-on-bright: #131024;
+
+  /* Hyperpop accents */
+  --cyan: #5ce8ff;
+  --pink: #ff64cd;
+  --violet: #a06eff;
+  --lime: #cef54d;
+  --peach: #ffb992;
+
+  /* Lines and glows */
+  --line-soft: rgba(160, 110, 255, 0.22);
+  --line-strong: rgba(160, 110, 255, 0.5);
+  --glow-pink: 0 0 24px rgba(255, 100, 205, 0.35);
+  --glow-cyan: 0 0 24px rgba(92, 232, 255, 0.3);
+
+  /* Type */
+  --font-display: 'Fraunces Variable', Fraunces, Georgia, 'Times New Roman', serif;
+  --font-body: 'Space Grotesk Variable', 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif;
+  --font-pixel: Silkscreen, 'Courier New', monospace;
+
+  /* Scale */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1.0625rem;
+  --text-lg: 1.25rem;
+  --text-xl: clamp(1.4rem, 1.2rem + 1vw, 1.85rem);
+  --text-2xl: clamp(1.8rem, 1.4rem + 2vw, 2.75rem);
+  --text-title: clamp(2.4rem, 1.8rem + 3.4vw, 4.5rem);
+  --text-hero: clamp(2.75rem, 1.4rem + 7.2vw, 7.25rem);
+
+  /* Layout */
+  --container: 76rem;
+  --container-narrow: 46rem;
+  --gutter: clamp(1.25rem, 4vw, 3rem);
+  --section-gap: clamp(4rem, 6vw + 2rem, 8rem);
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-pill: 999px;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --speed-quick: 180ms;
+  --speed-slow: 400ms;
+}

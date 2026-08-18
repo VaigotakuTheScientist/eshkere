@@ -1,0 +1,286 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import PixelHeart from '../components/PixelHeart.astro';
+import { url } from '../lib/url';
+
+const evaluationQuestions = [
+  {
+    title: 'Does it protect the floor?',
+    body: 'Does this work strengthen physical, mental or social health — or at minimum, refuse to spend it? Work that quietly borrows against the foundation of the people doing it fails the first test, whatever else it achieves.',
+  },
+  {
+    title: 'Does it enrich the games layer?',
+    body: 'Does it make good pursuits more available, more learnable or more joyful — for the people involved, or for others? The optional layer is where the value of a life accumulates; work that widens it counts.',
+  },
+  {
+    title: 'Is it honest about its stage?',
+    body: 'Eshkere would rather fund, build or support something that states its uncertainty than something that performs maturity. This website holds itself to the same rule.',
+  },
+  {
+    title: 'Would we play it wholeheartedly?',
+    body: 'A project is itself a game: chosen, rule-bound, stoppable. If nobody involved would choose it freely and play it with real appetite, that is evidence worth taking seriously.',
+  },
+];
+
+const openQuestions = [
+  'Where exactly the line runs between a health need and a chosen pursuit — work that pays for food is both.',
+  'What form Eshkere itself should take: a company, a fund, a studio, a community, or something else.',
+  'How to measure the foundation — across physical, mental and social well-being — without turning measurement into another anxious game.',
+  'Which projects come first, and what proportion of effort belongs to protecting the floor versus enriching the layer above it.',
+  'What Eshkere owes the public good beyond the people directly involved in its work.',
+];
+---
+
+<BaseLayout
+  title="Our Approach"
+  description="The Maximize Health, Play Games thesis in full: what health means, what games means, why the order matters, and which questions Eshkere has deliberately not answered yet."
+>
+  <PageHero
+    eyebrow="Our Approach"
+    title="Maximize Health, Play Games"
+    lead="One sentence carries the whole approach. This page unpacks it honestly — including the parts that are still undecided."
+  />
+
+  <article class="approach">
+    <!-- What health means -->
+    <section class="approach__block container--narrow" aria-labelledby="health-heading">
+      <p class="eyebrow">
+        <svg viewBox="0 0 40 12" width="40" height="12" aria-hidden="true" class="pulse-line">
+          <polyline points="0,7 12,7 16,1 21,11 25,4 28,7 40,7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"></polyline>
+        </svg>
+        Health
+      </p>
+      <h2 id="health-heading">What health means</h2>
+      <div class="prose">
+        <p>
+          Health, in the Eshkere sense, is the complete non-optional layer of a human
+          life: <strong>physical</strong> well-being — sleep, movement, nourishment, a body that
+          works; <strong>mental</strong> well-being — attention, mood, a mind you can live in;
+          and <strong>social</strong> well-being — connection, belonging, people who know you.
+        </p>
+        <p>
+          These are not three lifestyle preferences. They are the conditions under which every other
+          human pursuit either works or degrades.
+        </p>
+      </div>
+    </section>
+
+    <!-- Why non-optional -->
+    <section class="approach__block container--narrow" aria-labelledby="nonoptional-heading">
+      <h2 id="nonoptional-heading">Why health is non-optional</h2>
+      <div class="prose">
+        <p>
+          You can quit chess. You can quit a career, a competition, a scene. You cannot quit
+          needing sleep, food, movement, connection or a functioning mind — you can only defer the
+          bill. That asymmetry is the entire basis of the ordering: health is serious precisely
+          because it concerns needs that cannot be opted out of.
+        </p>
+        <p>
+          When the foundation erodes, it does not subtract one pursuit from a life. It taxes all of
+          them at once — thinking, patience, play, love. This is why Eshkere refuses to treat health
+          as one goal competing on a list. It is the surface the list is written on.
+        </p>
+      </div>
+    </section>
+
+    <!-- What games means -->
+    <section class="approach__block container--narrow" aria-labelledby="games-heading">
+      <p class="eyebrow eyebrow--pink">
+        <PixelHeart size={14} color="currentColor" /> Games
+      </p>
+      <h2 id="games-heading">What games means</h2>
+      <div class="prose">
+        <p>
+          A game is any pursuit a person can genuinely choose: it has stakes you opted into, rules
+          you can learn, progress you can feel, and the freedom to stop. By that definition, games
+          include careers and chess, friendships and research programs, art, argument, status,
+          exploration, gardening and worship.
+        </p>
+        <p>
+          Eshkere borrows the visual language of video games playfully — pixels, hearts, level-ups —
+          but the category is far wider than software. <strong>Games are everything humans can
+          choose to pursue once the foundation exists</strong>: enjoyment, achievement, identity,
+          exploration, status, creativity, relationships, knowledge, meaning and play.
+        </p>
+      </div>
+    </section>
+
+    <!-- Why games remain valuable -->
+    <section class="approach__block container--narrow" aria-labelledby="valuable-heading">
+      <h2 id="valuable-heading">Why games remain valuable</h2>
+      <div class="prose">
+        <p>
+          Calling these pursuits optional is not a demotion. Almost everything people cherish about
+          being alive lives in the optional layer — meaning, mastery, beauty, belonging,
+          achievement. Nobody secures a foundation for its own sake; the point of the floor is the
+          dancing that happens on it.
+        </p>
+        <p>
+          The claim is only about <em>ordering</em>. Games played on a crumbling foundation go flat:
+          the exhausted player is not freed from their games, just condemned to play them badly.
+          Health first is what makes wholehearted play possible at all.
+        </p>
+      </div>
+    </section>
+
+    <hr class="rule-iridescent container--narrow" />
+
+    <!-- Evaluation -->
+    <section class="approach__block approach__block--wide container" aria-labelledby="evaluate-heading">
+      <div class="approach__wide-head container--narrow">
+        <p class="eyebrow eyebrow--lime">Evaluation</p>
+        <h2 id="evaluate-heading">How Eshkere would evaluate possible projects</h2>
+        <p class="approach__wide-lead">
+          No project has been formally evaluated yet — the portfolio is honest about that. But the
+          thesis already implies the questions any candidate would face:
+        </p>
+      </div>
+      <div class="approach__criteria">
+        {
+          evaluationQuestions.map((question, index) => (
+            <article class="approach__criterion panel">
+              <p class="approach__criterion-number">{String(index + 1).padStart(2, '0')}</p>
+              <h3>{question.title}</h3>
+              <p>{question.body}</p>
+            </article>
+          ))
+        }
+      </div>
+    </section>
+
+    <!-- Wellbeing, public good, exploration, play -->
+    <section class="approach__block container--narrow" aria-labelledby="relation-heading">
+      <h2 id="relation-heading">Well-being, public good, exploration and play</h2>
+      <div class="prose">
+        <p>
+          These four are usually pitched against each other — serious welfare work over here,
+          frivolous play over there. The Eshkere thesis treats them as one structure. Well-being is
+          the foundation. The public good is what happens when foundations are secured at scale,
+          for people beyond yourself. Exploration and play are not the reward that comes after the
+          serious work; they are the point of it, and often the method too — most discoveries look
+          like somebody playing.
+        </p>
+        <p>
+          How exactly Eshkere balances its own well-being work against the wider public good is one
+          of the open questions below. The commitment that already exists is the ordering itself:
+          no game, however glittering, gets to quietly consume the foundation it stands on.
+        </p>
+      </div>
+    </section>
+
+    <!-- Open questions -->
+    <section class="approach__block container--narrow approach__open" aria-labelledby="open-heading">
+      <p class="eyebrow eyebrow--pink">Undecided</p>
+      <h2 id="open-heading">Questions we have deliberately not answered</h2>
+      <p class="approach__open-lead">
+        Eshkere is an early-stage exploration. Pretending these are settled would be a lie the rest
+        of this site works hard not to tell:
+      </p>
+      <ul class="approach__open-list">
+        {openQuestions.map((question) => <li>{question}</li>)}
+      </ul>
+      <p class="approach__open-note">
+        As positions form, they will be argued
+        in <a href={url('/research-and-news')}>Research &amp; News</a> — uncertainty first,
+        conclusions second.
+      </p>
+    </section>
+  </article>
+</BaseLayout>
+
+<style>
+  .approach {
+    display: grid;
+    gap: var(--section-gap);
+    padding-block: var(--section-gap) 0;
+  }
+
+  .approach__block {
+    display: grid;
+    gap: 1.1rem;
+  }
+
+  .approach__block h2 {
+    font-size: var(--text-2xl);
+  }
+
+  .approach__block .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .pulse-line {
+    color: inherit;
+  }
+
+  .approach__wide-head {
+    display: grid;
+    gap: 1.1rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .approach__wide-lead {
+    color: var(--ink-soft);
+  }
+
+  .approach__criteria {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: 1.5rem;
+  }
+
+  .approach__criterion {
+    padding: 1.75rem;
+    display: grid;
+    gap: 0.7rem;
+    align-content: start;
+  }
+
+  .approach__criterion-number {
+    font-family: var(--font-pixel);
+    color: var(--lime);
+    font-size: var(--text-sm);
+    letter-spacing: 0.2em;
+  }
+
+  .approach__criterion h3 {
+    font-size: var(--text-lg);
+  }
+
+  .approach__criterion p:last-child {
+    color: var(--ink-soft);
+    font-size: var(--text-sm);
+    line-height: 1.6;
+  }
+
+  .approach__open {
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius);
+    padding: clamp(1.75rem, 4vw, 3rem);
+    background:
+      radial-gradient(30rem 18rem at 90% 0%, rgba(255, 100, 205, 0.08), transparent 70%),
+      rgba(22, 17, 58, 0.35);
+  }
+
+  .approach__open-lead {
+    color: var(--ink-soft);
+  }
+
+  .approach__open-list {
+    display: grid;
+    gap: 0.9rem;
+    padding-left: 1.3rem;
+    color: var(--ink-soft);
+  }
+
+  .approach__open-list li::marker {
+    color: var(--pink);
+  }
+
+  .approach__open-note {
+    color: var(--ink-faint);
+    font-size: var(--text-sm);
+  }
+</style>

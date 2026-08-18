@@ -1,0 +1,122 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageHero from '../../components/PageHero.astro';
+import { siteConfig } from '../../data/site';
+
+const audiences = [
+  {
+    label: 'Collaborators',
+    color: 'var(--cyan)',
+    body: 'People who want to think alongside Eshkere while the shape of the organization is still open — challenging the thesis, sharpening the ordering, arguing in public.',
+  },
+  {
+    label: 'Project builders',
+    color: 'var(--pink)',
+    body: 'People with something concrete to make that strengthens the health foundation or enriches the games layer — and who want a partner that takes both halves seriously.',
+  },
+  {
+    label: 'Researchers',
+    color: 'var(--violet)',
+    body: 'People studying well-being, play, motivation or flourishing who want their questions to shape how a young organization measures what matters.',
+  },
+  {
+    label: 'Funders',
+    color: 'var(--lime)',
+    body: 'People who back early, honest explorations — knowing that “early” here is stated plainly, not dressed up as traction.',
+  },
+  {
+    label: 'Creative partners',
+    color: 'var(--peach)',
+    body: 'Artists, designers and writers drawn to the hyperpop-serious register: joy on the surface, non-optional foundations underneath.',
+  },
+];
+---
+
+<BaseLayout
+  title="Partner With Us"
+  description="How collaboration with Eshkere could work — for builders, researchers, funders and creative partners. No partnerships exist yet; that is the invitation."
+>
+  <PageHero
+    eyebrow="About Us"
+    title="Partner With Us"
+    lead="Eshkere has no partnerships to point to yet — which is precisely the invitation. Early is when collaborators get to shape what a thing becomes."
+  />
+
+  <section class="section">
+    <div class="container">
+      <ul class="partners">
+        {
+          audiences.map((audience) => (
+            <li class="partners__card panel" style={`--accent: ${audience.color}`}>
+              <h2>{audience.label}</h2>
+              <p>{audience.body}</p>
+            </li>
+          ))
+        }
+      </ul>
+
+      <div class="partners__contact panel">
+        <h2>Get in touch</h2>
+        {
+          siteConfig.partnershipContact ? (
+            <p>
+              Reach us at <a href={`mailto:${siteConfig.partnershipContact}`}>{siteConfig.partnershipContact}</a>.
+            </p>
+          ) : (
+            <p class="partners__forthcoming">
+              Partnership details forthcoming. A real contact channel will be published here once it
+              exists — Eshkere will not list an address that nobody answers.
+            </p>
+          )
+        }
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .partners {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: 1.5rem;
+  }
+
+  .partners__card {
+    padding: 1.9rem;
+    display: grid;
+    gap: 0.8rem;
+    align-content: start;
+    border-top: 2px solid var(--accent);
+  }
+
+  .partners__card h2 {
+    font-size: var(--text-xl);
+  }
+
+  .partners__card p {
+    color: var(--ink-soft);
+    font-size: var(--text-sm);
+    line-height: 1.65;
+  }
+
+  .partners__contact {
+    margin-top: 2.5rem;
+    padding: clamp(1.75rem, 4vw, 2.5rem);
+    display: grid;
+    gap: 0.8rem;
+    text-align: center;
+    justify-items: center;
+  }
+
+  .partners__contact h2 {
+    font-size: var(--text-xl);
+  }
+
+  .partners__forthcoming {
+    color: var(--peach);
+    max-width: 40rem;
+  }
+</style>
