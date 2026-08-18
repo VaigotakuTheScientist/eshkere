@@ -1,8 +1,7 @@
 ---
 import { getCollection } from 'astro:content';
-import { Picture } from 'astro:assets';
-import heroPlanet from '../assets/hero-planet.png';
 import BaseLayout from '../layouts/BaseLayout.astro';
+import HeroArt from '../components/HeroArt.astro';
 import Sparkle from '../components/Sparkle.astro';
 import PixelHeart from '../components/PixelHeart.astro';
 import ContentCard from '../components/ContentCard.astro';
@@ -25,18 +24,7 @@ const hasSamples = research.some((entry) => entry.data.prototype);
 <BaseLayout title={siteConfig.name} overlayHeader>
   <!-- ============================================================ hero -->
   <section class="hero" aria-labelledby="hero-heading">
-    <div class="hero__art" aria-hidden="true">
-      <Picture
-        src={heroPlanet}
-        formats={['avif', 'webp']}
-        fallbackFormat="png"
-        widths={[768, 1280, 1672]}
-        sizes="100vw"
-        alt=""
-        loading="eager"
-        fetchpriority="high"
-      />
-    </div>
+    <HeroArt />
     <div class="hero__vignette" aria-hidden="true"></div>
 
     <div class="container hero__content">
@@ -242,38 +230,10 @@ const hasSamples = research.some((entry) => entry.data.prototype);
     padding-bottom: clamp(3rem, 6vh, 5rem);
   }
 
-  .hero__art,
-  .hero__art :global(picture),
-  .hero__art :global(img) {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-  }
-
-  .hero__art {
-    overflow: hidden;
-  }
-
-  .hero__art :global(img) {
-    object-fit: cover;
-    object-position: 62% 38%;
-    transform: scale(1.02);
-    animation: planet-drift 24s ease-in-out infinite alternate;
-  }
-
-  @keyframes planet-drift {
-    from {
-      transform: scale(1.02) translateY(0);
-    }
-    to {
-      transform: scale(1.045) translateY(-0.6%);
-    }
-  }
-
   .hero__vignette {
     position: absolute;
     inset: 0;
+    pointer-events: none;
     background:
       linear-gradient(90deg, rgba(5, 5, 8, 0.55) 0%, rgba(5, 5, 8, 0.05) 42%, rgba(5, 5, 8, 0.1) 100%),
       linear-gradient(0deg, var(--space-black) 0%, rgba(5, 5, 8, 0.25) 18%, rgba(5, 5, 8, 0) 40%);
@@ -285,6 +245,13 @@ const hasSamples = research.some((entry) => entry.data.prototype);
     display: grid;
     gap: 1.5rem;
     justify-items: start;
+    /* The block spans the full container, so let its empty area pass
+       clicks through to the artwork's own hotspots behind it. */
+    pointer-events: none;
+  }
+
+  .hero__content > * {
+    pointer-events: auto;
   }
 
   .hero__heading {
@@ -333,10 +300,6 @@ const hasSamples = research.some((entry) => entry.data.prototype);
       align-items: flex-end;
       min-height: 100svh;
       padding-top: 0;
-    }
-
-    .hero__art :global(img) {
-      object-position: 68% 30%;
     }
 
     .hero__vignette {
@@ -546,9 +509,15 @@ const hasSamples = research.some((entry) => entry.data.prototype);
     color: var(--peach);
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .hero__art :global(img) {
-      animation: none;
+  /* Phones get a larger headline; the long line is allowed to wrap there,
+     since holding it to two lines would shrink the type too far. */
+  @media (max-width: 700px) {
+    .hero__heading {
+      font-size: clamp(2.5rem, 12.5vw, 3.6rem);
+    }
+
+    .hero__heading span {
+      white-space: normal;
     }
   }
 </style>

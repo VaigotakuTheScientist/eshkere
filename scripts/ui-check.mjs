@@ -302,6 +302,95 @@ for (const viewport of viewports) {
   await context.close();
 }
 
+// --------------------------------------------- hero artwork hotspots
+{
+  // Reduced motion pins the drifting stage, so the targets hold still.
+  const context = await browser.newContext({
+    ...CTX,
+    viewport: { width: 1440, height: 900 },
+    reducedMotion: 'reduce',
+  });
+  const page = await context.newPage();
+
+  for (const [index, anchorId] of [
+    [0, '#health-heading'],
+    [1, '#games-heading'],
+  ]) {
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await page.waitForTimeout(300);
+    await page.locator('.hero__hotspot').nth(index).click({ timeout: 15000 });
+    await page.waitForLoadState('networkidle');
+    note(
+      page.url().includes('/our-approach' + anchorId),
+      `hero hotspot ${index} → ${page.url()}`
+    );
+  }
+
+  // The hero content block must not swallow clicks meant for the artwork.
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await page.locator('.hero__ctas a').first().click({ timeout: 15000 });
+  await page.waitForLoadState('networkidle');
+  note(page.url().includes('/our-approach'), `hero CTA still clickable → ${page.url()}`);
+
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  const names = await page
+    .locator('.hero__hotspot')
+    .evaluateAll((els) => els.map((el) => el.textContent.trim()));
+  note(
+    names.length === 2 && names.every((name) => name.length > 10),
+    `hero hotspots carry accessible names (${names.length})`
+  );
+
+  await context.close();
+}
+
+// ------------------------------------------------ search appears once
+{
+  const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+
+  for (const path of ['/', '/portfolio', '/about-us', '/research-and-news']) {
+    await page.goto(BASE + path, { waitUntil: 'networkidle' });
+    const stray = await page.evaluate(() => {
+      const found = [];
+      document.querySelectorAll('footer a, #site-menu a').forEach((link) => {
+        if (/^search$/i.test(link.textContent.trim())) found.push(link.getAttribute('href'));
+      });
+      return found;
+    });
+    note(stray.length === 0, `no duplicate Search link on ${path} (${JSON.stringify(stray)})`);
+  }
+
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  note(await page.locator('.search-link').isVisible(), 'header search icon present');
+
+  await context.close();
+}
+
+// ---------------------------------------------------- hero headline
+{
+  const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  const lines = await page.evaluate(() => {
+    const el = document.querySelector('.hero__heading');
+    return Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight));
+  });
+  note(lines === 2, `desktop headline holds two lines (${lines})`);
+  await context.close();
+
+  for (const width of [360, 390]) {
+    const phone = await browser.newContext({ ...CTX, viewport: { width, height: 800 } });
+    const view = await phone.newPage();
+    await view.goto(BASE + '/', { waitUntil: 'networkidle' });
+    const size = await view.evaluate(
+      () => parseFloat(getComputedStyle(document.querySelector('.hero__heading')).fontSize)
+    );
+    note(size >= 44, `${width}px headline stays large (${size}px)`);
+    await phone.close();
+  }
+}
+
 // ----------------------------------------------------- reduced motion
 {
   const context = await browser.newContext({ ...CTX,
