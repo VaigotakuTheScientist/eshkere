@@ -44,7 +44,8 @@
   --text-xl: clamp(1.4rem, 1.2rem + 1vw, 1.85rem);
   --text-2xl: clamp(1.8rem, 1.4rem + 2vw, 2.75rem);
   --text-title: clamp(2.4rem, 1.8rem + 3.4vw, 4.5rem);
-  --text-hero: clamp(2.9rem, 1.1rem + 8.4vw, 8.25rem);
+  /* Sized so "HEALTH, PLAY GAMES" stays on one unbroken line from 360px up. */
+  --text-hero: clamp(1.7rem, 6.9vw, 6.9rem);
 
   /* Layout */
   --container: 80rem;

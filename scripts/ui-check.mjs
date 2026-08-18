@@ -38,6 +38,7 @@ const viewports = [
   { name: 'desktop', width: 1440, height: 900 },
   { name: 'tablet', width: 768, height: 1024 },
   { name: 'mobile', width: 390, height: 844 },
+  { name: 'mobile-min', width: 360, height: 780 },
 ];
 
 const failures = [];
@@ -158,14 +159,19 @@ for (const viewport of viewports) {
   const current = await page.locator('#site-menu a[aria-current="page"]').textContent();
   note(current?.trim() === 'Blog', `menu marks current page (${current?.trim()})`);
 
-  // Header follows with a backdrop once scrolled
+  // Header follows on scroll, with no shading of its own
   await page.keyboard.press('Escape');
   await page.mouse.wheel(0, 900);
   await page.waitForTimeout(400);
-  const scrolled = await page.evaluate(() =>
-    document.querySelector('.site-header')?.classList.contains('is-scrolled')
+  const headerState = await page.evaluate(() => {
+    const header = document.querySelector('.site-header');
+    const { top } = header.getBoundingClientRect();
+    return { top, background: getComputedStyle(header).backgroundColor };
+  });
+  note(
+    headerState.top === 0 && /rgba\(0, 0, 0, 0\)|transparent/.test(headerState.background),
+    `header follows unshaded (top=${headerState.top}, bg=${headerState.background})`
   );
-  note(scrolled === true, 'header gains backdrop after scrolling');
 
   // Logo links home; search icon reaches /search
   await page.goto(BASE + '/about-us', { waitUntil: 'networkidle' });

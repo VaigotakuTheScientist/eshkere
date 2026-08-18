@@ -1,5 +1,6 @@
 ---
 import { getCollection, render } from 'astro:content';
+import { Image } from 'astro:assets';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import { url } from '../../../lib/url';
 
@@ -21,7 +22,20 @@ const initials = entry.data.name
 <BaseLayout title={entry.data.name} description={`${entry.data.name} — ${entry.data.role} at Eshkere.`}>
   <article class="profile section">
     <header class="profile__header container--narrow">
-      <p class="profile__avatar" aria-hidden="true">{initials}</p>
+      {
+        entry.data.portrait ? (
+          <Image
+            class="profile__portrait"
+            src={entry.data.portrait}
+            alt={`Portrait of ${entry.data.name}`}
+            width={320}
+            height={320}
+            loading="eager"
+          />
+        ) : (
+          <p class="profile__avatar" aria-hidden="true">{initials}</p>
+        )
+      }
       <h1>{entry.data.name}</h1>
       <p class="profile__role">{entry.data.role}</p>
       {entry.data.focus && <p class="profile__focus">{entry.data.focus}</p>}
@@ -52,6 +66,14 @@ const initials = entry.data.name
     display: grid;
     gap: 0.7rem;
     margin-bottom: 2.25rem;
+  }
+
+  .profile__portrait {
+    width: 6.5rem;
+    height: 6.5rem;
+    border-radius: 50%;
+    border: 1px solid var(--line-strong);
+    object-fit: cover;
   }
 
   .profile__avatar {

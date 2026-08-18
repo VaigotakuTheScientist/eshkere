@@ -70,13 +70,16 @@ const staffWork = defineCollection({
 
 const team = defineCollection({
   loader: glob({ pattern: '**/[^_]*.md', base: './src/content/team' }),
-  schema: z.object({
-    name: z.string(),
-    role: z.string(),
-    focus: z.string().optional(),
-    links: z.array(z.object({ label: z.string(), url: z.string().url() })).default([]),
-    order: z.number().default(0),
-  }),
+  schema: ({ image }) =>
+    z.object({
+      name: z.string(),
+      role: z.string(),
+      focus: z.string().optional(),
+      /** Optional portrait in `src/assets/team/`. Falls back to initials. */
+      portrait: image().optional(),
+      links: z.array(z.object({ label: z.string(), url: z.string().url() })).default([]),
+      order: z.number().default(0),
+    }),
 });
 
 export const collections = { portfolio, research, blog, staffWork, team };

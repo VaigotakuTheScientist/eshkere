@@ -41,7 +41,7 @@ const hasSamples = research.some((entry) => entry.data.prototype);
 
     <div class="container hero__content">
       <h1 class="hero__heading" id="hero-heading">
-        Maximize<br />Health, Play&nbsp;Games
+        <span>Maximize</span><br /><span>Health, Play&nbsp;Games</span>
       </h1>
       <p class="hero__support">Health is non-optional. Everything else is a game.</p>
       <div class="hero__ctas">
@@ -290,7 +290,7 @@ const hasSamples = research.some((entry) => entry.data.prototype);
   .hero__heading {
     font-size: var(--text-hero);
     font-weight: 520;
-    line-height: 1.02;
+    line-height: 1.06;
     letter-spacing: 0.012em;
     text-transform: uppercase;
     background: linear-gradient(178deg, #ffffff 20%, #eceafb 55%, #b0adcc 100%);
@@ -298,6 +298,11 @@ const hasSamples = research.some((entry) => entry.data.prototype);
     background-clip: text;
     color: transparent;
     filter: drop-shadow(0 4px 30px rgba(5, 5, 8, 0.9));
+  }
+
+  /* Exactly two lines, at every width. */
+  .hero__heading span {
+    white-space: nowrap;
   }
 
   .hero__support {

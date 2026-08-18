@@ -122,12 +122,6 @@ const secondaryActive = section ? activeChild(section, Astro.url.pathname) : und
         button.focus();
       }
     });
-
-    const updateScrolled = () => {
-      header.classList.toggle('is-scrolled', window.scrollY > 12);
-    };
-    updateScrolled();
-    window.addEventListener('scroll', updateScrolled, { passive: true });
   }
 </script>
 
@@ -141,11 +135,10 @@ const secondaryActive = section ? activeChild(section, Astro.url.pathname) : und
       box-shadow var(--speed-quick) var(--ease-out);
   }
 
-  /* The bar keeps following with a legible backdrop once the page scrolls. */
-  .site-header.is-scrolled,
+  /* The bar follows with no shading of its own; only an open menu
+     darkens it so the panel below stays readable. */
   .site-header.menu-open {
-    background: rgba(5, 5, 8, 0.82);
-    box-shadow: 0 1px 0 var(--line-soft), 0 12px 40px rgba(0, 0, 0, 0.35);
+    background: rgba(5, 5, 8, 0.9);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
   }

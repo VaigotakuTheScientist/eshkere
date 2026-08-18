@@ -1,4 +1,6 @@
 ---
+import { Image } from 'astro:assets';
+
 /**
  * Team profile card. Populated only from the `team` content collection —
  * confirmed people, never invented ones.
@@ -8,9 +10,10 @@ interface Props {
   name: string;
   role: string;
   focus?: string;
+  portrait?: ImageMetadata;
 }
 
-const { href, name, role, focus } = Astro.props;
+const { href, name, role, focus, portrait } = Astro.props;
 const initials = name
   .split(/\s+/)
   .map((part) => part.charAt(0))
@@ -20,7 +23,20 @@ const initials = name
 ---
 
 <article class="profile-card panel">
-  <p class="profile-card__avatar" aria-hidden="true">{initials}</p>
+  {
+    portrait ? (
+      <Image
+        class="profile-card__portrait"
+        src={portrait}
+        alt={`Portrait of ${name}`}
+        width={220}
+        height={220}
+        loading="lazy"
+      />
+    ) : (
+      <p class="profile-card__avatar" aria-hidden="true">{initials}</p>
+    )
+  }
   <h3 class="profile-card__name">
     {href ? <a href={href}>{name}</a> : name}
   </h3>
@@ -41,6 +57,15 @@ const initials = name
   .profile-card:hover {
     transform: translateY(-4px);
     border-color: var(--line-strong);
+  }
+
+  .profile-card__portrait {
+    width: 4.6rem;
+    height: 4.6rem;
+    margin-bottom: 0.9rem;
+    border-radius: 50%;
+    border: 1px solid var(--line-strong);
+    object-fit: cover;
   }
 
   .profile-card__avatar {

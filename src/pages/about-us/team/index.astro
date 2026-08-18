@@ -16,7 +16,7 @@ const people = (await getCollection('team')).sort((a, b) => a.data.order - b.dat
   <PageHero
     eyebrow="About Us"
     title="Team"
-    lead="Profiles appear here only for real, confirmed people. Eshkere does not pad this page with invented faces."
+    lead="Eshkere is one person so far. Profiles appear here only for real, confirmed people — this page is not padded with invented faces."
   />
 
   <section class="section">
@@ -30,6 +30,7 @@ const people = (await getCollection('team')).sort((a, b) => a.data.order - b.dat
                 name={person.data.name}
                 role={person.data.role}
                 focus={person.data.focus}
+                portrait={person.data.portrait}
               />
             ))}
           </div>
