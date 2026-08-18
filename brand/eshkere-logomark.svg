@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff64cd"/>
+      <stop offset="0.5" stop-color="#a06eff"/>
+      <stop offset="1" stop-color="#5ce8ff"/>
+    </linearGradient>
+  </defs>
+  <circle cx="32" cy="32" r="29" fill="none" stroke="url(#ring)" stroke-width="2.5"/>
+  <polyline points="8,36 22,36 26,26 31,44 35,30 38,36 56,36" fill="none"
+    stroke="#5ce8ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <g fill="#ff64cd" transform="translate(38 15) scale(1.9)">
+    <rect x="1" y="0" width="2" height="1"/>
+    <rect x="4" y="0" width="2" height="1"/>
+    <rect x="0" y="1" width="7" height="2"/>
+    <rect x="1" y="3" width="5" height="1"/>
+    <rect x="2" y="4" width="3" height="1"/>
+    <rect x="3" y="5" width="1" height="1"/>
+  </g>
+</svg>
