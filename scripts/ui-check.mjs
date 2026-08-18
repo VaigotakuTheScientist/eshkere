@@ -46,14 +46,21 @@ const note = (ok, message) => {
   if (!ok) failures.push(message);
 };
 
+// When checking a remote deployment from behind an intercepting egress
+// proxy, route the browser through it and accept its CA.
+const proxyServer = process.env.HTTPS_PROXY || process.env.https_proxy;
+const remoteTarget = !/localhost|127\.0\.0\.1/.test(BASE);
+const CTX = remoteTarget && proxyServer ? { ignoreHTTPSErrors: true } : {};
+
 const browser = await chromium.launch({
   // Use a system chromium when provided (e.g. CI images with preinstalled browsers).
   executablePath: process.env.CHROMIUM_PATH || undefined,
+  proxy: remoteTarget && proxyServer ? { server: proxyServer } : undefined,
 });
 
 // ---------------------------------------------------------- route sweep
 for (const viewport of viewports) {
-  const context = await browser.newContext({
+  const context = await browser.newContext({ ...CTX,
     viewport: { width: viewport.width, height: viewport.height },
   });
   const page = await context.newPage();
@@ -99,7 +106,7 @@ for (const viewport of viewports) {
 
 // ------------------------------------------------- desktop navigation
 {
-  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });
   const page = await context.newPage();
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
 
@@ -168,7 +175,7 @@ for (const viewport of viewports) {
 
 // --------------------------------------------------- mobile navigation
 {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const context = await browser.newContext({ ...CTX, viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
 
@@ -196,7 +203,7 @@ for (const viewport of viewports) {
 
 // ------------------------------------------------------------- search
 {
-  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });
   const page = await context.newPage();
   await page.goto(BASE + '/search', { waitUntil: 'networkidle' });
 
@@ -235,7 +242,7 @@ for (const viewport of viewports) {
 
 // ------------------------------------------------------------ filters
 {
-  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });
   const page = await context.newPage();
 
   // Research filters
@@ -285,7 +292,7 @@ for (const viewport of viewports) {
 
 // ----------------------------------------------------- reduced motion
 {
-  const context = await browser.newContext({
+  const context = await browser.newContext({ ...CTX,
     viewport: { width: 1440, height: 900 },
     reducedMotion: 'reduce',
   });
