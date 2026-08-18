@@ -1,36 +1,38 @@
 /* ---------------------------------------------------------------------------
    Eshkere design tokens
-   Dark cosmic ground, hyperpop accents, premium editorial type.
+   Cinematic black ground, luminous hyperpop accents, high-contrast
+   editorial serif. Serious first; playful in the details.
 --------------------------------------------------------------------------- */
 :root {
-  /* Surfaces */
-  --space-black: #07060f;
-  --indigo-deep: #0d0a24;
-  --indigo-panel: #16113a;
-  --indigo-raised: #1e1849;
+  /* Surfaces — true blacks and deep indigo, no purple cast */
+  --space-black: #050508;
+  --indigo-deep: #090912;
+  --indigo-panel: #0d0d1a;
+  --indigo-raised: #121222;
   --lavender-pale: #efeafe;
 
   /* Ink */
-  --ink: #f4f1ff;
-  --ink-soft: #c6bfe0;
-  --ink-faint: #9c95bd;
-  --ink-on-bright: #131024;
+  --ink: #f2f0fa;
+  --ink-soft: #bcb9cf;
+  --ink-faint: #8f8ca6;
+  --ink-on-bright: #0b0a14;
 
-  /* Hyperpop accents */
-  --cyan: #5ce8ff;
-  --pink: #ff64cd;
-  --violet: #a06eff;
-  --lime: #cef54d;
+  /* Hyperpop accents — saturated, used sparingly */
+  --cyan: #4de3ff;
+  --pink: #ff4fc8;
+  --violet: #9d6bff;
+  --lime: #c8f542;
   --peach: #ffb992;
 
-  /* Lines and glows */
-  --line-soft: rgba(160, 110, 255, 0.22);
-  --line-strong: rgba(160, 110, 255, 0.5);
-  --glow-pink: 0 0 24px rgba(255, 100, 205, 0.35);
-  --glow-cyan: 0 0 24px rgba(92, 232, 255, 0.3);
+  /* Hairlines and glows */
+  --line-soft: rgba(255, 255, 255, 0.09);
+  --line-strong: rgba(255, 255, 255, 0.22);
+  --line-accent: rgba(157, 107, 255, 0.45);
+  --glow-pink: 0 0 24px rgba(255, 79, 200, 0.28);
+  --glow-cyan: 0 0 24px rgba(77, 227, 255, 0.25);
 
   /* Type */
-  --font-display: 'Fraunces Variable', Fraunces, Georgia, 'Times New Roman', serif;
+  --font-display: 'Playfair Display Variable', 'Playfair Display', Didot, 'Bodoni MT', Georgia, serif;
   --font-body: 'Space Grotesk Variable', 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif;
   --font-pixel: Silkscreen, 'Courier New', monospace;
 
@@ -42,15 +44,15 @@
   --text-xl: clamp(1.4rem, 1.2rem + 1vw, 1.85rem);
   --text-2xl: clamp(1.8rem, 1.4rem + 2vw, 2.75rem);
   --text-title: clamp(2.4rem, 1.8rem + 3.4vw, 4.5rem);
-  --text-hero: clamp(2.75rem, 1.4rem + 7.2vw, 7.25rem);
+  --text-hero: clamp(2.9rem, 1.1rem + 8.4vw, 8.25rem);
 
   /* Layout */
-  --container: 76rem;
+  --container: 80rem;
   --container-narrow: 46rem;
   --gutter: clamp(1.25rem, 4vw, 3rem);
   --section-gap: clamp(4rem, 6vw + 2rem, 8rem);
-  --radius: 16px;
-  --radius-sm: 10px;
+  --radius: 12px;
+  --radius-sm: 8px;
   --radius-pill: 999px;
 
   /* Motion */

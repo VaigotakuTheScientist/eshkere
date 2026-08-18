@@ -19,7 +19,7 @@ partners, funding, portfolio, publications or history.
 - [Astro](https://astro.build) 7 + TypeScript, fully static output
 - Plain scoped CSS with design tokens (`src/styles/tokens.css`)
 - Astro content collections for all structured content
-- Self-hosted fonts (Fraunces, Space Grotesk, Silkscreen via Fontsource)
+- Self-hosted fonts (Playfair Display, Space Grotesk, Silkscreen via Fontsource)
 - Hand-rolled static search (JSON index generated at build time)
 - No client-side frameworks; a few small vanilla scripts for menu, search and filters
 

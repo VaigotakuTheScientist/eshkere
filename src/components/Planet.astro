@@ -1,8 +1,13 @@
 ---
 /**
- * An original hyperpop planet, generated entirely in SVG: procedural
- * landmasses via turbulence, luminous gradients, atmosphere and orbit
- * rings. No raster assets, no text, no interface chrome — safe to reuse.
+ * An original cinematic hyperpop planet, generated entirely in SVG:
+ * a dark night-side sphere, procedural landmasses lit by gold city
+ * lights, marbled magenta/cyan aurora built with displacement mapping,
+ * a bright sunlit limb and thin neon orbit lines. No raster assets,
+ * no text, no interface chrome — safe to reuse.
+ *
+ * The land and city-light filters share the same turbulence seed and
+ * frequency, so the lights cluster on the landmasses.
  */
 interface Props {
   class?: string;
@@ -15,127 +20,156 @@ const { class: className } = Astro.props;
   class:list={['planet', className]}
   viewBox="0 0 1000 1000"
   role="img"
-  aria-label="A luminous planet glowing in pink, violet and cyan, circled by neon orbit lines"
+  aria-label="A dark luminous planet with glowing magenta and cyan continents, gold city lights and thin neon orbit lines"
 >
   <defs>
-    <radialGradient id="p-backglow" cx="50%" cy="47%" r="50%">
-      <stop offset="0%" stop-color="#a06eff" stop-opacity="0.45"></stop>
-      <stop offset="45%" stop-color="#ff64cd" stop-opacity="0.16"></stop>
-      <stop offset="100%" stop-color="#ff64cd" stop-opacity="0"></stop>
-    </radialGradient>
-
-    <radialGradient id="p-ocean" cx="36%" cy="30%" r="78%">
-      <stop offset="0%" stop-color="#5b7dff"></stop>
-      <stop offset="38%" stop-color="#3140d9"></stop>
-      <stop offset="72%" stop-color="#1b1266"></stop>
-      <stop offset="100%" stop-color="#0c0836"></stop>
+    <radialGradient id="p-ocean" cx="42%" cy="18%" r="95%">
+      <stop offset="0%" stop-color="#4a71ff"></stop>
+      <stop offset="26%" stop-color="#2440d6"></stop>
+      <stop offset="52%" stop-color="#111a76"></stop>
+      <stop offset="78%" stop-color="#080b38"></stop>
+      <stop offset="100%" stop-color="#04051a"></stop>
     </radialGradient>
 
     <linearGradient id="p-land" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#ff4dc6"></stop>
-      <stop offset="28%" stop-color="#ff7ad6"></stop>
-      <stop offset="52%" stop-color="#a86bff"></stop>
-      <stop offset="76%" stop-color="#4ce4ff"></stop>
-      <stop offset="100%" stop-color="#c9f43f"></stop>
+      <stop offset="0%" stop-color="#ff3fc2"></stop>
+      <stop offset="30%" stop-color="#ff6fd4"></stop>
+      <stop offset="55%" stop-color="#a24dff"></stop>
+      <stop offset="78%" stop-color="#2bd9ff"></stop>
+      <stop offset="100%" stop-color="#9ff53c"></stop>
     </linearGradient>
 
-    <radialGradient id="p-shade" cx="34%" cy="28%" r="85%">
-      <stop offset="0%" stop-color="#07060f" stop-opacity="0"></stop>
-      <stop offset="55%" stop-color="#07060f" stop-opacity="0"></stop>
-      <stop offset="82%" stop-color="#07060f" stop-opacity="0.5"></stop>
-      <stop offset="100%" stop-color="#07060f" stop-opacity="0.9"></stop>
+    <radialGradient id="p-shade" cx="38%" cy="16%" r="95%">
+      <stop offset="0%" stop-color="#020208" stop-opacity="0"></stop>
+      <stop offset="46%" stop-color="#020208" stop-opacity="0"></stop>
+      <stop offset="66%" stop-color="#020208" stop-opacity="0.32"></stop>
+      <stop offset="84%" stop-color="#020208" stop-opacity="0.7"></stop>
+      <stop offset="100%" stop-color="#020208" stop-opacity="0.96"></stop>
     </radialGradient>
 
-    <radialGradient id="p-atmo" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#5ce8ff" stop-opacity="0"></stop>
-      <stop offset="78%" stop-color="#5ce8ff" stop-opacity="0"></stop>
-      <stop offset="90%" stop-color="#5ce8ff" stop-opacity="0.35"></stop>
-      <stop offset="97%" stop-color="#ff64cd" stop-opacity="0.22"></stop>
-      <stop offset="100%" stop-color="#ff64cd" stop-opacity="0"></stop>
-    </radialGradient>
+    <linearGradient id="p-rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e6fbff" stop-opacity="0.9"></stop>
+      <stop offset="30%" stop-color="#7ae6ff" stop-opacity="0.4"></stop>
+      <stop offset="55%" stop-color="#7ae6ff" stop-opacity="0.06"></stop>
+      <stop offset="100%" stop-color="#7ae6ff" stop-opacity="0"></stop>
+    </linearGradient>
 
     <linearGradient id="p-ring-a" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#ff64cd" stop-opacity="0"></stop>
-      <stop offset="50%" stop-color="#ff64cd"></stop>
-      <stop offset="100%" stop-color="#ff64cd" stop-opacity="0"></stop>
+      <stop offset="0%" stop-color="#ff4fc8" stop-opacity="0"></stop>
+      <stop offset="50%" stop-color="#ff4fc8"></stop>
+      <stop offset="100%" stop-color="#ff4fc8" stop-opacity="0"></stop>
     </linearGradient>
 
     <linearGradient id="p-ring-b" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#5ce8ff" stop-opacity="0"></stop>
-      <stop offset="50%" stop-color="#5ce8ff"></stop>
-      <stop offset="100%" stop-color="#5ce8ff" stop-opacity="0"></stop>
+      <stop offset="0%" stop-color="#4de3ff" stop-opacity="0"></stop>
+      <stop offset="50%" stop-color="#4de3ff"></stop>
+      <stop offset="100%" stop-color="#4de3ff" stop-opacity="0"></stop>
     </linearGradient>
 
     <linearGradient id="p-ring-c" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#cef54d" stop-opacity="0"></stop>
-      <stop offset="50%" stop-color="#cef54d"></stop>
-      <stop offset="100%" stop-color="#cef54d" stop-opacity="0"></stop>
+      <stop offset="0%" stop-color="#c8f542" stop-opacity="0"></stop>
+      <stop offset="50%" stop-color="#c8f542"></stop>
+      <stop offset="100%" stop-color="#c8f542" stop-opacity="0"></stop>
     </linearGradient>
 
+    <!-- Landmasses: sharp-thresholded fractal noise keyed to seed 18. -->
     <filter id="p-continents" x="-10%" y="-10%" width="120%" height="120%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.0072 0.0104" numOctaves="4" seed="18" result="noise"></feTurbulence>
+      <feTurbulence type="fractalNoise" baseFrequency="0.0088 0.0126" numOctaves="5" seed="18" result="noise"></feTurbulence>
       <feColorMatrix in="noise" type="matrix"
         values="0 0 0 0 0
                 0 0 0 0 0
                 0 0 0 0 0
-                9 9 9 0 -14.1" result="threshold"></feColorMatrix>
-      <feGaussianBlur in="threshold" stdDeviation="1" result="soft"></feGaussianBlur>
+                12 12 12 0 -20.2" result="threshold"></feColorMatrix>
+      <feGaussianBlur in="threshold" stdDeviation="0.7" result="soft"></feGaussianBlur>
       <feComposite in="SourceGraphic" in2="soft" operator="in"></feComposite>
     </filter>
 
-    <filter id="p-clouds" x="-10%" y="-10%" width="120%" height="120%">
-      <feTurbulence type="turbulence" baseFrequency="0.013 0.02" numOctaves="3" seed="4" result="noise"></feTurbulence>
-      <feColorMatrix in="noise" type="matrix"
+    <!-- City lights: fine bright specks masked to the same landmass field. -->
+    <filter id="p-lights" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.0088 0.0126" numOctaves="5" seed="18" result="landNoise"></feTurbulence>
+      <feColorMatrix in="landNoise" type="matrix"
         values="0 0 0 0 0
                 0 0 0 0 0
                 0 0 0 0 0
-                6 6 6 0 -9.4" result="threshold"></feColorMatrix>
-      <feGaussianBlur in="threshold" stdDeviation="5" result="soft"></feGaussianBlur>
-      <feComposite in="SourceGraphic" in2="soft" operator="in"></feComposite>
+                12 12 12 0 -19.8" result="landAlpha"></feColorMatrix>
+      <feTurbulence type="fractalNoise" baseFrequency="0.22 0.26" numOctaves="2" seed="33" result="speck"></feTurbulence>
+      <feColorMatrix in="speck" type="matrix"
+        values="0 0 0 0 0
+                0 0 0 0 0
+                0 0 0 0 0
+                30 30 30 0 -52" result="speckAlpha"></feColorMatrix>
+      <feComposite in="speckAlpha" in2="landAlpha" operator="in" result="cityMask"></feComposite>
+      <feGaussianBlur in="cityMask" stdDeviation="0.5" result="cityGlow"></feGaussianBlur>
+      <feComposite in="SourceGraphic" in2="cityGlow" operator="in"></feComposite>
+    </filter>
+
+    <!-- Aurora: blurred shapes marbled by a displacement field. -->
+    <filter id="p-aurora" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="28" result="soft"></feGaussianBlur>
+      <feTurbulence type="fractalNoise" baseFrequency="0.0042 0.0068" numOctaves="3" seed="7" result="disp"></feTurbulence>
+      <feDisplacementMap in="soft" in2="disp" scale="240" xChannelSelector="R" yChannelSelector="G"></feDisplacementMap>
     </filter>
 
     <clipPath id="p-sphere">
-      <circle cx="500" cy="470" r="330"></circle>
+      <circle cx="500" cy="470" r="340"></circle>
     </clipPath>
   </defs>
 
-  <!-- Ambient glow behind everything -->
-  <circle cx="500" cy="470" r="480" fill="url(#p-backglow)"></circle>
+  <!-- Tight atmospheric glow hugging the sphere -->
+  <circle cx="500" cy="470" r="352" fill="none" stroke="#7ae6ff" stroke-width="12"
+    opacity="0.14" style="filter: blur(14px)"></circle>
+  <circle cx="500" cy="470" r="346" fill="none" stroke="#ff4fc8" stroke-width="5"
+    opacity="0.1" style="filter: blur(9px)"></circle>
 
   <!-- Rear orbit rings -->
-  <g class="planet__rings planet__rings--rear">
-    <ellipse cx="500" cy="470" rx="475" ry="132" fill="none" stroke="url(#p-ring-b)"
-      stroke-width="1.6" opacity="0.65" transform="rotate(-16 500 470)"></ellipse>
-    <ellipse cx="500" cy="470" rx="440" ry="170" fill="none" stroke="url(#p-ring-c)"
-      stroke-width="1.3" opacity="0.5" stroke-dasharray="3 10" transform="rotate(11 500 470)"></ellipse>
+  <g class="planet__rings">
+    <ellipse cx="500" cy="470" rx="478" ry="128" fill="none" stroke="url(#p-ring-b)"
+      stroke-width="1.1" opacity="0.6" transform="rotate(-16 500 470)"></ellipse>
+    <ellipse cx="500" cy="470" rx="442" ry="168" fill="none" stroke="url(#p-ring-c)"
+      stroke-width="1" opacity="0.45" stroke-dasharray="2 9" transform="rotate(12 500 470)"></ellipse>
   </g>
 
   <!-- The sphere -->
   <g class="planet__body">
-    <circle cx="500" cy="470" r="330" fill="url(#p-ocean)"></circle>
+    <circle cx="500" cy="470" r="340" fill="url(#p-ocean)"></circle>
 
     <g clip-path="url(#p-sphere)">
-      <circle cx="500" cy="470" r="330" fill="url(#p-land)" filter="url(#p-continents)"></circle>
-      <g class="planet__clouds">
-        <circle cx="500" cy="470" r="330" fill="#ffffff" opacity="0.1" filter="url(#p-clouds)"></circle>
+      <!-- Landmasses -->
+      <circle cx="500" cy="470" r="340" fill="url(#p-land)" filter="url(#p-continents)" opacity="0.92"></circle>
+
+      <!-- Aurora swirls, marbled over the surface -->
+      <g filter="url(#p-aurora)" opacity="0.45" style="mix-blend-mode: screen">
+        <ellipse cx="430" cy="330" rx="250" ry="90" fill="#ff3fc2" opacity="0.55"
+          transform="rotate(-24 430 330)"></ellipse>
+        <ellipse cx="640" cy="560" rx="230" ry="70" fill="#2bd9ff" opacity="0.4"
+          transform="rotate(-18 640 560)"></ellipse>
+        <ellipse cx="380" cy="600" rx="180" ry="60" fill="#a24dff" opacity="0.45"
+          transform="rotate(16 380 600)"></ellipse>
       </g>
-      <!-- Terminator shading -->
-      <circle cx="500" cy="470" r="330" fill="url(#p-shade)"></circle>
-      <!-- Specular highlight -->
-      <ellipse cx="380" cy="330" rx="150" ry="95" fill="#ffffff" opacity="0.1"
-        transform="rotate(-24 380 330)"></ellipse>
+
+      <!-- City lights along the landmasses -->
+      <circle cx="500" cy="470" r="340" fill="#ffca6a" filter="url(#p-lights)" opacity="0.7"
+        style="mix-blend-mode: screen"></circle>
+
+      <!-- Night side -->
+      <circle cx="500" cy="470" r="340" fill="url(#p-shade)"></circle>
     </g>
 
-    <!-- Atmosphere -->
-    <circle cx="500" cy="470" r="356" fill="url(#p-atmo)"></circle>
+    <!-- Sunlit limb -->
+    <circle cx="500" cy="470" r="339" fill="none" stroke="url(#p-rim)" stroke-width="2.6"
+      opacity="0.95"></circle>
+    <path d="M 179 353 A 342 342 0 0 1 810 326" fill="none" stroke="#d8f7ff" stroke-width="7"
+      stroke-linecap="round" opacity="0.4" style="filter: blur(10px)"></path>
+    <path d="M 239 251 A 341 341 0 0 1 761 251" fill="none" stroke="#ffffff" stroke-width="2"
+      stroke-linecap="round" opacity="0.5" style="filter: blur(2px)"></path>
   </g>
 
-  <!-- Front orbit ring -->
-  <g class="planet__rings planet__rings--front">
-    <ellipse cx="500" cy="470" rx="490" ry="118" fill="none" stroke="url(#p-ring-a)"
-      stroke-width="1.8" opacity="0.8" transform="rotate(-7 500 470)"></ellipse>
-    <circle cx="152" cy="512" r="5" fill="#cef54d" opacity="0.9"></circle>
-    <circle cx="866" cy="440" r="4" fill="#5ce8ff" opacity="0.9"></circle>
+  <!-- Front orbit ring with tiny satellites -->
+  <g class="planet__rings">
+    <ellipse cx="500" cy="470" rx="492" ry="112" fill="none" stroke="url(#p-ring-a)"
+      stroke-width="1.3" opacity="0.75" transform="rotate(-8 500 470)"></ellipse>
+    <circle cx="148" cy="516" r="4" fill="#c8f542" opacity="0.9"></circle>
+    <circle cx="872" cy="438" r="3.2" fill="#4de3ff" opacity="0.9"></circle>
   </g>
 </svg>
 
@@ -146,20 +180,13 @@ const { class: className } = Astro.props;
     height: auto;
   }
 
-  .planet__body {
-    animation: planet-drift 14s ease-in-out infinite alternate;
+  .planet__body,
+  .planet__rings {
+    animation: planet-drift 16s ease-in-out infinite alternate;
   }
 
-  .planet__clouds {
-    animation: planet-spin 340s linear infinite;
-    transform-box: fill-box;
-    transform-origin: center;
-  }
-
-  .planet__rings--front,
-  .planet__rings--rear {
-    animation: planet-drift 14s ease-in-out infinite alternate;
-    animation-delay: -4s;
+  .planet__rings {
+    animation-delay: -5s;
   }
 
   @keyframes planet-drift {
@@ -167,21 +194,13 @@ const { class: className } = Astro.props;
       transform: translateY(0);
     }
     to {
-      transform: translateY(-14px);
-    }
-  }
-
-  @keyframes planet-spin {
-    to {
-      transform: rotate(360deg);
+      transform: translateY(-12px);
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
     .planet__body,
-    .planet__clouds,
-    .planet__rings--front,
-    .planet__rings--rear {
+    .planet__rings {
       animation: none;
     }
   }

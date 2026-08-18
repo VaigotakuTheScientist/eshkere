@@ -65,8 +65,8 @@ const hasSamples = research.some((entry) => entry.data.prototype);
       </h1>
       <p class="hero__support">Health is non-optional. Everything else is a game.</p>
       <div class="hero__ctas">
-        <a class="btn btn--solid" href={url('/our-approach')}>Explore our approach</a>
-        <a class="btn btn--ghost" href={url('/portfolio')}>View portfolio</a>
+        <a class="arrow-link arrow-link--accent" href={url('/our-approach')}>Explore our approach</a>
+        <a class="arrow-link" href={url('/portfolio')}>View portfolio</a>
       </div>
     </div>
   </section>
@@ -251,12 +251,12 @@ const hasSamples = research.some((entry) => entry.data.prototype);
   /* ------------------------------------------------------------- hero */
   .hero {
     position: relative;
-    min-height: max(92vh, 44rem);
+    min-height: max(94vh, 44rem);
     display: flex;
     align-items: flex-end;
     overflow: hidden;
     background:
-      radial-gradient(70rem 45rem at 68% 30%, rgba(49, 64, 217, 0.18), transparent 65%),
+      radial-gradient(60rem 40rem at 70% 32%, rgba(27, 47, 168, 0.14), transparent 62%),
       var(--space-black);
     padding-top: 7rem;
     padding-bottom: clamp(3rem, 6vh, 5rem);
@@ -332,16 +332,15 @@ const hasSamples = research.some((entry) => entry.data.prototype);
 
   .hero__heading {
     font-size: var(--text-hero);
-    font-weight: 480;
-    line-height: 0.98;
-    letter-spacing: 0.01em;
+    font-weight: 520;
+    line-height: 1.02;
+    letter-spacing: 0.012em;
     text-transform: uppercase;
-    max-width: 12ch;
-    background: linear-gradient(115deg, #ffffff 30%, #f3d9ff 60%, #cfeaff 90%);
+    background: linear-gradient(178deg, #ffffff 20%, #eceafb 55%, #b0adcc 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    filter: drop-shadow(0 2px 24px rgba(160, 110, 255, 0.35));
+    filter: drop-shadow(0 4px 30px rgba(5, 5, 8, 0.9));
   }
 
   .hero__support {
@@ -349,21 +348,22 @@ const hasSamples = research.some((entry) => entry.data.prototype);
     color: var(--ink-soft);
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 1.1rem;
   }
 
   .hero__support::after {
-    content: '⟶';
-    color: var(--pink);
-    font-size: 1.4em;
-    line-height: 1;
+    content: '';
+    width: 4.5rem;
+    height: 9px;
+    background: var(--pink);
+    clip-path: polygon(0 44%, 90% 44%, 87% 0, 100% 50%, 87% 100%, 90% 56%, 0 56%);
   }
 
   .hero__ctas {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.9rem;
-    margin-top: 0.5rem;
+    gap: 1.25rem 2.75rem;
+    margin-top: 0.9rem;
   }
 
   @media (max-width: 900px) {
@@ -416,17 +416,17 @@ const hasSamples = research.some((entry) => entry.data.prototype);
   }
 
   .duality__card--health {
-    border-color: rgba(92, 232, 255, 0.35);
+    border-color: rgba(77, 227, 255, 0.28);
     background:
-      radial-gradient(28rem 16rem at 15% 0%, rgba(92, 232, 255, 0.12), transparent 70%),
-      linear-gradient(160deg, rgba(30, 24, 73, 0.55), rgba(13, 10, 36, 0.85));
+      radial-gradient(28rem 16rem at 15% 0%, rgba(77, 227, 255, 0.07), transparent 70%),
+      linear-gradient(165deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.005));
   }
 
   .duality__card--games {
-    border-color: rgba(255, 100, 205, 0.35);
+    border-color: rgba(255, 79, 200, 0.28);
     background:
-      radial-gradient(28rem 16rem at 85% 0%, rgba(255, 100, 205, 0.13), transparent 70%),
-      linear-gradient(160deg, rgba(30, 24, 73, 0.55), rgba(13, 10, 36, 0.85));
+      radial-gradient(28rem 16rem at 85% 0%, rgba(255, 79, 200, 0.07), transparent 70%),
+      linear-gradient(165deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.005));
     /* Games sit on top of the foundation — nudged up on desktop. */
     transform: translateY(-1.25rem);
   }
@@ -435,9 +435,10 @@ const hasSamples = research.some((entry) => entry.data.prototype);
     display: inline-flex;
     align-items: center;
     gap: 0.6rem;
-    font-family: var(--font-pixel);
-    font-size: 0.78rem;
-    letter-spacing: 0.3em;
+    font-family: var(--font-body);
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.34em;
     text-transform: uppercase;
   }
 
