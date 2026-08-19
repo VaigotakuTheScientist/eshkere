@@ -6,6 +6,10 @@ import artNebula from '../assets/hero-nebula.png';
  * image's own pixel coordinates. The hero maps these onto the rendered
  * (object-fit: cover) image at runtime, so they stay on target at every
  * viewport size.
+ *
+ * `shape` and `rotate` exist so the hover lighting traces the mark the
+ * artist actually drew — a circle for the round badge, a tilted rounded
+ * rectangle for the plaque — rather than a generic upright box.
  */
 export interface HeroHotspot {
   /** Accessible name — the artwork's own lettering. */
@@ -15,6 +19,9 @@ export interface HeroHotspot {
   y: number;
   w: number;
   h: number;
+  shape: 'circle' | 'plaque';
+  /** Degrees of tilt, matching the artwork. Positive turns clockwise. */
+  rotate?: number;
 }
 
 export interface HeroArtwork {
@@ -38,8 +45,8 @@ export interface HeroArtwork {
  * Hero artworks. Two or more make the switcher appear on the homepage;
  * with one it stays hidden.
  *
- * Hotspot coordinates are measured against each image's own pixels, so a
- * new artwork needs its own set.
+ * Hotspot geometry is measured against each image's own pixels, so a new
+ * artwork needs its own set.
  */
 export const heroArtworks: HeroArtwork[] = [
   {
@@ -52,18 +59,21 @@ export const heroArtworks: HeroArtwork[] = [
       {
         label: 'Health first, always — read what health means',
         href: '/our-approach#health-heading',
-        x: 560,
-        y: 228,
-        w: 152,
-        h: 110,
+        x: 570,
+        y: 232,
+        w: 142,
+        h: 98,
+        shape: 'plaque',
+        rotate: -14.5,
       },
       {
         label: 'Level up your life — read what games means',
         href: '/our-approach#games-heading',
-        x: 1364,
-        y: 532,
-        w: 158,
-        h: 152,
+        x: 1368,
+        y: 530,
+        w: 148,
+        h: 148,
+        shape: 'circle',
       },
     ],
   },
@@ -77,18 +87,21 @@ export const heroArtworks: HeroArtwork[] = [
       {
         label: 'Health first, always — read what health means',
         href: '/our-approach#health-heading',
-        x: 533,
-        y: 193,
-        w: 166,
-        h: 105,
+        x: 543,
+        y: 199,
+        w: 152,
+        h: 100,
+        shape: 'plaque',
+        rotate: -16,
       },
       {
         label: 'Level up your life — read what games means',
         href: '/our-approach#games-heading',
-        x: 1387,
-        y: 583,
+        x: 1389,
+        y: 577,
         w: 142,
         h: 142,
+        shape: 'circle',
       },
     ],
   },

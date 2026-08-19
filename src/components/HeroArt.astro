@@ -49,6 +49,8 @@ const showSwitcher = artworks.length > 1;
           <a
             class="hero__hotspot"
             href={url(spot.href)}
+            data-shape={spot.shape}
+            style={spot.rotate ? `--hotspot-rotate: ${spot.rotate}deg` : undefined}
             data-fx={spot.x / art.src.width}
             data-fy={spot.y / art.src.height}
             data-fw={spot.w / art.src.width}
@@ -219,16 +221,36 @@ const showSwitcher = artworks.length > 1;
   .hero__hotspot {
     position: absolute;
     display: block;
-    border-radius: 14px;
-    /* Invisible until interacted with: the artwork already draws the mark. */
+    /* Invisible until interacted with: the artwork already draws the mark,
+       so the lighting only has to follow its outline. */
+    transform: rotate(var(--hotspot-rotate, 0deg));
     outline-offset: 4px;
     transition: box-shadow var(--speed-quick) var(--ease-out),
       background-color var(--speed-quick) var(--ease-out);
   }
 
-  .hero__hotspot:hover {
-    background: rgba(255, 255, 255, 0.06);
-    box-shadow: 0 0 26px rgba(255, 79, 200, 0.45);
+  /* The round badge. */
+  .hero__hotspot[data-shape='circle'] {
+    border-radius: 50%;
+  }
+
+  /* The tilted plaque — corner radius scales with the box so it matches
+     the drawn one at every viewport size. */
+  .hero__hotspot[data-shape='plaque'] {
+    border-radius: 11%/16%;
+  }
+
+  .hero__hotspot:hover,
+  .hero__hotspot:focus-visible {
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.28),
+      0 0 30px rgba(255, 79, 200, 0.4);
+  }
+
+  /* Keep the focus ring on the mark's own outline rather than a box. */
+  .hero__hotspot:focus-visible {
+    outline: none;
   }
 
   /* --------------------------------------------------------- switcher */

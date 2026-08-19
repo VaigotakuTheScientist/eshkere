@@ -332,6 +332,26 @@ for (const viewport of viewports) {
   await page.waitForLoadState('networkidle');
   note(page.url().includes('/our-approach'), `hero CTA still clickable → ${page.url()}`);
 
+  // The hover lighting must trace the mark the artist drew: a circle for
+  // the round badge, a tilted rounded rectangle for the plaque.
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  const shapes = await page
+    .locator('[data-art-hotspots]:not([hidden]) .hero__hotspot')
+    .evaluateAll((els) =>
+      els.map((el) => {
+        const style = getComputedStyle(el);
+        return {
+          shape: el.dataset.shape,
+          radius: style.borderRadius,
+          rotated: style.transform !== 'none' && style.transform !== 'matrix(1, 0, 0, 1, 0, 0)',
+        };
+      })
+    );
+  const circle = shapes.find((s) => s.shape === 'circle');
+  const plaque = shapes.find((s) => s.shape === 'plaque');
+  note(!!circle && circle.radius.startsWith('50%'), `badge hotspot is round (${circle?.radius})`);
+  note(!!plaque && plaque.rotated, `plaque hotspot is tilted (${plaque?.rotated})`);
+
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
   // Only the selected artwork's layer is live; the others stay hidden.
   const names = await page
