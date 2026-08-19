@@ -235,9 +235,16 @@ const hasSamples = research.some((entry) => entry.data.prototype);
     position: absolute;
     inset: 0;
     pointer-events: none;
+    /* Darkening is pooled under the headline instead of washing across the
+       whole frame, so the artwork's own neon marks stay at full strength. */
     background:
-      linear-gradient(90deg, rgba(5, 5, 8, 0.55) 0%, rgba(5, 5, 8, 0.05) 42%, rgba(5, 5, 8, 0.1) 100%),
-      linear-gradient(0deg, var(--space-black) 0%, rgba(5, 5, 8, 0.25) 18%, rgba(5, 5, 8, 0) 40%);
+      radial-gradient(
+        88% 66% at 16% 102%,
+        rgba(5, 5, 8, 0.9) 0%,
+        rgba(5, 5, 8, 0.5) 42%,
+        rgba(5, 5, 8, 0) 76%
+      ),
+      linear-gradient(0deg, var(--space-black) 0%, rgba(5, 5, 8, 0.3) 9%, rgba(5, 5, 8, 0) 24%);
   }
 
   .hero__content {
@@ -301,8 +308,13 @@ const hasSamples = research.some((entry) => entry.data.prototype);
   /* The nebula reaches further into the text column, so darken behind it. */
   .hero[data-hero-theme='neon'] .hero__vignette {
     background:
-      linear-gradient(90deg, rgba(5, 5, 8, 0.62) 0%, rgba(5, 5, 8, 0.22) 45%, rgba(5, 5, 8, 0.08) 100%),
-      linear-gradient(0deg, var(--space-black) 0%, rgba(5, 5, 8, 0.42) 22%, rgba(5, 5, 8, 0) 48%);
+      radial-gradient(
+        92% 70% at 14% 104%,
+        rgba(5, 5, 8, 0.94) 0%,
+        rgba(5, 5, 8, 0.58) 44%,
+        rgba(5, 5, 8, 0) 78%
+      ),
+      linear-gradient(0deg, var(--space-black) 0%, rgba(5, 5, 8, 0.38) 10%, rgba(5, 5, 8, 0) 26%);
   }
 
   .hero__support {

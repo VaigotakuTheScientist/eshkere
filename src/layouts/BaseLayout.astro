@@ -21,7 +21,8 @@ const { title, description = siteConfig.description, overlayHeader = false } = A
 // Browsers cache favicons by URL and hold them for a long time. Bump this
 // whenever public/favicon.svg changes so tabs pick the new icon up.
 const FAVICON_VERSION = 2;
-const pageTitle = title === siteConfig.name ? `${siteConfig.name} — ${siteConfig.tagline}` : `${title} — ${siteConfig.name}`;
+// The homepage tab reads simply "Eshkere"; inner pages name themselves first.
+const pageTitle = title === siteConfig.name ? siteConfig.name : `${title} — ${siteConfig.name}`;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 ---
 

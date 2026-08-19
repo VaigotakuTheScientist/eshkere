@@ -425,6 +425,55 @@ for (const viewport of viewports) {
   await context.close();
 }
 
+// ------------------------------------------------ arrow-link hover
+{
+  const context = await browser.newContext({
+    ...CTX,
+    viewport: { width: 1440, height: 900 },
+    reducedMotion: 'reduce',
+  });
+  const page = await context.newPage();
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+
+  const measure = () =>
+    page.evaluate(() => {
+      const links = document.querySelectorAll('.hero__ctas a');
+      return {
+        neighbour: Math.round(links[1].getBoundingClientRect().x),
+        arrow: parseFloat(getComputedStyle(links[0], '::after').width),
+      };
+    });
+
+  const rest = await measure();
+  await page.hover('.hero__ctas a:first-child');
+  await page.waitForTimeout(450);
+  const hovered = await measure();
+
+  note(hovered.arrow > rest.arrow, `arrow grows on hover (${rest.arrow} → ${hovered.arrow}px)`);
+  note(
+    hovered.neighbour === rest.neighbour,
+    `neighbouring link holds still (${rest.neighbour} → ${hovered.neighbour}px)`
+  );
+
+  await context.close();
+}
+
+// ---------------------------------------------------- page titles
+{
+  const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  const home = await page.title();
+  note(home === 'Eshkere', `homepage title is just the name ("${home}")`);
+
+  await page.goto(BASE + '/portfolio', { waitUntil: 'networkidle' });
+  const inner = await page.title();
+  note(inner === 'Portfolio — Eshkere', `inner page names itself first ("${inner}")`);
+
+  await context.close();
+}
+
 // ---------------------------------------------------- hero headline
 {
   const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });

@@ -212,9 +212,12 @@ a:hover {
 
 /* Editorial arrow link — uppercase label with a long drawn arrow. */
 .arrow-link {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 0.9rem;
+  /* Reserve room for the arrow at its longest, so growing it on hover
+     never nudges whatever sits next to the link. */
+  padding-right: 5.3rem;
   font-size: 0.78rem;
   font-weight: 500;
   letter-spacing: 0.22em;
@@ -225,11 +228,18 @@ a:hover {
 
 .arrow-link::after {
   content: '';
+  position: absolute;
+  top: 50%;
+  /* right + width is constant, so the arrow only ever extends rightward
+     into the reserved space; its tail stays pinned beside the label. */
+  right: 1rem;
   width: 3.4rem;
   height: 9px;
+  transform: translateY(-50%);
   background: currentColor;
   clip-path: polygon(0 44%, 86% 44%, 82% 0, 100% 50%, 82% 100%, 86% 56%, 0 56%);
-  transition: width var(--speed-quick) var(--ease-out);
+  transition: width var(--speed-quick) var(--ease-out),
+    right var(--speed-quick) var(--ease-out);
 }
 
 .arrow-link:hover {
@@ -238,6 +248,7 @@ a:hover {
 
 .arrow-link:hover::after {
   width: 4.4rem;
+  right: 0;
 }
 
 .arrow-link--accent {
