@@ -56,9 +56,10 @@ const hasSamples = research.some((entry) => entry.data.prototype);
           </p>
           <h3 class="duality__title">The non-optional foundation</h3>
           <p class="duality__body">
-            The conditions and needs underlying physical, mental and social flourishing. Sleep,
-            movement, nourishment, connection, a mind that works. Health is serious because nobody
-            can opt out of needing it — and everything else stands on top of it.
+            <strong>Everyone has a right to health</strong> — the conditions and needs underlying
+            physical, mental and social flourishing. Sleep, movement, nourishment, connection, a
+            mind that works. Health is serious because nobody can opt out of needing it, and
+            everything else stands on top of it.
           </p>
         </article>
 
@@ -79,6 +80,33 @@ const hasSamples = research.some((entry) => entry.data.prototype);
       <p class="duality__bridge">
         Games depend on health. That is why the foundation comes
         first — <em>and why it is never the whole point.</em>
+      </p>
+    </div>
+  </section>
+
+  <!-- ====================================================== the stakes -->
+  <section class="section stakes" aria-labelledby="stakes-heading">
+    <div class="container--narrow stakes__inner">
+      <p class="eyebrow eyebrow--pink">The stakes</p>
+      <h2 id="stakes-heading">The floor is not secure.</h2>
+      <p>
+        For a great many people it never has been. Health is lost to poverty, illness, violence,
+        isolation and neglect — and every game those people might have chosen is lost with it.
+        That is a present fact, not an abstraction.
+      </p>
+      <p>
+        A floor that holds today can also be undermined tomorrow. Some of the plausible ways are
+        global rather than local — how powerful AI systems are built and governed among them,
+        alongside conflict, pandemics and ecological damage.
+      </p>
+      <p>
+        So health first is not only a private ordering. Where the foundation is missing or
+        threatened, securing it is a <strong>public good</strong> — making the floor real for
+        people beyond yourself, and keeping it standing for the people who come next.
+      </p>
+      <p class="stakes__note">
+        Which of these problems Eshkere is actually positioned to help
+        with <a href={url('/our-approach#open-heading')}>is still an open question</a>.
       </p>
     </div>
   </section>
@@ -442,6 +470,40 @@ const hasSamples = research.some((entry) => entry.data.prototype);
     .duality__card--games {
       transform: none;
     }
+  }
+
+  /* --------------------------------------------------- the stakes */
+  .stakes {
+    background:
+      radial-gradient(48rem 22rem at 50% 0%, rgba(255, 79, 200, 0.07), transparent 70%);
+  }
+
+  .stakes__inner {
+    display: grid;
+    gap: 1.15rem;
+  }
+
+  .stakes__inner h2 {
+    font-size: var(--text-2xl);
+    max-width: 18ch;
+  }
+
+  .stakes__inner p {
+    color: var(--ink-soft);
+  }
+
+  .stakes__inner strong {
+    color: var(--ink);
+  }
+
+  .stakes__note {
+    margin-top: 0.5rem;
+    font-size: var(--text-sm);
+    color: var(--ink-faint);
+  }
+
+  .duality__body strong {
+    color: var(--ink);
   }
 
   /* -------------------------------------------------- section heads */
