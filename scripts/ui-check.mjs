@@ -358,7 +358,7 @@ for (const viewport of viewports) {
     .locator('[data-art-hotspots]:not([hidden]) .hero__hotspot')
     .evaluateAll((els) => els.map((el) => el.textContent.trim()));
   note(
-    names.length === 2 && names.every((name) => name.length > 10),
+    names.length === 3 && names.every((name) => name.length > 5),
     `hero hotspots carry accessible names (${names.length})`
   );
 

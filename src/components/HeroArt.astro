@@ -43,22 +43,30 @@ const showSwitcher = artworks.length > 1;
   {
     artworks.map((art, index) => (
       <div class="hero__hotspots" data-art-hotspots={art.id} hidden={index > 0}>
-        {art.hotspots.map((spot) => (
-          /* Authored in source pixels, emitted as fractions: the browser may
-             load any responsive variant, so only ratios survive the trip. */
-          <a
-            class="hero__hotspot"
-            href={url(spot.href)}
-            data-shape={spot.shape}
-            style={spot.rotate ? `--hotspot-rotate: ${spot.rotate}deg` : undefined}
-            data-fx={spot.x / art.src.width}
-            data-fy={spot.y / art.src.height}
-            data-fw={spot.w / art.src.width}
-            data-fh={spot.h / art.src.height}
-          >
-            <span class="visually-hidden">{spot.label}</span>
-          </a>
-        ))}
+        {art.hotspots.map((spot) => {
+          const external = /^https?:\/\//i.test(spot.href);
+          return (
+            /* Authored in source pixels, emitted as fractions: the browser may
+               load any responsive variant, so only ratios survive the trip. */
+            <a
+              class="hero__hotspot"
+              href={url(spot.href)}
+              target={external ? '_blank' : undefined}
+              rel={external ? 'noopener noreferrer' : undefined}
+              data-shape={spot.shape}
+              style={spot.rotate ? `--hotspot-rotate: ${spot.rotate}deg` : undefined}
+              data-fx={spot.x / art.src.width}
+              data-fy={spot.y / art.src.height}
+              data-fw={spot.w / art.src.width}
+              data-fh={spot.h / art.src.height}
+            >
+              <span class="visually-hidden">
+                {spot.label}
+                {external ? ' (opens in a new tab)' : ''}
+              </span>
+            </a>
+          );
+        })}
       </div>
     ))
   }
