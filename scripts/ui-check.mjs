@@ -8,7 +8,7 @@
  * and saves screenshots to SCREENSHOT_DIR (default ./screenshots).
  */
 import { chromium } from 'playwright';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 
 const BASE = (process.env.BASE_URL ?? 'http://localhost:4321/eshkere').replace(/\/$/, '');
 const SHOT_DIR = process.env.SCREENSHOT_DIR ?? './screenshots';
@@ -358,7 +358,7 @@ for (const viewport of viewports) {
     .locator('[data-art-hotspots]:not([hidden]) .hero__hotspot')
     .evaluateAll((els) => els.map((el) => el.textContent.trim()));
   note(
-    names.length === 3 && names.every((name) => name.length > 5),
+    names.length === 4 && names.every((name) => name.length > 5),
     `hero hotspots carry accessible names (${names.length})`
   );
 
@@ -417,6 +417,56 @@ for (const viewport of viewports) {
       () => [...document.querySelectorAll('[data-art-image]')].find((el) => !el.hidden)?.dataset.artImage
     );
     note(remembered === ids[1], `switcher remembers the choice (${remembered})`);
+  }
+
+  await context.close();
+}
+
+// ------------------------------------------- current-source star link
+{
+  // The star's label and destination must come from the generated file that
+  // CI rewrites from Notion — not from anything hard-coded.
+  const generated = JSON.parse(
+    readFileSync(new URL('../src/data/current-source.generated.json', import.meta.url), 'utf8')
+  );
+
+  const context = await browser.newContext({
+    ...CTX,
+    viewport: { width: 1440, height: 900 },
+    reducedMotion: 'reduce',
+  });
+  const page = await context.newPage();
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+
+  const ids = await page
+    .locator('[data-art-choice]')
+    .evaluateAll((els) => els.map((el) => el.dataset.artChoice));
+
+  for (const id of ids.length ? ids : ['default']) {
+    if (id !== 'default') {
+      await page.click(`[data-art-choice="${id}"]`);
+      await page.waitForTimeout(400);
+    }
+    const star = page
+      .locator('[data-art-hotspots]:not([hidden]) .hero__hotspot')
+      .filter({ hasText: 'Currently reading:' });
+
+    note((await star.count()) === 1, `"${id}" has exactly one current-source star`);
+
+    const label = (await star.first().textContent())?.trim() ?? '';
+    note(
+      label.startsWith(`Currently reading: ${generated.title}`),
+      `"${id}" star label follows the generated title`
+    );
+    note(
+      (await star.first().getAttribute('href')) === generated.url,
+      `"${id}" star links to the generated URL`
+    );
+    note(
+      (await star.first().getAttribute('target')) === '_blank' &&
+        (await star.first().getAttribute('rel'))?.includes('noopener'),
+      `"${id}" star opens safely in a new tab`
+    );
   }
 
   await context.close();

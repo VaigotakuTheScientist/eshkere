@@ -1,5 +1,6 @@
 import artAurora from '../assets/hero-planet.png';
 import artNebula from '../assets/hero-nebula.png';
+import currentSource from './current-source.generated.json';
 
 /**
  * A clickable region baked into the artwork, described in the source
@@ -39,6 +40,25 @@ export interface HeroArtwork {
   /** How the image is anchored while cropping, as CSS object-position. */
   focus: { desktop: string; mobile: string };
   hotspots: HeroHotspot[];
+}
+
+/**
+ * The bright four-point star on each planet points at whatever source is
+ * checked `Current` in the private Notion Sources database. Title and URL
+ * come from current-source.generated.json, which CI overwrites from Notion
+ * before every build (see scripts/fetch-current-source.mjs); the committed
+ * copy is a placeholder so local builds and typechecks still work.
+ *
+ * The geometry differs per artwork because each image draws its star in a
+ * different place, so it is passed in rather than shared.
+ */
+function currentSourceStar(
+  geometry: Pick<HeroHotspot, 'x' | 'y' | 'w' | 'h'>
+): HeroHotspot[] {
+  const { title, url } = currentSource;
+  // A malformed generated file should drop the hotspot, never emit an empty href.
+  if (!title || !url) return [];
+  return [{ label: `Currently reading: ${title}`, href: url, shape: 'circle', ...geometry }];
 }
 
 /**
@@ -84,6 +104,7 @@ export const heroArtworks: HeroArtwork[] = [
         h: 30,
         shape: 'circle',
       },
+      ...currentSourceStar({ x: 1439, y: 224, w: 76, h: 76 }),
     ],
   },
   {
@@ -121,6 +142,7 @@ export const heroArtworks: HeroArtwork[] = [
         h: 34,
         shape: 'circle',
       },
+      ...currentSourceStar({ x: 1332, y: 256, w: 60, h: 60 }),
     ],
   },
 ];

@@ -33,6 +33,8 @@ partners, funding, portfolio, publications or history.
 | `npm run preview`   | Serve the production build locally                 |
 | `npm run check`     | Type-check (`astro check`)                         |
 | `npm run test:ui`   | Playwright UI checks (needs a running server): `BASE_URL=http://localhost:4321/eshkere node scripts/ui-check.mjs` |
+| `npm run test:source` | Offline checks for the Notion current-source validation rules |
+| `npm run sync:source` | Refresh `current-source.generated.json` from Notion (needs `NOTION_TOKEN`) |
 
 ## Deploying
 
@@ -41,6 +43,51 @@ The site builds for GitHub Pages project hosting by default
 GitHub Pages on pushes to `main` (enable **Settings → Pages → Source: GitHub
 Actions** once). For a custom domain, build with `SITE=https://example.org
 BASE_PATH=/ npm run build`.
+
+## Current source (Notion → hero star)
+
+The bright four-point star on the hero planet links to whatever you are
+currently reading. It is driven by the private **Sources** database in
+Grantmaking OS, so changing what you read never requires editing this repo:
+
+```
+Notion `Current` checkbox → hourly GitHub Action → Astro build → star hotspot
+```
+
+`scripts/fetch-current-source.mjs` queries the Sources data source for rows
+with `Current` checked, takes the `Source` title and `URL`, and overwrites
+`src/data/current-source.generated.json` just before `npm run build`. Only
+those two fields ever leave Notion. The committed copy of that file is a
+placeholder so local builds and typechecks work without a token; CI's
+rewrite is not committed back.
+
+**`Status` and `Current` mean different things.** `Status = Reading` may
+apply to several sources at once — it tracks what you have open. `Current`
+marks the single source the website should point at. Exactly one row should
+have `Current` checked.
+
+The sync is deliberately strict: zero matches, more than one match, a
+missing or non-`http(s)` URL, an auth failure or an API outage all fail the
+job **before** deployment, so a bad sync never replaces the live site with a
+broken one. The previous deployment simply stays up.
+
+### One-time setup
+
+1. Create a Notion internal integration with **read** access.
+2. Share the **Sources** database with that integration.
+3. In this repository, add the integration token as an Actions secret named
+   `NOTION_TOKEN` (Settings → Secrets and variables → Actions).
+4. In Notion, check `Current` on exactly one Source that has a valid
+   `http(s)` URL.
+5. Wait for the hourly run, or trigger **Actions → Deploy to GitHub Pages →
+   Run workflow** to refresh immediately.
+
+The token is only ever read from `${{ secrets.NOTION_TOKEN }}` inside the
+workflow. It is never committed, never exposed to client-side JavaScript,
+and never printed — Notion errors are reported by error code only.
+
+Run `npm run test:source` to exercise the validation rules offline (no token
+or network needed).
 
 ## Content architecture
 
