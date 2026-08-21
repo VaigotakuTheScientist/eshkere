@@ -57,6 +57,10 @@ const browser = await chromium.launch({
   // Use a system chromium when provided (e.g. CI images with preinstalled browsers).
   executablePath: process.env.CHROMIUM_PATH || undefined,
   proxy: remoteTarget && proxyServer ? { server: proxyServer } : undefined,
+  // Headless Chrome has no GPU, so WebGL is only available through the
+  // software rasteriser. Forcing it also makes the universe checks render
+  // the same everywhere, which is what makes their screenshots comparable.
+  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
 });
 
 // ---------------------------------------------------------- route sweep
@@ -580,6 +584,296 @@ for (const viewport of viewports) {
   note(heading, 'homepage readable with reduced motion');
   await page.screenshot({ path: `${SHOT_DIR}/home-reduced-motion.png` });
   await context.close();
+}
+
+
+// ------------------------------------------------------- universe map
+{
+  /**
+   * The universe is a lazily-loaded WebGL island over the hero. These checks
+   * cover the three things that could break quietly: the hero staying
+   * untouched at rest, the transition actually resolving into a map, and the
+   * Notion-driven Current Source surviving the trip into the wider scene.
+   */
+  const generated = JSON.parse(
+    readFileSync(new URL('../src/data/current-source.generated.json', import.meta.url), 'utf8')
+  );
+
+  const openUniverse = async (page) => {
+    await page.click('[data-universe-open]');
+    await page.waitForFunction(
+      () => document.documentElement.classList.contains('universe-open'),
+      null,
+      { timeout: 25000 }
+    );
+    await page.waitForTimeout(600);
+  };
+
+  // --- at rest: nothing of the universe is on screen or on the network
+  {
+    const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    const requests = [];
+    page.on('request', (request) => requests.push(request.url()));
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+
+    const rest = await page.evaluate(() => ({
+      overlayHidden: document.querySelector('[data-universe]').hidden,
+      active: document.documentElement.className,
+      heroArtVisible: !!document.querySelector('[data-art-image]:not([hidden]) img'),
+      indexInert: document.querySelector('.universe-index').inert,
+      launcher: !!document.querySelector('[data-universe-open]'),
+    }));
+    note(rest.overlayHidden, 'universe overlay hidden at rest');
+    note(rest.active === '', `no universe classes at rest ("${rest.active}")`);
+    note(rest.heroArtVisible, 'hero artwork untouched at rest');
+    note(rest.indexInert, 'text index dormant while the page is just the page');
+    note(rest.launcher, 'visible zoom-out control exists');
+
+    // The renderer is prefetched on idle, never as part of first paint.
+    const html = await (await fetch(BASE + '/')).text();
+    note(
+      !/<script[^>]*src="[^"]*universe[^"]*\.js"/.test(html.replace(/UniverseMap[^"]*/g, '')),
+      'three.js chunk is not a first-paint script'
+    );
+    await context.close();
+  }
+
+  // --- the transition resolves into a map
+  {
+    const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    const errors = [];
+    page.on('console', (msg) => msg.type() === 'error' && errors.push(msg.text()));
+    page.on('pageerror', (error) => errors.push(error.message));
+
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await openUniverse(page);
+
+    const regions = await page.$$eval('.u-label--region:not([hidden])', (els) =>
+      els.map((el) => el.dataset.nodeId)
+    );
+    note(
+      regions.length === 5 &&
+        ['health', 'ai-safety', 'power', 'knowledge', 'culture'].every((id) =>
+          regions.includes(id)
+        ),
+      `universe shows Health Core and four galaxies (${regions.join(', ')})`
+    );
+
+    const hud = await page.evaluate(() => ({
+      hidden: document.querySelector('[data-universe-hud]').hidden,
+      level: document.querySelector('[data-universe-level]').textContent,
+      crumbs: [...document.querySelectorAll('[data-universe-crumbs] .u-crumb')].length,
+    }));
+    note(!hud.hidden && hud.level === 'Universe', `HUD reports the zoom level (${hud.level})`);
+    await page.screenshot({ path: `${SHOT_DIR}/universe-overview.png` });
+
+    // --- fly into a galaxy
+    await page.click('.u-label[data-node-id="ai-safety"]');
+    await page.waitForTimeout(1800);
+    const galaxy = await page.evaluate(() => ({
+      level: document.querySelector('[data-universe-level]').textContent,
+      crumbs: [...document.querySelectorAll('.u-crumb')].map((el) => el.textContent),
+      systems: [...document.querySelectorAll('.u-label--system:not([hidden])')].length,
+      detail: document.querySelector('[data-universe-detail-title]').textContent,
+    }));
+    note(galaxy.level === 'Galaxy', `flying in reaches galaxy level (${galaxy.level})`);
+    note(
+      galaxy.crumbs.join(' / ') === 'Universe / AI Safety',
+      `breadcrumb tracks the flight (${galaxy.crumbs.join(' / ')})`
+    );
+    note(galaxy.systems >= 5, `AI Safety reveals its star systems (${galaxy.systems})`);
+    note(galaxy.detail === 'AI Safety', `detail panel names the selection (${galaxy.detail})`);
+    await page.screenshot({ path: `${SHOT_DIR}/universe-galaxy.png` });
+
+    // --- a real destination, with a real href
+    await page.click('.u-label[data-node-id="ais-grantmaking"]');
+    await page.waitForTimeout(1800);
+    const planet = await page.evaluate(() => {
+      const el = document.querySelector('.u-label[data-node-id="ais-grantmaking-os"]');
+      return el
+        ? { href: el.getAttribute('href'), target: el.getAttribute('target'), tag: el.tagName }
+        : null;
+    });
+    note(
+      planet?.tag === 'A' && planet.href?.includes('Grantmaking-OS') && planet.target === '_blank',
+      `Grantmaking OS is a real link (${planet?.href?.slice(0, 48)})`
+    );
+
+    const pending = await page.evaluate(
+      () => document.querySelector('.u-label[data-node-id="ais-rfps"]')?.tagName
+    );
+    note(pending !== 'A', 'destinations without a page are not links');
+    await page.screenshot({ path: `${SHOT_DIR}/universe-system.png` });
+
+    // --- Escape walks back out one semantic level at a time
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(1400);
+    const back1 = await page.evaluate(
+      () => document.querySelector('[data-universe-level]').textContent
+    );
+    note(back1 === 'Galaxy', `Escape returns to the galaxy (${back1})`);
+
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(1400);
+    const back2 = await page.evaluate(
+      () => document.querySelector('[data-universe-level]').textContent
+    );
+    note(back2 === 'Universe', `Escape returns to the universe (${back2})`);
+
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(3200);
+    const closed = await page.evaluate(() => ({
+      classes: document.documentElement.className,
+      overlayHidden: document.querySelector('[data-universe]').hidden,
+      headingVisible: !!document.querySelector('.hero__heading').offsetHeight,
+      heroOpacity: getComputedStyle(document.querySelector('.hero__stage')).opacity,
+      indexInert: document.querySelector('.universe-index').inert,
+    }));
+    note(closed.classes === '' && closed.overlayHidden, 'Escape at the top level returns the page');
+    note(
+      closed.headingVisible && closed.heroOpacity === '1',
+      `hero is restored exactly (stage opacity ${closed.heroOpacity})`
+    );
+    note(closed.indexInert, 'text index goes dormant again on exit');
+
+    note(errors.length === 0, `universe raises no console errors (${errors.join('; ').slice(0, 200)})`);
+    await context.close();
+  }
+
+  // --- the Current Source comet is the hero star, moved
+  {
+    const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await openUniverse(page);
+
+    const comet = await page.evaluate(() => {
+      const el = document.querySelector('.u-label--comet');
+      return el
+        ? {
+            name: el.getAttribute('aria-label'),
+            short: el.querySelector('.u-label__text--short')?.textContent,
+            href: el.getAttribute('href'),
+            target: el.getAttribute('target'),
+            rel: el.getAttribute('rel'),
+          }
+        : null;
+    });
+    note(
+      comet?.name === `Currently reading: ${generated.title}`,
+      `comet carries the generated title (${comet?.name?.slice(0, 60)})`
+    );
+    note(comet?.href === generated.url, 'comet links to the generated URL');
+    note(
+      comet?.target === '_blank' && comet.rel?.includes('noopener'),
+      'comet opens safely in a new tab'
+    );
+    note(comet?.short === 'Current source', 'comet is compact until hovered');
+    await context.close();
+  }
+
+  // --- keyboard-only operation
+  {
+    const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await openUniverse(page);
+
+    await page.keyboard.press('+');
+    await page.waitForTimeout(1500);
+    const zoomed = await page.evaluate(
+      () => document.querySelector('[data-universe-level]').textContent
+    );
+    note(zoomed === 'Galaxy', `"+" zooms in one level (${zoomed})`);
+
+    await page.keyboard.press('-');
+    await page.waitForTimeout(1500);
+    const out = await page.evaluate(
+      () => document.querySelector('[data-universe-level]').textContent
+    );
+    note(out === 'Universe', `"-" zooms out one level (${out})`);
+
+    const reachable = await page.evaluate(
+      () => [...document.querySelectorAll('.u-label')].filter((el) => el.tabIndex === 0).length
+    );
+    note(reachable >= 5, `map labels are in the tab order (${reachable})`);
+    await context.close();
+  }
+
+  // --- reduced motion: no flight, no streaks, still a map
+  {
+    const context = await browser.newContext({
+      ...CTX,
+      viewport: { width: 1440, height: 900 },
+      reducedMotion: 'reduce',
+    });
+    const page = await context.newPage();
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await openUniverse(page);
+    const regions = await page.$$eval('.u-label--region:not([hidden])', (els) => els.length);
+    note(regions === 5, `reduced motion still resolves the map (${regions} regions)`);
+    await page.screenshot({ path: `${SHOT_DIR}/universe-reduced-motion.png` });
+    await context.close();
+  }
+
+  // --- phone
+  {
+    const context = await browser.newContext({ ...CTX, viewport: { width: 390, height: 844 } });
+    const page = await context.newPage();
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await openUniverse(page);
+    const phone = await page.evaluate(() => ({
+      regions: document.querySelectorAll('.u-label--region:not([hidden])').length,
+      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      controls: document.querySelectorAll('[data-universe-action]').length,
+    }));
+    note(phone.regions >= 4, `phone shows the composition (${phone.regions} regions)`);
+    note(phone.overflow <= 1, `phone has no horizontal overflow (${phone.overflow}px)`);
+    note(phone.controls === 4, `phone keeps visible zoom controls (${phone.controls})`);
+    await page.screenshot({ path: `${SHOT_DIR}/universe-phone.png` });
+    await context.close();
+  }
+
+  // --- no WebGL: the map becomes a document
+  {
+    const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    await page.addInitScript(() => {
+      const original = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function (type, ...rest) {
+        if (typeof type === 'string' && type.startsWith('webgl')) return null;
+        return original.call(this, type, ...rest);
+      };
+      delete window.WebGLRenderingContext;
+    });
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    // No click: the renderer module is prefetched on idle, finds no WebGL,
+    // and switches the page over on its own — including hiding the control
+    // that would otherwise promise something it cannot deliver.
+    await page.waitForFunction(
+      () => document.documentElement.classList.contains('universe-unsupported'),
+      null,
+      { timeout: 30000 }
+    );
+    const fallback = await page.evaluate(() => {
+      const index = document.querySelector('.universe-index');
+      return {
+        inert: index.inert,
+        visible: index.getBoundingClientRect().height > 200,
+        destinations: index.querySelectorAll('a').length,
+        launcherHidden: getComputedStyle(document.querySelector('.universe-launch')).display,
+        heroIntact: getComputedStyle(document.querySelector('.hero__stage')).opacity,
+      };
+    });
+    note(!fallback.inert && fallback.visible, 'without WebGL the text index becomes the map');
+    note(fallback.destinations >= 1, `fallback keeps real destinations (${fallback.destinations})`);
+    note(fallback.launcherHidden === 'none', 'fallback hides a control that cannot work');
+    note(fallback.heroIntact === '1', 'fallback leaves the hero alone');
+    await page.screenshot({ path: `${SHOT_DIR}/universe-no-webgl.png`, fullPage: true });
+    await context.close();
+  }
 }
 
 await browser.close();

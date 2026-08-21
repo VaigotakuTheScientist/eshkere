@@ -2,6 +2,8 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import HeroArt from '../components/HeroArt.astro';
+import UniverseLaunch from '../components/UniverseLaunch.astro';
+import UniverseMap from '../components/UniverseMap.astro';
 import Sparkle from '../components/Sparkle.astro';
 import PixelHeart from '../components/PixelHeart.astro';
 import ContentCard from '../components/ContentCard.astro';
@@ -37,8 +39,13 @@ const hasSamples = research.some((entry) => entry.data.prototype);
         <a class="arrow-link arrow-link--accent" href={url('/our-approach')}>Explore our approach</a>
         <a class="arrow-link" href={url('/portfolio')}>View portfolio</a>
       </div>
+      <div class="hero__escape">
+        <UniverseLaunch />
+      </div>
     </div>
   </section>
+
+  <UniverseMap />
 
   <!-- ================================================== health & games -->
   <section class="section duality" aria-labelledby="duality-heading">
@@ -366,6 +373,10 @@ const hasSamples = research.some((entry) => entry.data.prototype);
     flex-wrap: wrap;
     gap: 1.25rem 2.75rem;
     margin-top: 0.9rem;
+  }
+
+  .hero__escape {
+    margin-top: 0.35rem;
   }
 
   @media (max-width: 900px) {

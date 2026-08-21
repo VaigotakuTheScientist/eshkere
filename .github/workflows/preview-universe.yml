@@ -1,0 +1,58 @@
+name: Preview the universe map
+
+# A preview of the universe-map experiment, published *alongside* the live
+# site instead of over it:
+#
+#   live     https://vaigotakuthescientist.github.io/eshkere/
+#   preview  https://vaigotakuthescientist.github.io/eshkere/preview/universe-map/
+#
+# Manual only. There is no push trigger on purpose — the experiment should
+# never publish itself, and the rollback snapshot
+# (snapshot/pre-universe-map-2026-08-21) stays the recoverable version of
+# the site until someone decides otherwise.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch or commit to preview'
+        required: false
+        default: 'feature/universe-map'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pages-preview
+  cancel-in-progress: true
+
+jobs:
+  build-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || 'feature/universe-map' }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Same fail-closed sync the live deploy uses, so the preview's Current
+      # Source comet points where the live hero star points.
+      - name: Sync current source from Notion
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+        run: npm run sync:source
+      - name: Build for the preview sub-path
+        env:
+          BASE_PATH: /eshkere/preview/universe-map
+        run: npm run build
+      - name: Publish to gh-pages under preview/universe-map
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          destination_dir: preview/universe-map
+          # Never delete anything already on gh-pages: the live site lives
+          # at the root of that branch and must survive this job untouched.
+          keep_files: true

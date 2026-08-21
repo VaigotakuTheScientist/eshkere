@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Eshkere \u2014 Maximize Health, Play Games. Organization website.",
+  "description": "Eshkere — Maximize Health, Play Games. Organization website.",
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
@@ -18,11 +18,13 @@
     "@fontsource-variable/playfair-display": "^5.3.0",
     "@fontsource-variable/space-grotesk": "^5.3.0",
     "@fontsource/silkscreen": "^5.3.0",
-    "astro": "^7.2.2"
+    "astro": "^7.2.2",
+    "three": "^0.185.1"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
     "@notionhq/client": "^5.26.0",
+    "@types/three": "^0.185.4",
     "playwright": "^1.62.1",
     "typescript": "^6.0.3"
   }

@@ -1,0 +1,680 @@
+---
+import { currentSourceComet, homeWorld, regions } from '../universe/data';
+
+/**
+ * The universe overlay.
+ *
+ * Three things ship in the HTML: an empty canvas, a HUD, and a complete
+ * text index of the map. The index is not a consolation prize — it is the
+ * map's accessible and no-WebGL form, built from exactly the same data the
+ * renderer uses, so the two can never describe different universes.
+ *
+ * No renderer code is loaded here. The heavy module is fetched only when a
+ * visitor asks to go up a level.
+ */
+const healthCore = regions.find((region) => region.id === 'health');
+const gameGalaxies = regions.filter((region) => region.id !== 'health');
+---
+
+<div class="universe" data-universe hidden>
+  <canvas class="universe__canvas" data-universe-canvas aria-hidden="true"></canvas>
+
+  <div class="universe__labels" data-universe-labels></div>
+
+  <div class="universe__hud" data-universe-hud hidden>
+    <div class="universe__crumbs" data-universe-crumbs aria-label="Map location"></div>
+
+    <div class="universe__controls">
+      <p class="universe__level"><span data-universe-level>Universe</span></p>
+      <button class="universe__control" type="button" data-universe-action="in" aria-label="Zoom in one level">
+        <span aria-hidden="true">+</span>
+      </button>
+      <button class="universe__control" type="button" data-universe-action="out" aria-label="Zoom out one level">
+        <span aria-hidden="true">−</span>
+      </button>
+      <button class="universe__control" type="button" data-universe-action="home" aria-label="Recentre the map">
+        <span aria-hidden="true">◎</span>
+      </button>
+      <button class="universe__control universe__control--exit" type="button" data-universe-action="exit">
+        Back to the page
+      </button>
+    </div>
+  </div>
+
+  <aside class="universe__detail" data-universe-detail hidden>
+    <p class="universe__detail-kind" data-universe-detail-kind></p>
+    <h2 class="universe__detail-title" data-universe-detail-title></h2>
+    <p class="universe__detail-blurb" data-universe-detail-blurb></p>
+    <a class="universe__detail-link" data-universe-detail-link hidden href="#">Open destination</a>
+    <button class="universe__detail-close" type="button" data-universe-detail-close aria-label="Close details">
+      <span aria-hidden="true">×</span>
+    </button>
+  </aside>
+
+  <p class="universe__hint" data-universe-hint hidden>
+    Click a galaxy to fly in · <kbd>−</kbd>/<kbd>+</kbd> to change level · <kbd>Esc</kbd> to go back
+  </p>
+</div>
+
+<!--
+  The same map, as text, built from the same data the renderer reads.
+
+  It starts dormant — `inert` and hidden from assistive technology — because
+  while the homepage is just the homepage there is no map to describe. The
+  controller wakes it whenever the universe opens, and when WebGL is
+  unavailable it stops being a mirror and becomes the map itself.
+-->
+<nav class="universe-index" aria-label="Eshkere universe map" inert aria-hidden="true">
+  <h2 class="universe-index__heading">The Eshkere universe</h2>
+  <p class="universe-index__lead">
+    Health is the core everything else is arranged around. The four galaxies are the major
+    domains — the games played on top of it.
+  </p>
+
+  {
+    healthCore && (
+      <section class="universe-index__region universe-index__region--core">
+        <h3>{healthCore.label}</h3>
+        <p>{healthCore.tagline}</p>
+        <ul>
+          {healthCore.systems.map((system) => (
+            <li>
+              <strong>{system.label}</strong> — {system.blurb}
+            </li>
+          ))}
+        </ul>
+      </section>
+    )
+  }
+
+  {
+    gameGalaxies.map((region) => (
+      <section class="universe-index__region">
+        <h3>{region.label}</h3>
+        <p>{region.tagline}</p>
+        <ul>
+          {region.systems.map((system) => (
+            <li>
+              <strong>{system.label}</strong> — {system.blurb}
+              {system.planets && system.planets.length > 0 && (
+                <ul>
+                  {system.planets.map((planet) => (
+                    <li>
+                      {planet.href ? (
+                        <a href={planet.href} target="_blank" rel="noopener noreferrer">
+                          {planet.label}
+                        </a>
+                      ) : (
+                        <span>{planet.label}</span>
+                      )}
+                      {!planet.href && <span class="universe-index__pending"> — no destination yet</span>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))
+  }
+
+  <section class="universe-index__region universe-index__region--transient">
+    <h3>Transient objects</h3>
+    <ul>
+      <li>
+        <strong>{homeWorld.label}</strong> — {homeWorld.blurb}
+      </li>
+      {
+        currentSourceComet && (
+          <li>
+            <strong>Current Source comet</strong> —{' '}
+            <a href={currentSourceComet.href} target="_blank" rel="noopener noreferrer">
+              Currently reading: {currentSourceComet.title}
+            </a>
+          </li>
+        )
+      }
+    </ul>
+  </section>
+</nav>
+
+<script>
+  import type { UniverseApi } from '../universe/index';
+
+  /**
+   * Boot: nothing heavy until it is wanted.
+   *
+   * The renderer module is prefetched once the browser is idle, and again
+   * the moment a visitor shows intent — hovering the control, or starting a
+   * zoom-out gesture. Until one of those happens the homepage has paid
+   * nothing for the universe beyond this handful of lines.
+   */
+  const overlay = document.querySelector('[data-universe]');
+  const opener = document.querySelector<HTMLElement>('[data-universe-open]');
+
+  if (overlay && opener) {
+    let loading: Promise<UniverseApi | null> | null = null;
+    let api: UniverseApi | null = null;
+
+    const load = () => {
+      loading ??= import('../universe/index')
+        .then((module) => {
+          api = module.createUniverse();
+          // Hang the controls off the overlay element rather than `window`:
+          // reachable from the console and from the UI tests, invisible to
+          // everything else on the page.
+          (overlay as HTMLElement & { universe?: UniverseApi | null }).universe = api;
+          return api;
+        })
+        .catch(() => null);
+      return loading;
+    };
+
+    // Warm the chunk when nothing else is competing for the network.
+    const idle =
+      window.requestIdleCallback ?? ((fn: () => void) => window.setTimeout(fn, 1800));
+    window.addEventListener('load', () => idle(() => void load()), { once: true });
+
+    opener.addEventListener('pointerenter', () => void load(), { once: true });
+    opener.addEventListener('focus', () => void load(), { once: true });
+
+    // The opener is also handled inside the module once it exists; this
+    // covers the click that lands before the chunk has finished arriving.
+    opener.addEventListener('click', () => {
+      void load().then((instance) => {
+        if (instance && !instance.isOpen()) instance.open();
+      });
+    });
+
+    // A zoom-out gesture on the hero is intent too. The events are only
+    // observed here — the module claims them once it is live.
+    const arm = (event: WheelEvent) => {
+      if (window.scrollY > 8) return;
+      if (!(event.ctrlKey && event.deltaY > 0) && !(!event.ctrlKey && event.deltaY < -2)) return;
+      void load();
+      window.removeEventListener('wheel', arm);
+    };
+    window.addEventListener('wheel', arm, { passive: true });
+  }
+</script>
+
+<style is:global>
+  /* ------------------------------------------------------------ overlay */
+  .universe {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    /* The canvas paints the world; this element only holds it. */
+    background: var(--space-black);
+  }
+
+  .universe__canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    opacity: 0;
+  }
+
+  .universe__labels {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  /* --------------------------------------------------------------- labels */
+  .u-label {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: grid;
+    justify-items: center;
+    gap: 0.15rem;
+    padding: 0.3rem 0.7rem;
+    border: 0;
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: var(--ink);
+    font-family: var(--font-body);
+    line-height: 1.25;
+    white-space: nowrap;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    pointer-events: auto;
+    will-change: transform, opacity;
+    transition: color var(--speed-quick) var(--ease-out);
+  }
+
+  .u-label__text {
+    text-shadow:
+      0 0 14px rgba(5, 5, 8, 0.95),
+      0 1px 2px rgba(5, 5, 8, 0.9);
+  }
+
+  .u-label__status {
+    font-family: var(--font-pixel);
+    font-size: 0.52rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  .u-label--region .u-label__text {
+    font-family: var(--font-display);
+    font-size: clamp(1.05rem, 1.6vw, 1.5rem);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .u-label--region {
+    /* A hairline under a galaxy name, so it reads as a place, not a tooltip. */
+    padding-bottom: 0.45rem;
+    background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+    background-size: 70% 1px;
+    background-position: bottom center;
+    background-repeat: no-repeat;
+  }
+
+  .u-label--system .u-label__text {
+    font-size: 0.78rem;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+
+  .u-label--planet .u-label__text {
+    font-size: 0.74rem;
+    color: var(--lime);
+  }
+
+  .u-label--home .u-label__text,
+  .u-label--comet .u-label__text {
+    font-family: var(--font-pixel);
+    font-size: 0.56rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .u-label--home .u-label__text {
+    color: var(--cyan);
+  }
+
+  .u-label--comet .u-label__text {
+    color: #ffe6a8;
+  }
+
+  /* The comet says what it is at rest and what it is pointing at on hover. */
+  .u-label__text--full {
+    display: none;
+    max-width: 26ch;
+    white-space: normal;
+  }
+
+  .u-label:hover .u-label__text--short,
+  .u-label:focus-visible .u-label__text--short {
+    display: none;
+  }
+
+  .u-label:hover .u-label__text--full,
+  .u-label:focus-visible .u-label__text--full {
+    display: block;
+  }
+
+  .u-label:hover .u-label__text,
+  .u-label:focus-visible .u-label__text {
+    color: #ffffff;
+  }
+
+  .u-label:focus-visible {
+    outline: 2px solid var(--cyan);
+    outline-offset: 3px;
+  }
+
+  /* ------------------------------------------------------------------ HUD */
+  .universe__hud {
+    position: absolute;
+    inset: 0;
+    padding: clamp(1rem, 3vw, 2rem);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    pointer-events: none;
+  }
+
+  .universe__hud > * {
+    pointer-events: auto;
+  }
+
+  .universe__crumbs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .u-crumb {
+    border: 0;
+    background: transparent;
+    padding: 0.2rem 0.1rem;
+    color: var(--ink-faint);
+    font-size: 0.66rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .u-crumb + .u-crumb::before {
+    content: '/';
+    margin: 0 0.5rem 0 0.35rem;
+    color: rgba(255, 255, 255, 0.25);
+  }
+
+  .u-crumb:hover {
+    color: var(--cyan);
+  }
+
+  .u-crumb[aria-current='true'] {
+    color: var(--ink);
+  }
+
+  .universe__controls {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.45rem;
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius-pill);
+    background: rgba(5, 5, 8, 0.62);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .universe__level {
+    padding-right: 0.6rem;
+    margin-right: 0.15rem;
+    border-right: 1px solid var(--line-soft);
+    color: var(--cyan);
+    font-size: 0.58rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+  }
+
+  .universe__control {
+    min-width: 2rem;
+    height: 2rem;
+    padding: 0 0.5rem;
+    border: 0;
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: var(--ink-soft);
+    font-size: 0.9rem;
+    line-height: 1;
+    cursor: pointer;
+    transition:
+      color var(--speed-quick) var(--ease-out),
+      background-color var(--speed-quick) var(--ease-out);
+  }
+
+  .universe__control--exit {
+    font-size: 0.62rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .universe__control:hover,
+  .universe__control:focus-visible {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.09);
+  }
+
+  /* --------------------------------------------------------------- detail */
+  .universe__detail {
+    position: absolute;
+    right: clamp(1rem, 3vw, 2rem);
+    bottom: clamp(1rem, 3vw, 2rem);
+    width: min(24rem, calc(100vw - 2rem));
+    padding: 1.25rem 1.4rem;
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius);
+    background: rgba(9, 9, 18, 0.82);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .universe__detail-kind {
+    color: var(--cyan);
+    font-size: 0.56rem;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+  }
+
+  .universe__detail-title {
+    margin-top: 0.4rem;
+    font-size: var(--text-lg);
+  }
+
+  .universe__detail-blurb {
+    margin-top: 0.5rem;
+    color: var(--ink-soft);
+    font-size: var(--text-sm);
+    line-height: 1.55;
+  }
+
+  .universe__detail-link {
+    display: inline-block;
+    margin-top: 0.9rem;
+    color: var(--lime);
+    font-size: 0.7rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .universe__detail-close {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.6rem;
+    width: 1.8rem;
+    height: 1.8rem;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--ink-faint);
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .universe__detail-close:hover {
+    color: var(--ink);
+  }
+
+  /* ----------------------------------------------------------------- hint */
+  .universe__hint {
+    position: absolute;
+    left: clamp(1rem, 3vw, 2rem);
+    bottom: clamp(1rem, 3vw, 2rem);
+    color: var(--ink-faint);
+    font-size: 0.62rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .universe__hint kbd {
+    padding: 0.05rem 0.3rem;
+    border: 1px solid var(--line-soft);
+    border-radius: 4px;
+    font-family: var(--font-pixel);
+    font-size: 0.58rem;
+  }
+
+  /* ---------------------------------------------- the page while open
+     These rules cross component boundaries — the hero's artwork lives in
+     HeroArt.astro and its typography in index.astro — so they are declared
+     globally rather than in either component's scoped block, where they
+     would silently fail to match.
+
+     The shape of it: the artwork hands over to the canvas, and the hero's
+     own typography stays in the DOM *above* the canvas so it can come apart
+     in layers before the camera has gone anywhere. */
+  html.universe-active body {
+    overflow: hidden;
+  }
+
+  html.universe-active .hero {
+    position: relative;
+    /* Above the overlay, so the typography is still on top of the canvas. */
+    z-index: 210;
+    background: transparent;
+    pointer-events: none;
+  }
+
+  html.universe-active .hero__stage,
+  html.universe-active .hero__vignette,
+  html.universe-active .art-switcher {
+    opacity: 0;
+  }
+
+  /* Nothing under the canvas needs to keep animating. */
+  html.universe-active .hero__stage {
+    animation: none;
+  }
+
+  /* The hero's typography is still painted above the canvas, so it must
+     stop being a click target — including its children, which the hero
+     re-enables individually so the artwork's hotspots stay reachable at
+     rest. Once the universe has fully resolved it leaves the page entirely. */
+  html.universe-active .hero__content,
+  html.universe-active .hero__content * {
+    pointer-events: none;
+  }
+
+  html.universe-open .hero__content {
+    visibility: hidden;
+  }
+
+  /* Phase A: the supporting line and the calls to action go first... */
+  html.universe-active .hero__support {
+    opacity: clamp(0, calc(1 - var(--universe-progress, 0) * 9), 1);
+    transform: translate3d(0, calc(var(--universe-progress, 0) * -3rem), 0);
+  }
+
+  html.universe-active .hero__ctas,
+  html.universe-active .hero__escape {
+    opacity: clamp(0, calc(1 - var(--universe-progress, 0) * 12), 1);
+    transform: translate3d(0, calc(var(--universe-progress, 0) * -1.6rem), 0);
+  }
+
+  /* ...and the headline holds longest, then hands over mid-frame to the same
+     words rendered as particles. It never fades on its own. */
+  html.universe-active .hero__heading {
+    opacity: clamp(0, calc(1 - var(--universe-intro, 0)), 1);
+  }
+
+  /* ------------------------------------------------------- text index */
+  .universe-index {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* Without WebGL the text index stops being an alternative and becomes the
+     map: laid out properly, in the site's own voice. */
+  html.universe-unsupported .universe-launch {
+    display: none;
+  }
+
+  html.universe-unsupported .universe-index {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0 auto;
+    padding: var(--section-gap) var(--gutter);
+    max-width: var(--container);
+    overflow: visible;
+    clip-path: none;
+    white-space: normal;
+    display: grid;
+    gap: 1.75rem;
+  }
+
+  html.universe-unsupported .universe-index__heading {
+    font-size: var(--text-2xl);
+  }
+
+  html.universe-unsupported .universe-index__lead {
+    color: var(--ink-soft);
+    max-width: 46rem;
+  }
+
+  html.universe-unsupported .universe-index__region {
+    padding: 1.5rem;
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius);
+    background: rgba(255, 255, 255, 0.02);
+    display: grid;
+    gap: 0.7rem;
+  }
+
+  html.universe-unsupported .universe-index__region--core {
+    background:
+      radial-gradient(24rem 14rem at 12% 0%, rgba(255, 185, 146, 0.12), transparent 70%),
+      rgba(255, 255, 255, 0.02);
+  }
+
+  html.universe-unsupported .universe-index__region ul {
+    display: grid;
+    gap: 0.5rem;
+    padding-left: 1.2rem;
+    color: var(--ink-soft);
+    font-size: var(--text-sm);
+  }
+
+  html.universe-unsupported .universe-index__pending {
+    color: var(--ink-faint);
+    font-style: italic;
+  }
+
+  @media (max-width: 700px) {
+    /* Names have to give up some presence on a phone or they stop being
+       able to sit next to the thing they name. */
+    .u-label--region .u-label__text {
+      font-size: 0.92rem;
+      letter-spacing: 0.03em;
+    }
+
+    .u-label--system .u-label__text {
+      font-size: 0.68rem;
+      letter-spacing: 0.08em;
+    }
+
+    .universe__hud {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .universe__controls {
+      align-self: flex-end;
+    }
+
+    .universe__detail {
+      left: clamp(1rem, 3vw, 2rem);
+      width: auto;
+      /* Clear of the controls, which sit within thumb reach at the bottom. */
+      bottom: 5.2rem;
+    }
+
+    .universe__hint {
+      display: none;
+    }
+  }
+</style>

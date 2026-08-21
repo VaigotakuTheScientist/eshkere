@@ -22,6 +22,7 @@ const showSwitcher = artworks.length > 1;
         class="hero__art"
         data-art-image={art.id}
         data-art-theme={art.theme}
+        data-art-planet={`${art.planet.cx},${art.planet.cy},${art.planet.r}`}
         style={`--focus-desktop: ${art.focus.desktop}; --focus-mobile: ${art.focus.mobile}`}
         hidden={index > 0}
         aria-hidden="true"

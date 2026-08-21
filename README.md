@@ -22,6 +22,7 @@ partners, funding, portfolio, publications or history.
 - Self-hosted fonts (Playfair Display, Space Grotesk, Silkscreen via Fontsource)
 - Hand-rolled static search (JSON index generated at build time)
 - No client-side frameworks; a few small vanilla scripts for menu, search and filters
+- One lazily-loaded WebGL island (Three.js) for the universe map — see below
 
 ## Commands
 
@@ -32,17 +33,85 @@ partners, funding, portfolio, publications or history.
 | `npm run build`     | Production build to `dist/`                        |
 | `npm run preview`   | Serve the production build locally                 |
 | `npm run check`     | Type-check (`astro check`)                         |
-| `npm run test:ui`   | Playwright UI checks (needs a running server): `BASE_URL=http://localhost:4321/eshkere node scripts/ui-check.mjs` |
+| `npm run test:ui`   | Playwright UI checks, including the universe map (needs a running server): `BASE_URL=http://localhost:4321/eshkere node scripts/ui-check.mjs` |
 | `npm run test:source` | Offline checks for the Notion current-source validation rules |
 | `npm run sync:source` | Refresh `current-source.generated.json` from Notion (needs `NOTION_TOKEN`) |
+
+## The universe map (experiment)
+
+The homepage hero is the *near camera state* of a larger map. Zooming out —
+with the **Zoom out to the universe** control, a trackpad pinch, a two-finger
+scroll up at the top of the page, or `+`/`-` and `Esc` once inside — pulls the
+camera back until the artwork turns out to be one planet in an Eshkere
+universe: a **Health Core** at the centre with **AI Safety**, **Power**,
+**Knowledge & Science** and **Culture & Play** arranged around it.
+
+Design and interaction decisions live in
+[`docs/universe-map-spec.md`](docs/universe-map-spec.md), which is the
+authoritative spec. The code follows this shape:
+
+| Path | What it is |
+| --- | --- |
+| `src/universe/data.ts` | The authored composition — every position is hand-placed, there is no layout algorithm |
+| `src/universe/stage.ts` | Scene, camera rig, and the single `progress` value that carries the hero → universe transition |
+| `src/universe/regions.ts` | The five region morphologies (core, lattice, vortex, spiral, cloud) |
+| `src/universe/sky.ts` | Parallax star layers, nebulae, and the escape-velocity streak field |
+| `src/universe/hero.ts` | The hero artwork as a WebGL plane, and the headline as particles |
+| `src/universe/markers.ts` | Star systems, planets, link filaments, and the Current Source comet |
+| `src/universe/labels.ts` | Labels as real DOM controls, projected each frame |
+| `src/universe/index.ts` | Input, HUD and lifecycle — the only module the page imports |
+
+### What it costs the homepage
+
+Nothing until it is asked for. The page ships a ~2KB boot script; the
+renderer (Three.js plus the map) is a separate ~146KB gzipped chunk that is
+prefetched when the browser goes idle and only ever *executed* when a
+visitor starts to zoom out. First paint never waits on WebGL, and the hero
+at rest is byte-for-byte the hero that was there before.
+
+### When it cannot run
+
+- **No WebGL** — `.universe-index`, a complete text version of the map built
+  from the same data, stops being a screen-reader mirror and becomes the
+  visible map. The zoom-out control hides itself rather than promising
+  something it cannot do.
+- **`prefers-reduced-motion`** — the flight, the streaks and the drift are
+  replaced by a short crossfade to the resolved map. Everything is still
+  reachable.
+- **A device that cannot keep up** — the renderer walks down a ladder as it
+  detects sustained slow frames: device pixel ratio first, then the nebulae,
+  then the streak field. Composition, labels and navigation are never traded
+  away.
+
+### Adding to the map
+
+Everything addressable comes from `src/universe/data.ts`: add a `System` to a
+region, or a `Destination` to a system, and it appears in the renderer, in
+the labels, in the keyboard order and in the text fallback at once. A planet
+with `href: null` is shown as a real part of the taxonomy that has no page
+yet — the map says so rather than inventing a link.
 
 ## Deploying
 
 The site builds for GitHub Pages project hosting by default
-(`base: /eshkere`). `.github/workflows/deploy.yml` publishes `dist/` to
-GitHub Pages on pushes to `main` (enable **Settings → Pages → Source: GitHub
-Actions** once). For a custom domain, build with `SITE=https://example.org
-BASE_PATH=/ npm run build`.
+(`base: /eshkere`). `.github/workflows/deploy.yml` publishes `dist/` to the
+`gh-pages` branch on pushes to the default branch. For a custom domain,
+build with `SITE=https://example.org BASE_PATH=/ npm run build`.
+
+### Previewing an experiment without replacing the live site
+
+`.github/workflows/preview-universe.yml` is **manual only** (Actions → *Preview
+the universe map* → Run workflow). It builds a branch with
+`BASE_PATH=/eshkere/preview/universe-map` and publishes it into that
+subdirectory of `gh-pages` with `keep_files: true`, so the live site at the
+root of that branch is never touched.
+
+    live     https://vaigotakuthescientist.github.io/eshkere/
+    preview  https://vaigotakuthescientist.github.io/eshkere/preview/universe-map/
+
+Locally, `npm run dev` on the branch is enough — the frozen version of the
+site remains recoverable from `snapshot/pre-universe-map-2026-08-21`, which
+nothing in this repository writes to.
 
 ## Current source (Notion → hero star)
 

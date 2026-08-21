@@ -25,6 +25,20 @@ export interface HeroHotspot {
   rotate?: number;
 }
 
+/**
+ * Where the artist drew the globe, as fractions of the source image: centre
+ * as a fraction of width/height, radius as a fraction of height. Measured by
+ * fitting a circle to the rim highlight.
+ *
+ * Nothing on the hero itself uses this — it is what lets the universe map
+ * turn the artwork's rectangle into the artwork's planet without a seam.
+ */
+export interface HeroPlanet {
+  cx: number;
+  cy: number;
+  r: number;
+}
+
 export interface HeroArtwork {
   id: string;
   /** Shown in the artwork switcher. */
@@ -39,6 +53,7 @@ export interface HeroArtwork {
   theme: 'silver' | 'neon';
   /** How the image is anchored while cropping, as CSS object-position. */
   focus: { desktop: string; mobile: string };
+  planet: HeroPlanet;
   hotspots: HeroHotspot[];
 }
 
@@ -75,6 +90,7 @@ export const heroArtworks: HeroArtwork[] = [
     src: artAurora,
     theme: 'silver',
     focus: { desktop: '62% 38%', mobile: '68% 30%' },
+    planet: { cx: 0.5911, cy: 0.6057, r: 0.4618 },
     hotspots: [
       {
         label: 'Health first, always — read what health means',
@@ -113,6 +129,7 @@ export const heroArtworks: HeroArtwork[] = [
     src: artNebula,
     theme: 'neon',
     focus: { desktop: '58% 40%', mobile: '64% 32%' },
+    planet: { cx: 0.7134, cy: 0.5946, r: 0.5643 },
     hotspots: [
       {
         label: 'Health first, always — read what health means',
