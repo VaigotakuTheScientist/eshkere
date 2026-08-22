@@ -3,12 +3,19 @@ name: Deploy to GitHub Pages
 # Builds the site and publishes dist/ to the gh-pages branch. GitHub
 # automatically enables Pages for a repository when a gh-pages branch
 # first appears, so no manual Settings step is needed.
+#
+# This is the only workflow that writes to gh-pages. To roll the live site
+# back to the frozen pre-universe-map snapshot, run this workflow by hand
+# against `snapshot/pre-universe-map-2026-08-21` — that branch carries its
+# own copy of this file, so it deploys itself with no reconstruction. See
+# the "Rolling back" section of the README for the permanent version.
 on:
   push:
     branches: [main, claude/eshkere-org-website-84n8s3]
   # Hourly re-sync of the Notion "Current" source, off the hour to avoid the
   # top-of-hour queue. Scheduled runs always use the repository's default
-  # branch, which is covered by the push list above either way.
+  # branch — so whatever the default branch holds is what the live site keeps
+  # being rebuilt from, every hour, whether or not anyone pushes.
   schedule:
     - cron: '17 * * * *'
   workflow_dispatch:

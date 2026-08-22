@@ -37,9 +37,10 @@ partners, funding, portfolio, publications or history.
 | `npm run test:source` | Offline checks for the Notion current-source validation rules |
 | `npm run sync:source` | Refresh `current-source.generated.json` from Notion (needs `NOTION_TOKEN`) |
 
-## The universe map (experiment)
+## The universe map
 
-The homepage hero is the *near camera state* of a larger map. Zooming out —
+This is the live version of the site. The homepage hero is the *near camera
+state* of a larger map. Zooming out —
 with the **Zoom out to the universe** control, a trackpad pinch, a two-finger
 scroll up at the top of the page, or `+`/`-` and `Esc` once inside — pulls the
 camera back until the artwork turns out to be one planet in an Eshkere
@@ -95,23 +96,44 @@ yet — the map says so rather than inventing a link.
 
 The site builds for GitHub Pages project hosting by default
 (`base: /eshkere`). `.github/workflows/deploy.yml` publishes `dist/` to the
-`gh-pages` branch on pushes to the default branch. For a custom domain,
-build with `SITE=https://example.org BASE_PATH=/ npm run build`.
+`gh-pages` branch on every push to the default branch
+(`claude/eshkere-org-website-84n8s3`), and again every hour so the Notion
+`Current` source stays fresh. Whatever the default branch holds is what the
+live site is. For a custom domain, build with `SITE=https://example.org
+BASE_PATH=/ npm run build`.
 
-### Previewing an experiment without replacing the live site
+### Rolling back
 
-`.github/workflows/preview-universe.yml` is **manual only** (Actions → *Preview
-the universe map* → Run workflow). It builds a branch with
-`BASE_PATH=/eshkere/preview/universe-map` and publishes it into that
-subdirectory of `gh-pages` with `keep_files: true`, so the live site at the
-root of that branch is never touched.
+`snapshot/pre-universe-map-2026-08-21` is a frozen, immutable branch holding
+the site exactly as it was before the universe map. **Nothing in this
+repository ever writes to it.** Rolling back means redeploying it — there is
+nothing to reconstruct.
 
-    live     https://vaigotakuthescientist.github.io/eshkere/
-    preview  https://vaigotakuthescientist.github.io/eshkere/preview/universe-map/
+**Immediately (about a minute, holds until the next hourly run):**
 
-Locally, `npm run dev` on the branch is enough — the frozen version of the
-site remains recoverable from `snapshot/pre-universe-map-2026-08-21`, which
-nothing in this repository writes to.
+> Actions → *Deploy to GitHub Pages* → **Run workflow** → branch
+> `snapshot/pre-universe-map-2026-08-21`
+
+That branch carries its own copy of the workflow, so it builds and publishes
+itself to the site root.
+
+**Permanently (one command):**
+
+```sh
+git push origin +snapshot/pre-universe-map-2026-08-21:claude/eshkere-org-website-84n8s3
+```
+
+This points the default branch back at the snapshot. The push triggers a
+deploy, and every hourly run after it rebuilds the same thing, so the
+rollback sticks. The snapshot branch is only ever read. Nothing is lost: the
+universe-map history stays on `feature/universe-map`, and re-promoting is the
+same fast-forward that put it live in the first place.
+
+> There is deliberately no second workflow that writes to `gh-pages`. The
+> preview workflow that published the experiment to a `preview/` subdirectory
+> was removed once the universe map became the live site — one deployment
+> mechanism, one place the live site comes from. It is recoverable from git
+> history (commit `48297b8`) if a future experiment needs it again.
 
 ## Current source (Notion → hero star)
 
