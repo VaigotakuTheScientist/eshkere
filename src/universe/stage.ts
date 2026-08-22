@@ -12,6 +12,7 @@ import {
 } from './data';
 import { createComet, createFilament, createMarker, type Filament, type Marker } from './markers';
 import { createHeadlineDust, createHeroPlane, type HeadlineDust, type HeroPlane } from './hero';
+import { createPlanet, type Planet } from './planet';
 import { buildRegion, type RegionObject } from './regions';
 import { createLabelLayer, type LabelLayer } from './labels';
 import { createSky, type Sky } from './sky';
@@ -54,6 +55,8 @@ export interface StageDom {
   heroImage: HTMLImageElement;
   /** Where the artist drew the globe, as fractions of the source image. */
   heroPlanet: { cx: number; cy: number; r: number };
+  /** Where the artwork's smiley sits on that globe's face. */
+  heroMark: { x: number; y: number; r: number };
   heroFocus: { x: number; y: number };
   heroHeadline: HTMLElement | null;
   /** Screen rect of the hero's Current Source star, if it has one. */
@@ -148,7 +151,20 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
     planet: dom.heroPlanet,
     focus: dom.heroFocus,
   });
+  heroPlane.mesh.renderOrder = 1;
   scene.add(heroPlane.mesh);
+
+  // The artwork's replacement. It renders the artwork itself until the
+  // camera is moving fast enough for the surface to resolve unnoticed.
+  const planet: Planet = createPlanet({
+    texture: heroPlane.texture,
+    planet: dom.heroPlanet,
+    imageAspect: heroPlane.imageAspect,
+    closedRadius: heroPlane.closedRadius,
+    mark: dom.heroMark,
+    quality,
+  });
+  scene.add(planet.group);
 
   let headlineDust: HeadlineDust | null = null;
   if (dom.heroHeadline) {
@@ -223,6 +239,8 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
     duration: number;
   } | null = null;
 
+  const PLANET_AT = new THREE.Vector3();
+  const SMILEY_AT = new THREE.Vector3();
   const cometPeelStart = new THREE.Vector3();
   const cometScratch = new THREE.Vector3();
   let hasPeelOrigin = false;
@@ -313,17 +331,17 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
     headlineDust?.setScatter(dust);
     headlineDust?.setOpacity(introFade * (1 - phase(progress, 0.34, 0.5)));
 
-    // --- Phase B: the rectangle becomes a planet.
+    // --- Phase B: the rectangle becomes a planet, and then a real one.
     // The mask closes first, while the artwork still fills the frame, so the
     // black rectangle around it dissolves into the real star field instead
     // of its corners popping away from the edge of the screen.
-    heroPlane.setMask(reduced ? phase(progress, 0.0, 0.6) : phase(progress, 0.06, 0.46));
+    heroPlane.setMask(reduced ? phase(progress, 0.0, 0.42) : phase(progress, 0.04, 0.34));
 
     // Until the plane detaches it is scaled to keep exactly covering the
     // viewport as the camera retreats — there is never a gap to notice.
     const cover = (view.position.z / HERO_DISTANCE) * (1 + 0.025 * clamp(progress * 12));
     const homeScale = heroPlane.scaleForRadius(homeWorld.radius * compositionScale);
-    const detach = phase(progress, 0.2, 0.88);
+    const detach = phase(progress, 0.18, 0.86);
     const planeScale = lerp(cover, homeScale, detach);
     heroPlane.mesh.scale.setScalar(planeScale);
 
@@ -334,13 +352,33 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
     const planeWidth = geometry.parameters.width;
     const planeHeight = geometry.parameters.height;
     const rest = homeTarget();
-    const slide = phase(progress, 0.2, 0.9);
+    const slide = phase(progress, 0.18, 0.88);
     heroPlane.mesh.position.set(
       lerp(0, rest.x - offset.x * planeWidth * planeScale, slide),
       lerp(0, rest.y - offset.y * planeHeight * planeScale, slide),
       lerp(0, rest.z, slide)
     );
-    heroPlane.setOpacity(1);
+
+    // The sphere takes the plane's own arithmetic, so the two occupy exactly
+    // the same disc on screen for as long as both are visible.
+    PLANET_AT.set(
+      heroPlane.mesh.position.x + offset.x * planeWidth * planeScale,
+      heroPlane.mesh.position.y + offset.y * planeHeight * planeScale,
+      heroPlane.mesh.position.z
+    );
+    // Track the mask as it closes rather than its final size, so the sphere
+    // and the plane are the same disc at every frame of the hand-over.
+    planet.setProjection(heroPlane.liveMaskRadius());
+    planet.place(PLANET_AT, heroPlane.liveDiscRadius());
+
+    // Hand over early and under cover: the sphere rises first, still painted
+    // with the artwork, the plane leaves underneath it, and only then does
+    // the surface resolve into a world — by which point the camera is at
+    // full speed and the streaks are at their peak.
+    const takeover = reduced ? phase(progress, 0.08, 0.28) : phase(progress, 0.1, 0.2);
+    planet.setOpacity(takeover);
+    planet.setMorph(reduced ? phase(progress, 0.18, 0.55) : phase(progress, 0.22, 0.48));
+    heroPlane.setOpacity(1 - phase(progress, 0.14, 0.24));
 
     // --- streaks: a single bell around peak acceleration.
     const streak = reduced ? 0 : Math.exp(-Math.pow((progress - 0.34) / 0.15, 2));
@@ -402,7 +440,11 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
       const node = marker.node;
       let value = 0;
       if (node.kind === 'home') value = base;
-      else if (node.kind === 'system') {
+      else if (node.kind === 'mark') {
+        // A faint pinpoint over the smiley the planet's shader draws, so the
+        // mark is findable at long range where the face is sub-pixel.
+        value = base * 0.45;
+      } else if (node.kind === 'system') {
         value = level >= 2 && node.regionId === focusRegionId ? base : base * 0.14;
         if (node.regionId === 'health') value = Math.max(value, base * 0.5);
       } else if (node.kind === 'planet') {
@@ -426,6 +468,11 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
       if (node.kind === 'region') value = base;
       else if (node.kind === 'comet') value = hoveredId === 'current-source' ? base : base * 0.75;
       else if (node.kind === 'home') value = base * 0.8;
+      else if (node.kind === 'mark')
+        // Exactly as on the hero: the mark is drawn on the world, not
+        // captioned. Naming it at the overview would put a caption across
+        // the home planet for no gain.
+        value = hoveredId === node.id || selectedId === node.id ? base : 0;
       else if (node.kind === 'system')
         value = level >= 2 && node.regionId === focusRegionId ? base : 0;
       else if (node.kind === 'planet')
@@ -447,6 +494,12 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
     hoveredId = node?.id ?? null;
     callbacks.onHover(node);
     refreshFilaments();
+    // Emphasis and hover-only labels both read `hoveredId`, so they have to
+    // be recomputed here — nothing else does it once the map has settled.
+    if (mode === 'universe') {
+      updateMarkerVisibility(1);
+      applyLabelTargets(1);
+    }
   }
 
   function refreshFilaments() {
@@ -709,6 +762,19 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
     for (const marker of markers.values()) marker.update(time, camera);
     for (const filament of filaments) filament.update(dt);
     comet.update(time, camera);
+    planet.update(time, camera);
+
+    // The planet's face is billboarded, so where it draws the smiley moves
+    // with the camera. Keep the node, its marker and its label on it.
+    const markNode = nodeById.get('home-mark');
+    if (markNode) {
+      planet.smileyWorld(SMILEY_AT);
+      universeRoot.worldToLocal(SMILEY_AT);
+      markNode.position = [SMILEY_AT.x, SMILEY_AT.y, SMILEY_AT.z] as Vec3;
+      const marker = markers.get('home-mark');
+      if (marker) marker.group.position.copy(SMILEY_AT);
+    }
+    planet.setSmileyGlow(hoveredId === 'home-mark' || selectedId === 'home-mark' ? 1 : 0);
 
     if (cometNode) {
       // The label layer applies the universe root's matrix itself, so the
@@ -805,7 +871,20 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
 
   function setMode(next: Mode) {
     if (mode === next) return;
+    const previous = mode;
     mode = next;
+    // Leaving the map, in either direction, forgets where you were in it.
+    if (previous === 'universe' && next !== 'universe') {
+      focusRegionId = null;
+      focusSystemId = null;
+      selectedId = null;
+      level = 1;
+      pan.set(0, 0);
+      flight = null;
+      refreshFilaments();
+      callbacks.onFocusChange(breadcrumb());
+      callbacks.onSelect(null);
+    }
     if (next === 'universe') {
       const target = universeView();
       wanted.position.copy(target.position);
@@ -877,6 +956,10 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
     start,
     stop,
     resize,
+    /** Stop any timed transition and stay exactly where the gesture left it. */
+    hold() {
+      timedTransition = false;
+    },
     /** Weight of the DOM → canvas hand-over, 0 to 1. */
     setIntro(value: number) {
       introFade = clamp(value);
@@ -885,7 +968,10 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
     /** Drive the transition directly — used by continuous gestures. */
     setProgress(value: number) {
       timedTransition = false;
-      if (mode === 'hero' && value > 0) setMode('transition');
+      // Anything short of the universe is the transition, including the way
+      // back out of it — otherwise reversing would leave the HUD up over a
+      // scene that is no longer the map.
+      if (value < 0.999 && mode !== 'transition') setMode('transition');
       applyProgress(value);
       if (value >= 1) settleMode();
     },
@@ -909,6 +995,10 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
       selectedId = node?.id ?? null;
       callbacks.onSelect(node);
       refreshFilaments();
+      if (mode === 'universe') {
+        updateMarkerVisibility(1);
+        applyLabelTargets(1);
+      }
     },
     hoverById(id: string | null) {
       setHover(id ? (nodeById.get(id) ?? null) : null);

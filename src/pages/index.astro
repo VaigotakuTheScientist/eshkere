@@ -2,7 +2,6 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import HeroArt from '../components/HeroArt.astro';
-import UniverseLaunch from '../components/UniverseLaunch.astro';
 import UniverseMap from '../components/UniverseMap.astro';
 import Sparkle from '../components/Sparkle.astro';
 import PixelHeart from '../components/PixelHeart.astro';
@@ -38,9 +37,6 @@ const hasSamples = research.some((entry) => entry.data.prototype);
       <div class="hero__ctas">
         <a class="arrow-link arrow-link--accent" href={url('/our-approach')}>Explore our approach</a>
         <a class="arrow-link" href={url('/portfolio')}>View portfolio</a>
-      </div>
-      <div class="hero__escape">
-        <UniverseLaunch />
       </div>
     </div>
   </section>
@@ -293,7 +289,11 @@ const hasSamples = research.some((entry) => entry.data.prototype);
     pointer-events: none;
   }
 
-  .hero__content > * {
+  /* Only the actual controls take clicks. The headline and the supporting
+     line are text laid over artwork, and their boxes are wide enough to
+     blanket the marks the artist drew underneath them — which is how the
+     green smiley stopped being clickable at shorter viewport heights. */
+  .hero__ctas {
     pointer-events: auto;
   }
 
@@ -373,10 +373,6 @@ const hasSamples = research.some((entry) => entry.data.prototype);
     flex-wrap: wrap;
     gap: 1.25rem 2.75rem;
     margin-top: 0.9rem;
-  }
-
-  .hero__escape {
-    margin-top: 0.35rem;
   }
 
   @media (max-width: 900px) {

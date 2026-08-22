@@ -39,6 +39,34 @@ export interface HeroPlanet {
   r: number;
 }
 
+/** The private page the artwork's green smiley points at, on every artwork. */
+export const GRANTMAKING_OS_URL =
+  'https://app.notion.com/p/vadymsulzhenko/Grantmaking-OS-3c275628fc8381239c0ec4e75f6d686f';
+
+/**
+ * Where the smiley sits on the globe's visible face, in unit-disc
+ * coordinates — the frame the universe map's planet shader draws in.
+ *
+ * Derived from the hotspot the artist's smiley already has, so the mark is
+ * defined once and the two renderings cannot drift apart.
+ */
+export function markFace(art: HeroArtwork): { x: number; y: number; r: number } | null {
+  const mark = art.hotspots.find((spot) => spot.href === GRANTMAKING_OS_URL);
+  if (!mark) return null;
+  const width = art.src.width;
+  const height = art.src.height;
+  const aspect = width / height;
+  // The mask that closes around the globe, matching src/universe/hero.ts.
+  const closed = art.planet.r * 1.06;
+  const u = (mark.x + mark.w / 2) / width;
+  const v = 1 - (mark.y + mark.h / 2) / height;
+  return {
+    x: ((u - art.planet.cx) * aspect) / closed,
+    y: (v - (1 - art.planet.cy)) / closed,
+    r: mark.w / 2 / height / closed,
+  };
+}
+
 export interface HeroArtwork {
   id: string;
   /** Shown in the artwork switcher. */
@@ -113,7 +141,7 @@ export const heroArtworks: HeroArtwork[] = [
       },
       {
         label: 'Grantmaking OS',
-        href: 'https://app.notion.com/p/vadymsulzhenko/Grantmaking-OS-3c275628fc8381239c0ec4e75f6d686f',
+        href: GRANTMAKING_OS_URL,
         x: 954,
         y: 404,
         w: 30,
@@ -152,7 +180,7 @@ export const heroArtworks: HeroArtwork[] = [
       },
       {
         label: 'Grantmaking OS',
-        href: 'https://app.notion.com/p/vadymsulzhenko/Grantmaking-OS-3c275628fc8381239c0ec4e75f6d686f',
+        href: GRANTMAKING_OS_URL,
         x: 1047,
         y: 421,
         w: 34,

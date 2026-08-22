@@ -380,7 +380,19 @@ export const homeWorld = {
   label: 'You were here',
   blurb: 'The Eshkere homepage — one close-up inside a much larger map.',
   position: [-150, -95, 150] as Vec3,
-  radius: 46,
+  radius: 40,
+};
+
+/**
+ * The green smiley the artist drew on the globe. It is a link on the hero
+ * and it stays one out here: the home world keeps its mark, and the mark
+ * keeps its destination.
+ */
+export const homeMark = {
+  id: 'home-mark',
+  label: 'Grantmaking OS',
+  blurb: 'The working system behind how grants get considered.',
+  href: 'https://app.notion.com/p/vadymsulzhenko/Grantmaking-OS-3c275628fc8381239c0ec4e75f6d686f',
 };
 
 /**
@@ -428,7 +440,7 @@ export interface NodeRecord {
    * always drawn in full.
    */
   shortLabel?: string;
-  kind: 'region' | 'system' | 'planet' | 'home' | 'comet';
+  kind: 'region' | 'system' | 'planet' | 'home' | 'comet' | 'mark';
   /** Region this node belongs to, for dimming and breadcrumbs. */
   regionId: string;
   href?: string | null;
@@ -495,6 +507,17 @@ export const nodeIndex: NodeRecord[] = (() => {
     labelOffset: [-homeWorld.radius * 1.5, -homeWorld.radius * 1.5, 0],
     kind: 'home',
     regionId: 'health',
+  });
+  // Position is rewritten every frame from where the planet is actually
+  // drawing its mark, since the planet's face follows the camera.
+  list.push({
+    id: homeMark.id,
+    label: homeMark.label,
+    blurb: homeMark.blurb,
+    position: [...homeWorld.position] as Vec3,
+    kind: 'mark',
+    regionId: 'health',
+    href: homeMark.href,
   });
   return list;
 })();

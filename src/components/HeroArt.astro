@@ -1,6 +1,6 @@
 ---
 import { Picture } from 'astro:assets';
-import { heroArtworks } from '../data/hero-art';
+import { heroArtworks, markFace } from '../data/hero-art';
 import { url } from '../lib/url';
 
 /**
@@ -12,7 +12,9 @@ import { url } from '../lib/url';
  * moves both together and the click targets never drift off their marks.
  */
 const artworks = heroArtworks;
-const showSwitcher = artworks.length > 1;
+// The group is always present now: it is where the universe is entered, not
+// only where artwork is compared.
+const showArtworkOptions = artworks.length > 1;
 ---
 
 <div class="hero__stage">
@@ -23,6 +25,10 @@ const showSwitcher = artworks.length > 1;
         data-art-image={art.id}
         data-art-theme={art.theme}
         data-art-planet={`${art.planet.cx},${art.planet.cy},${art.planet.r}`}
+        data-art-mark={(() => {
+          const mark = markFace(art);
+          return mark ? `${mark.x},${mark.y},${mark.r}` : undefined;
+        })()}
         style={`--focus-desktop: ${art.focus.desktop}; --focus-mobile: ${art.focus.mobile}`}
         hidden={index > 0}
         aria-hidden="true"
@@ -73,13 +79,11 @@ const showSwitcher = artworks.length > 1;
   }
 </div>
 
-{
-  showSwitcher && (
-    <div class="art-switcher" role="group" aria-label="Hero artwork">
-      <span class="art-switcher__label" aria-hidden="true">
-        Art
-      </span>
-      {artworks.map((art, index) => (
+<div class="art-switcher" role="group" aria-label="View">
+  <span class="art-switcher__label" aria-hidden="true">View</span>
+  {
+    showArtworkOptions &&
+      artworks.map((art, index) => (
         <button
           class="art-switcher__option"
           type="button"
@@ -88,10 +92,26 @@ const showSwitcher = artworks.length > 1;
         >
           {art.label}
         </button>
-      ))}
-    </div>
-  )
-}
+      ))
+  }
+  <span class="art-switcher__rule" aria-hidden="true"></span>
+  <button
+    class="art-switcher__option art-switcher__option--universe"
+    type="button"
+    data-universe-open
+    aria-pressed="false"
+  >
+    <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" fill="none"
+      stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 3H5a2 2 0 0 0-2 2v4" />
+      <path d="M15 3h4a2 2 0 0 1 2 2v4" />
+      <path d="M9 21H5a2 2 0 0 1-2-2v-4" />
+      <path d="M15 21h4a2 2 0 0 0 2-2v-4" />
+      <circle cx="12" cy="12" r="2.4" />
+    </svg>
+    Universe
+  </button>
+</div>
 
 <script>
   const stage = document.querySelector<HTMLElement>('.hero__stage');
@@ -309,6 +329,51 @@ const showSwitcher = artworks.length > 1;
   .art-switcher__option[aria-pressed='true'] {
     color: var(--ink);
     text-shadow: -0.05em 0 var(--cyan), 0.05em 0 var(--pink);
+  }
+
+  /* ---------------------------------------------------- universe option
+     The third view. It sits with the artwork options because it is one —
+     the same scene, seen from much further away — rather than a separate
+     call to action competing with the hero's own. */
+  .art-switcher__rule {
+    width: 1px;
+    height: 1.1rem;
+    background: var(--line-soft);
+  }
+
+  .art-switcher__option--universe {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding-left: 0.15rem;
+    color: var(--cyan);
+  }
+
+  .art-switcher__option--universe:hover,
+  .art-switcher__option--universe:focus-visible {
+    color: #ffffff;
+    text-shadow: 0 0 14px rgba(77, 227, 255, 0.75);
+  }
+
+  /* The frame draws inward: the gesture the control performs. */
+  .art-switcher__option--universe:hover svg {
+    animation: universe-pull 1.6s var(--ease-out) infinite;
+  }
+
+  @keyframes universe-pull {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(0.82);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .art-switcher__option--universe:hover svg {
+      animation: none;
+    }
   }
 
   @media (max-width: 900px) {

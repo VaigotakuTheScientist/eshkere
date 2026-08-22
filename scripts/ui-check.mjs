@@ -630,6 +630,24 @@ for (const viewport of viewports) {
     note(rest.indexInert, 'text index dormant while the page is just the page');
     note(rest.launcher, 'visible zoom-out control exists');
 
+    // The way in lives with the other views, not as a CTA of its own.
+    const control = await page.evaluate(() => {
+      const opener = document.querySelector('[data-universe-open]');
+      return {
+        inSwitcher: !!opener?.closest('.art-switcher'),
+        views: [...document.querySelectorAll('.art-switcher button')].map((b) =>
+          b.textContent.trim()
+        ),
+        strayCta: document.querySelectorAll('.hero__content [data-universe-open]').length,
+      };
+    });
+    note(control.inSwitcher, 'universe is entered from the view switcher');
+    note(
+      control.views.length === 3 && control.views[2] === 'Universe',
+      `switcher offers three views (${control.views.join(' / ')})`
+    );
+    note(control.strayCta === 0, 'no standalone zoom-out button in the hero CTAs');
+
     // The renderer is prefetched on idle, never as part of first paint.
     const html = await (await fetch(BASE + '/')).text();
     note(
@@ -774,6 +792,193 @@ for (const viewport of viewports) {
     await context.close();
   }
 
+
+  // --- the artwork's green smiley is a link, at every viewport
+  {
+    for (const [width, height] of [
+      [1440, 900],
+      [1440, 810],
+      [1280, 720],
+    ]) {
+      const context = await browser.newContext({
+        ...CTX,
+        viewport: { width, height },
+        reducedMotion: 'reduce',
+      });
+      const page = await context.newPage();
+      await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+      const mark = await page.evaluate(() => {
+        const spot = [
+          ...document.querySelectorAll('[data-art-hotspots]:not([hidden]) .hero__hotspot'),
+        ].find((el) => (el.textContent ?? '').includes('Grantmaking OS'));
+        if (!spot) return null;
+        const box = spot.getBoundingClientRect();
+        const top = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+        return {
+          href: spot.getAttribute('href'),
+          reachable: top === spot || spot.contains(top),
+          blockedBy: top === spot ? '' : `${top?.tagName}.${top?.className}`.slice(0, 40),
+        };
+      });
+      note(
+        !!mark && mark.reachable && !!mark.href?.includes('Grantmaking-OS'),
+        `[${width}x${height}] hero smiley is clickable (${mark?.blockedBy || 'reachable'})`
+      );
+      await context.close();
+    }
+  }
+
+  // --- and the planet keeps it out in the universe
+  {
+    const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await openUniverse(page);
+
+    const mark = await page.evaluate(() => {
+      const el = document.querySelector('.u-label--mark');
+      return el
+        ? {
+            tag: el.tagName,
+            href: el.getAttribute('href'),
+            target: el.getAttribute('target'),
+            text: el.textContent.trim(),
+            quietAtRest: el.hidden,
+          }
+        : null;
+    });
+    note(
+      mark?.tag === 'A' && !!mark.href?.includes('Grantmaking-OS') && mark.target === '_blank',
+      `universe smiley is the same link (${mark?.href?.slice(0, 46)})`
+    );
+    note(mark?.quietAtRest === true, 'universe smiley is drawn on the world, not captioned');
+
+    // Hovering the mark names it — the same behaviour the hero hotspot has.
+    const revealed = await page.evaluate(async () => {
+      const el = document.querySelector('.u-label--mark');
+      el.dispatchEvent(new PointerEvent('pointerenter', { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      const box = el.getBoundingClientRect();
+      return {
+        hidden: el.hidden,
+        text: el.textContent.trim(),
+        onScreen: box.width > 0 && box.left > 0 && box.left < window.innerWidth,
+      };
+    });
+    note(
+      !revealed.hidden && revealed.onScreen,
+      `hovering the universe smiley names it (${revealed.text})`
+    );
+    await page.screenshot({ path: `${SHOT_DIR}/universe-home-planet.png` });
+    await context.close();
+  }
+
+  // --- the zoom-out gesture is sticky
+  {
+    const context = await browser.newContext({ ...CTX, viewport: { width: 1280, height: 720 } });
+    const page = await context.newPage();
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await page.waitForTimeout(2200);
+
+    const read = () =>
+      page.evaluate(
+        () =>
+          Number(
+            getComputedStyle(document.querySelector('.hero')).getPropertyValue(
+              '--universe-progress'
+            )
+          ) || 0
+      );
+
+    for (let i = 0; i < 3; i += 1) {
+      await page.mouse.wheel(0, -120);
+      await page.waitForTimeout(90);
+    }
+    const moved = await read();
+    note(moved > 0.1, `zoom-out gesture engages (progress ${moved.toFixed(2)})`);
+
+    // The whole point: letting go must not undo it.
+    await page.waitForTimeout(1500);
+    const held = await read();
+    note(
+      Math.abs(held - moved) < 0.02 && held > 0.1,
+      `pausing holds the transition (${moved.toFixed(2)} → ${held.toFixed(2)})`
+    );
+    await page.screenshot({ path: `${SHOT_DIR}/universe-held.png` });
+
+    // Reversing is deliberate, and it works.
+    for (let i = 0; i < 2; i += 1) {
+      await page.mouse.wheel(0, 120);
+      await page.waitForTimeout(90);
+    }
+    await page.waitForTimeout(900);
+    const reversed = await read();
+    note(reversed < held - 0.05, `reversing pulls back in (${held.toFixed(2)} → ${reversed.toFixed(2)})`);
+
+    // And a small amount of progress settles back to the page.
+    for (let i = 0; i < 4; i += 1) {
+      await page.mouse.wheel(0, 120);
+      await page.waitForTimeout(90);
+    }
+    await page.waitForTimeout(2200);
+    const home = await page.evaluate(() => document.documentElement.className);
+    note(home === '', `reversing all the way returns the page ("${home}")`);
+    await context.close();
+  }
+
+  // --- one flick is one level
+  {
+    const context = await browser.newContext({ ...CTX, viewport: { width: 1280, height: 720 } });
+    const page = await context.newPage();
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await openUniverse(page);
+
+    await page.evaluate(() => {
+      window.__levels = [];
+      const el = document.querySelector('[data-universe-level]');
+      new MutationObserver(() =>
+        window.__levels.push(el.textContent)
+      ).observe(el, { childList: true, characterData: true, subtree: true });
+    });
+    // Dispatched from inside the page rather than driven through the
+    // browser: one flick's events are milliseconds apart, and CDP-driven
+    // input in a software-rendered container is hundreds of milliseconds
+    // apart — which is several separate gestures as far as the rule is
+    // concerned, and would not be testing the rule at all.
+    await page.evaluate(() => {
+      for (let i = 0; i < 12; i += 1) {
+        window.dispatchEvent(
+          new WheelEvent('wheel', { deltaY: 120, cancelable: true, bubbles: true })
+        );
+      }
+    });
+    await page.waitForTimeout(1600);
+    const steps = await page.evaluate(() => window.__levels);
+    note(steps.length === 1 && steps[0] === 'Galaxy', `one flick is one level (${steps.join(' → ')})`);
+
+    // Pulling outward at the overview points at the way back rather than
+    // silently reversing the reveal.
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(1400);
+    await page.evaluate(() => {
+      for (let i = 0; i < 6; i += 1) {
+        window.dispatchEvent(
+          new WheelEvent('wheel', { deltaY: -120, cancelable: true, bubbles: true })
+        );
+      }
+    });
+    await page.waitForTimeout(300);
+    const outer = await page.evaluate(() => ({
+      level: document.querySelector('[data-universe-level]').textContent,
+      nudged: !!document.querySelector('.universe__control--exit.is-nudged'),
+    }));
+    note(
+      outer.level === 'Universe' && outer.nudged,
+      `overview is the outer limit and says so (nudged=${outer.nudged})`
+    );
+    await context.close();
+  }
+
   // --- keyboard-only operation
   {
     const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });
@@ -863,13 +1068,15 @@ for (const viewport of viewports) {
         inert: index.inert,
         visible: index.getBoundingClientRect().height > 200,
         destinations: index.querySelectorAll('a').length,
-        launcherHidden: getComputedStyle(document.querySelector('.universe-launch')).display,
+        launcherHidden: getComputedStyle(
+          document.querySelector('.art-switcher__option--universe')
+        ).display,
         heroIntact: getComputedStyle(document.querySelector('.hero__stage')).opacity,
       };
     });
     note(!fallback.inert && fallback.visible, 'without WebGL the text index becomes the map');
     note(fallback.destinations >= 1, `fallback keeps real destinations (${fallback.destinations})`);
-    note(fallback.launcherHidden === 'none', 'fallback hides a control that cannot work');
+    note(fallback.launcherHidden === 'none', 'fallback hides a view that cannot be entered');
     note(fallback.heroIntact === '1', 'fallback leaves the hero alone');
     await page.screenshot({ path: `${SHOT_DIR}/universe-no-webgl.png`, fullPage: true });
     await context.close();

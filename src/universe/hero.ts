@@ -22,6 +22,14 @@ export interface HeroPlaneOptions {
 
 export interface HeroPlane {
   mesh: THREE.Mesh;
+  /**
+   * The decoded artwork and the geometry of the mask that closes around its
+   * globe. The home planet borrows both so it can render the same pixels in
+   * the same place at the moment it takes over.
+   */
+  texture: THREE.Texture;
+  imageAspect: number;
+  closedRadius: number;
   /** Re-frame for a new viewport. Keeps the crop identical to the DOM. */
   layout(viewport: { width: number; height: number }, cameraDistance: number, fov: number): void;
   /** 0 = the full rectangle, 1 = a clean disc around the drawn planet. */
@@ -29,6 +37,13 @@ export interface HeroPlane {
   setOpacity(value: number): void;
   /** World radius the masked disc currently occupies. */
   discRadius(): number;
+  /**
+   * The mask's radius right now, in image heights, and the world radius that
+   * corresponds to. The planet borrows both so it can be the same disc as
+   * the plane at any point during the close, not only at the end of it.
+   */
+  liveMaskRadius(): number;
+  liveDiscRadius(): number;
   /** Scale that would make the masked disc exactly `radius` world units. */
   scaleForRadius(radius: number): number;
   /** Where the drawn planet's centre sits in the plane's local space. */
@@ -157,6 +172,9 @@ export function createHeroPlane(options: HeroPlaneOptions): HeroPlane {
 
   return {
     mesh,
+    texture,
+    imageAspect,
+    closedRadius,
     layout,
     setMask(t: number) {
       const eased = clamp(t) ** 0.55;
@@ -169,6 +187,14 @@ export function createHeroPlane(options: HeroPlaneOptions): HeroPlane {
     discRadius() {
       const vScale = material.uniforms.uUvScale!.value as THREE.Vector2;
       return (closedRadius * planeHeight * mesh.scale.y) / Math.max(vScale.y, 0.0001);
+    },
+    liveMaskRadius() {
+      return Math.min(material.uniforms.uMaskRadius!.value as number, closedRadius * 3);
+    },
+    liveDiscRadius() {
+      const vScale = material.uniforms.uUvScale!.value as THREE.Vector2;
+      const radius = Math.min(material.uniforms.uMaskRadius!.value as number, closedRadius * 3);
+      return (radius * planeHeight * mesh.scale.y) / Math.max(vScale.y, 0.0001);
     },
     scaleForRadius(radius: number) {
       const vScale = material.uniforms.uUvScale!.value as THREE.Vector2;

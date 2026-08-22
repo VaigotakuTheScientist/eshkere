@@ -58,6 +58,7 @@ authoritative spec. The code follows this shape:
 | `src/universe/regions.ts` | The five region morphologies (core, lattice, vortex, spiral, cloud) |
 | `src/universe/sky.ts` | Parallax star layers, nebulae, and the escape-velocity streak field |
 | `src/universe/hero.ts` | The hero artwork as a WebGL plane, and the headline as particles |
+| `src/universe/planet.ts` | The home world: the artwork projected onto a sphere, morphing into a real one |
 | `src/universe/markers.ts` | Star systems, planets, link filaments, and the Current Source comet |
 | `src/universe/labels.ts` | Labels as real DOM controls, projected each frame |
 | `src/universe/index.ts` | Input, HUD and lifecycle — the only module the page imports |
@@ -74,8 +75,8 @@ at rest is byte-for-byte the hero that was there before.
 
 - **No WebGL** — `.universe-index`, a complete text version of the map built
   from the same data, stops being a screen-reader mirror and becomes the
-  visible map. The zoom-out control hides itself rather than promising
-  something it cannot do.
+  visible map. The Universe option removes itself from the view switcher
+  rather than promising something it cannot do.
 - **`prefers-reduced-motion`** — the flight, the streaks and the drift are
   replaced by a short crossfade to the resolved map. Everything is still
   reachable.
@@ -83,6 +84,26 @@ at rest is byte-for-byte the hero that was there before.
   detects sustained slow frames: device pixel ratio first, then the nebulae,
   then the streak field. Composition, labels and navigation are never traded
   away.
+
+### How the artwork becomes a planet
+
+The hero artwork is one painted view of a globe that runs off the bottom of
+its own canvas, so scaling it backwards could only ever produce a cropped
+disc. Instead it hands over to a real sphere, early — around a tenth of the
+way into the transition, while the camera is accelerating hardest.
+
+The hand-over has nothing to notice because it is not a cross-fade between
+two pictures. At the moment of the swap the sphere renders *the artwork
+itself*, projected orthographically onto its own front hemisphere, tracking
+the same mask the plane is closing — so the two are the same disc, pixel for
+pixel. Only then does `uMorph` dissolve that projection into a procedural
+world: continents, coastlines, city lights on the night side, an atmosphere
+rim, and the artist's green smiley kept in the place they drew it. The
+silhouette never changes; only the surface resolves.
+
+The sphere is billboarded, which is what keeps the projection screen-locked
+while the camera flies, and lets the mark stay findable and clickable from
+any angle.
 
 ### Adding to the map
 

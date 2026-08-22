@@ -34,6 +34,7 @@ const KIND_CLASS: Record<NodeRecord['kind'], string> = {
   planet: 'u-label--planet',
   home: 'u-label--home',
   comet: 'u-label--comet',
+  mark: 'u-label--mark',
 };
 
 export function createLabelLayer(options: LabelLayerOptions) {

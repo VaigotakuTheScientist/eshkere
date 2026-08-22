@@ -36,6 +36,7 @@ interface Refs {
   detailLink: HTMLAnchorElement;
   detailKind: HTMLElement;
   hint: HTMLElement;
+  rail: HTMLElement;
   opener: HTMLElement | null;
   hero: HTMLElement | null;
 }
@@ -81,6 +82,43 @@ export function createUniverse(): UniverseApi | null {
   let gestureTimer = 0;
   let gestureValue = 0;
   let lastReturnFocus: HTMLElement | null = null;
+  let steppedThisGesture = false;
+  let lastEventStamp = 0;
+  let nudgeTimer = 0;
+
+  /**
+   * Answer an outward gesture that has nowhere left to go by pointing at the
+   * control that does — rather than doing nothing, which reads as broken.
+   */
+  function nudgeExit() {
+    const exit = refs.hud.querySelector<HTMLElement>('[data-universe-action="exit"]');
+    if (!exit) return;
+    exit.classList.add('is-nudged');
+    window.clearTimeout(nudgeTimer);
+    nudgeTimer = window.setTimeout(() => exit.classList.remove('is-nudged'), 1100);
+  }
+
+  /**
+   * One semantic level per gesture, not one per event.
+   *
+   * A trackpad flick is a dozen wheel events. What separates one flick from
+   * the next is the gap between them — but measured when the browser *made*
+   * the events, not when it got round to delivering them. Under load those
+   * differ by hundreds of milliseconds, which is enough to make a wall-clock
+   * cooldown let a single flick fall through two levels.
+   */
+  const GESTURE_GAP = 320;
+
+  function noteGestureEvent(stamp: number) {
+    if (stamp - lastEventStamp > GESTURE_GAP) steppedThisGesture = false;
+    lastEventStamp = stamp;
+  }
+
+  function stepAllowed() {
+    if (steppedThisGesture) return false;
+    steppedThisGesture = true;
+    return true;
+  }
 
   /* ------------------------------------------------------------- staging */
   function ensureStage(): Stage {
@@ -91,6 +129,7 @@ export function createUniverse(): UniverseApi | null {
         labels: refs.labels,
         heroImage: hero.image,
         heroPlanet: hero.planet,
+        heroMark: hero.mark,
         heroFocus: hero.focus,
         heroHeadline: hero.headline,
         currentSourceRect: hero.starRect,
@@ -136,6 +175,8 @@ export function createUniverse(): UniverseApi | null {
     stage?.setIntro(0);
     refs.hero?.style.removeProperty('--universe-progress');
     refs.hero?.style.removeProperty('--universe-intro');
+    refs.rail.hidden = true;
+    refs.opener?.setAttribute('aria-pressed', 'false');
     lastReturnFocus?.focus?.();
   }
 
@@ -190,13 +231,16 @@ export function createUniverse(): UniverseApi | null {
   /* ----------------------------------------------------------- callbacks */
   function handleMode(mode: Mode) {
     document.documentElement.classList.toggle('universe-open', mode === 'universe');
+    refs.opener?.setAttribute('aria-pressed', String(mode !== 'hero'));
     refs.hud.hidden = mode !== 'universe';
     refs.hint.hidden = mode !== 'universe';
     if (mode === 'universe') {
       refs.levelText.textContent = LEVEL_NAMES[1] ?? '';
-      // Give the keyboard somewhere sensible to land.
-      if (!refs.hud.contains(document.activeElement)) {
-        refs.hud.querySelector<HTMLElement>('[data-universe-action="exit"]')?.focus();
+      // Land the keyboard inside the map itself rather than on one of its
+      // controls — focusing "Back to the page" put a ring around the exit
+      // the moment the universe opened, which is the wrong thing to point at.
+      if (!overlay.contains(document.activeElement)) {
+        overlay.focus({ preventScroll: true });
       }
     }
     if (mode === 'hero') hideOverlay();
@@ -205,6 +249,10 @@ export function createUniverse(): UniverseApi | null {
   function handleProgress(value: number) {
     refs.hero?.style.setProperty('--universe-progress', value.toFixed(3));
     refs.levelText.textContent = stage ? (LEVEL_NAMES[stage.level] ?? '') : '';
+    // Because the gesture holds wherever it is released, there has to be
+    // something on screen saying where that is.
+    refs.rail.style.setProperty('--universe-rail', value.toFixed(3));
+    refs.rail.hidden = value <= 0.02 || value >= 0.995;
   }
 
   function handleHover(node: NodeRecord | null) {
@@ -258,27 +306,44 @@ export function createUniverse(): UniverseApi | null {
   }
 
   /* --------------------------------------------------------------- input */
+  /**
+   * How close to an end state counts as "there". Inside this band the
+   * transition settles onto the state rather than leaving someone parked at
+   * 0.96 of the way into the universe. Everywhere else, a pause holds.
+   */
+  const MAGNET = 0.14;
+
   function beginGesture(delta: number) {
     const instance = ensureStage();
     if (!open) showOverlay();
     gestureValue = Math.max(0, Math.min(1, gestureValue + delta));
     instance.setProgress(gestureValue);
     window.clearTimeout(gestureTimer);
-    gestureTimer = window.setTimeout(endGesture, 170);
+    gestureTimer = window.setTimeout(endGesture, 180);
   }
 
+  /**
+   * The gesture is sticky.
+   *
+   * Lifting your fingers off a trackpad is not a decision — it is what
+   * happens every second or so while you are looking at something. So
+   * pausing holds the camera exactly where it was left, and the only ways
+   * back to the page are an intentional reverse gesture, Escape, or the
+   * exit control. Only the two ends are magnetic.
+   */
   function endGesture() {
     if (!stage) return;
-    if (gestureValue >= 0.999 || gestureValue <= 0.001) return;
-    // Past a third of the way in, the reveal has already happened — finish
-    // it rather than snapping the visitor back to where they started.
-    if (gestureValue > 0.33) {
-      stage.runTo(1);
-      gestureValue = 1;
-    } else {
+    if (gestureValue <= MAGNET) {
       stage.runTo(0);
       gestureValue = 0;
+      return;
     }
+    if (gestureValue >= 1 - MAGNET) {
+      stage.runTo(1);
+      gestureValue = 1;
+      return;
+    }
+    stage.hold();
   }
 
   /**
@@ -291,7 +356,9 @@ export function createUniverse(): UniverseApi | null {
     // positive deltaY; scrolling up past the top of the page reports a
     // negative one. Both mean the same thing here.
     const raw = event.ctrlKey ? event.deltaY : -event.deltaY;
-    return raw / (event.ctrlKey ? 160 : 520);
+    // Deliberately slow. Crossing the whole reveal takes a sustained pull
+    // rather than a flick, which is what makes pausing part-way useful.
+    return raw / (event.ctrlKey ? 220 : 780);
   };
 
   window.addEventListener(
@@ -321,19 +388,23 @@ export function createUniverse(): UniverseApi | null {
         return;
       }
 
-      // --- in the universe: whole semantic levels, and past the last one,
-      // back out to the page the visitor came from. "Out" is the same
-      // direction that got them here, so the gesture never reverses meaning
-      // halfway through the experience.
+      // --- in the universe: whole semantic levels.
       event.preventDefault();
-      if (advance(event) > 0) {
-        if (!stage.zoomOutOneLevel()) {
-          gestureValue = 1;
-          beginGesture(-Math.abs(advance(event)));
-        }
-      } else {
-        stage.zoomInOneLevel();
+      noteGestureEvent(event.timeStamp);
+      const outward = advance(event) > 0;
+      if (outward && stage.level === 1) {
+        // The overview is as far out as the map goes. Pulling further does
+        // not quietly reverse the transition — the same direction would
+        // then mean two opposite things — so it points at the way back
+        // instead, which is an explicit action by design.
+        nudgeExit();
+        return;
       }
+      // One flick is one level. Without this a single trackpad flick, which
+      // fires a dozen events, would fall straight through every level.
+      if (!stepAllowed()) return;
+      if (outward) stage.zoomOutOneLevel();
+      else stage.zoomInOneLevel();
     },
     { passive: false, signal }
   );
@@ -407,11 +478,13 @@ export function createUniverse(): UniverseApi | null {
         beginGesture((1 - ratio) * 1.4);
         pinchStart = distance;
       } else if (open && stage?.mode === 'universe') {
+        noteGestureEvent(event.timeStamp);
         if (ratio < 0.86) {
-          if (!stage.zoomOutOneLevel()) stage.runTo(0);
+          if (stage.level === 1) nudgeExit();
+          else if (stepAllowed()) stage.zoomOutOneLevel();
           pinchStart = distance;
         } else if (ratio > 1.16) {
-          stage.zoomInOneLevel();
+          if (stepAllowed()) stage.zoomInOneLevel();
           pinchStart = distance;
         }
       }
@@ -568,6 +641,7 @@ function collectRefs(root: HTMLElement): Refs | null {
   const detailKind = query('[data-universe-detail-kind]');
   const detailLink = query<HTMLAnchorElement>('[data-universe-detail-link]');
   const hint = query('[data-universe-hint]');
+  const rail = query('[data-universe-rail]');
 
   if (
     !canvas ||
@@ -580,7 +654,8 @@ function collectRefs(root: HTMLElement): Refs | null {
     !detailBlurb ||
     !detailKind ||
     !detailLink ||
-    !hint
+    !hint ||
+    !rail
   ) {
     return null;
   }
@@ -599,6 +674,7 @@ function collectRefs(root: HTMLElement): Refs | null {
     detailKind,
     detailLink,
     hint,
+    rail,
     opener: document.querySelector<HTMLElement>('[data-universe-open]'),
     hero: document.querySelector<HTMLElement>('.hero'),
   };
@@ -615,11 +691,17 @@ function readHeroSource() {
   const image = wrapper?.querySelector('img');
   if (!wrapper || !image || !image.naturalWidth) return null;
 
-  const planetAttr = (wrapper.dataset.artPlanet ?? '').split(',').map(Number);
-  const planet =
-    planetAttr.length === 3 && planetAttr.every((value) => Number.isFinite(value))
-      ? { cx: planetAttr[0]!, cy: planetAttr[1]!, r: planetAttr[2]! }
-      : { cx: 0.64, cy: 0.5, r: 0.39 };
+  const triple = (raw: string | undefined, fallback: [number, number, number]) => {
+    const parts = (raw ?? '').split(',').map(Number);
+    return parts.length === 3 && parts.every((value) => Number.isFinite(value))
+      ? (parts as [number, number, number])
+      : fallback;
+  };
+
+  const [cx, cy, r] = triple(wrapper.dataset.artPlanet, [0.64, 0.5, 0.39]);
+  const planet = { cx, cy, r };
+  const [mx, my, mr] = triple(wrapper.dataset.artMark, [-0.05, 0.32, 0.033]);
+  const mark = { x: mx, y: my, r: mr };
 
   const [rawX, rawY] = getComputedStyle(image).objectPosition.split(' ');
   const focus = {
@@ -636,6 +718,7 @@ function readHeroSource() {
   return {
     image,
     planet,
+    mark,
     focus,
     headline: document.querySelector<HTMLElement>('.hero__heading'),
     starRect: star ? star.getBoundingClientRect() : null,

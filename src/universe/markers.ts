@@ -17,6 +17,9 @@ const KIND_STYLE: Record<NodeRecord['kind'], { color: string; size: number }> = 
   planet: { color: '#c8f542', size: 20 },
   home: { color: '#8fe6ff', size: 46 },
   comet: { color: '#fff6d0', size: 34 },
+  // The smiley is drawn by the planet's own shader, so its marker is only a
+  // hit target and a hover halo — it must not paint a second light source.
+  mark: { color: '#c8f542', size: 13 },
 };
 
 export interface Marker {
