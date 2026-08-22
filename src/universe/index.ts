@@ -16,7 +16,7 @@ export interface UniverseApi {
   commit(): void;
   /** Abandon the gesture and fall back to the hero. */
   release(): void;
-  open(): void;
+  open(region?: string): void;
   close(): void;
   isOpen(): boolean;
   destroy(): void;
@@ -37,7 +37,7 @@ interface Refs {
   detailKind: HTMLElement;
   hint: HTMLElement;
   rail: HTMLElement;
-  opener: HTMLElement | null;
+  openers: HTMLElement[];
   hero: HTMLElement | null;
 }
 
@@ -82,6 +82,9 @@ export function createUniverse(): UniverseApi | null {
   let gestureTimer = 0;
   let gestureValue = 0;
   let lastReturnFocus: HTMLElement | null = null;
+  /** Which entry was used, and the galaxy it asked for, if any. */
+  let activeOpener: HTMLElement | null = null;
+  let pendingRegion: string | null = null;
   let steppedThisGesture = false;
   let lastEventStamp = 0;
   let nudgeTimer = 0;
@@ -149,7 +152,7 @@ export function createUniverse(): UniverseApi | null {
   function showOverlay() {
     if (open) return;
     open = true;
-    lastReturnFocus = (document.activeElement as HTMLElement) ?? refs.opener;
+    lastReturnFocus = (document.activeElement as HTMLElement) ?? refs.openers[0] ?? null;
     overlay.hidden = false;
     document.documentElement.classList.add('universe-active');
     // Freeze the page underneath rather than letting it scroll behind glass.
@@ -176,7 +179,8 @@ export function createUniverse(): UniverseApi | null {
     refs.hero?.style.removeProperty('--universe-progress');
     refs.hero?.style.removeProperty('--universe-intro');
     refs.rail.hidden = true;
-    refs.opener?.setAttribute('aria-pressed', 'false');
+    pendingRegion = null;
+    for (const opener of refs.openers) opener.setAttribute('aria-pressed', 'false');
     lastReturnFocus?.focus?.();
   }
 
@@ -231,11 +235,21 @@ export function createUniverse(): UniverseApi | null {
   /* ----------------------------------------------------------- callbacks */
   function handleMode(mode: Mode) {
     document.documentElement.classList.toggle('universe-open', mode === 'universe');
-    refs.opener?.setAttribute('aria-pressed', String(mode !== 'hero'));
+    for (const opener of refs.openers) {
+      const entered = mode !== 'hero' && opener === activeOpener;
+      opener.setAttribute('aria-pressed', String(entered));
+    }
     refs.hud.hidden = mode !== 'universe';
     refs.hint.hidden = mode !== 'universe';
     if (mode === 'universe') {
       refs.levelText.textContent = LEVEL_NAMES[1] ?? '';
+      if (pendingRegion) {
+        const region = pendingRegion;
+        pendingRegion = null;
+        // A beat at the overview first, so the scale still registers before
+        // the camera commits to one corner of it.
+        window.setTimeout(() => stage?.focusRegion(region), 420);
+      }
       // Land the keyboard inside the map itself rather than on one of its
       // controls — focusing "Back to the page" put a ring around the exit
       // the moment the universe opened, which is the wrong thing to point at.
@@ -575,16 +589,28 @@ export function createUniverse(): UniverseApi | null {
     .querySelector('[data-universe-detail-close]')
     ?.addEventListener('click', () => stage?.select(null), { signal });
 
-  refs.opener?.addEventListener(
-    'click',
-    () => {
-      const instance = ensureStage();
-      if (!open) showOverlay();
-      gestureValue = 0;
-      instance.runTo(1);
-    },
-    { signal }
-  );
+  for (const opener of refs.openers) {
+    opener.addEventListener(
+      'click',
+      () => {
+        const instance = ensureStage();
+        activeOpener = opener;
+        // An entry can name a region. The reveal still plays in full — it is
+        // the point of the feature — and the camera flies on to that galaxy
+        // the moment the map has resolved.
+        pendingRegion = opener.dataset.universeRegion ?? null;
+        if (!open) showOverlay();
+        gestureValue = 0;
+        if (stage?.mode === 'universe' && pendingRegion) {
+          instance.focusRegion(pendingRegion);
+          pendingRegion = null;
+        } else {
+          instance.runTo(1);
+        }
+      },
+      { signal }
+    );
+  }
 
   /* ----------------------------------------------------------- lifecycle */
   window.addEventListener('resize', () => stage?.resize(), { passive: true, signal });
@@ -607,8 +633,9 @@ export function createUniverse(): UniverseApi | null {
     release() {
       stage?.runTo(0);
     },
-    open() {
+    open(region?: string) {
       const instance = ensureStage();
+      pendingRegion = region ?? null;
       if (!open) showOverlay();
       instance.runTo(1);
     },
@@ -675,7 +702,7 @@ function collectRefs(root: HTMLElement): Refs | null {
     detailLink,
     hint,
     rail,
-    opener: document.querySelector<HTMLElement>('[data-universe-open]'),
+    openers: [...document.querySelectorAll<HTMLElement>('[data-universe-open]')],
     hero: document.querySelector<HTMLElement>('.hero'),
   };
 }

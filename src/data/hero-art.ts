@@ -1,4 +1,3 @@
-import artAurora from '../assets/hero-planet.png';
 import artNebula from '../assets/hero-nebula.png';
 import currentSource from './current-source.generated.json';
 
@@ -105,52 +104,14 @@ function currentSourceStar(
 }
 
 /**
- * Hero artworks. Two or more make the switcher appear on the homepage;
- * with one it stays hidden.
+ * The hero artwork.
  *
- * Hotspot geometry is measured against each image's own pixels, so a new
- * artwork needs its own set.
+ * Kept as a list because hotspot geometry is measured against a specific
+ * image's own pixels — a different artwork needs its own set, and having
+ * more than one here is what a comparison switcher would be built from.
+ * Only the first is ever shown.
  */
 export const heroArtworks: HeroArtwork[] = [
-  {
-    id: 'aurora',
-    label: 'Aurora',
-    src: artAurora,
-    theme: 'silver',
-    focus: { desktop: '62% 38%', mobile: '68% 30%' },
-    planet: { cx: 0.5911, cy: 0.6057, r: 0.4618 },
-    hotspots: [
-      {
-        label: 'Health first, always — read what health means',
-        href: '/our-approach#health-heading',
-        x: 570,
-        y: 232,
-        w: 142,
-        h: 98,
-        shape: 'plaque',
-        rotate: -14.5,
-      },
-      {
-        label: 'Level up your life — read what games means',
-        href: '/our-approach#games-heading',
-        x: 1368,
-        y: 530,
-        w: 148,
-        h: 148,
-        shape: 'circle',
-      },
-      {
-        label: 'Grantmaking OS',
-        href: GRANTMAKING_OS_URL,
-        x: 954,
-        y: 404,
-        w: 30,
-        h: 30,
-        shape: 'circle',
-      },
-      ...currentSourceStar({ x: 1439, y: 224, w: 76, h: 76 }),
-    ],
-  },
   {
     id: 'nebula',
     label: 'Nebula',

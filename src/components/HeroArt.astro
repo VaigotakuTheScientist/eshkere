@@ -4,17 +4,13 @@ import { heroArtworks, markFace } from '../data/hero-art';
 import { url } from '../lib/url';
 
 /**
- * The homepage hero artwork: one or more full-bleed images, the clickable
- * regions baked into them, and — when more than one artwork exists — a
- * switcher for comparing them.
+ * The homepage hero artwork: a full-bleed image, the clickable regions baked
+ * into it, and the control cluster that leads into the universe map.
  *
  * The image and the hotspot layer share one animated stage, so the drift
  * moves both together and the click targets never drift off their marks.
  */
 const artworks = heroArtworks;
-// The group is always present now: it is where the universe is entered, not
-// only where artwork is compared.
-const showArtworkOptions = artworks.length > 1;
 ---
 
 <div class="hero__stage">
@@ -81,20 +77,6 @@ const showArtworkOptions = artworks.length > 1;
 
 <div class="art-switcher" role="group" aria-label="View">
   <span class="art-switcher__label" aria-hidden="true">View</span>
-  {
-    showArtworkOptions &&
-      artworks.map((art, index) => (
-        <button
-          class="art-switcher__option"
-          type="button"
-          data-art-choice={art.id}
-          aria-pressed={index === 0 ? 'true' : 'false'}
-        >
-          {art.label}
-        </button>
-      ))
-  }
-  <span class="art-switcher__rule" aria-hidden="true"></span>
   <button
     class="art-switcher__option art-switcher__option--universe"
     type="button"
@@ -111,6 +93,23 @@ const showArtworkOptions = artworks.length > 1;
     </svg>
     Universe
   </button>
+  <span class="art-switcher__rule" aria-hidden="true"></span>
+  <button
+    class="art-switcher__option art-switcher__option--region"
+    type="button"
+    data-universe-open
+    data-universe-region="ai-safety"
+    aria-pressed="false"
+  >
+    <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" fill="none"
+      stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+      <circle cx="12" cy="12" r="2.2" />
+      <ellipse cx="12" cy="12" rx="9.4" ry="4.2" />
+      <ellipse cx="12" cy="12" rx="9.4" ry="4.2" transform="rotate(60 12 12)" />
+      <ellipse cx="12" cy="12" rx="9.4" ry="4.2" transform="rotate(120 12 12)" />
+    </svg>
+    AI Safety
+  </button>
 </div>
 
 <script>
@@ -119,8 +118,6 @@ const showArtworkOptions = artworks.length > 1;
   if (stage) {
     const images = [...stage.querySelectorAll<HTMLElement>('[data-art-image]')];
     const layers = [...stage.querySelectorAll<HTMLElement>('[data-art-hotspots]')];
-    const options = [...document.querySelectorAll<HTMLButtonElement>('[data-art-choice]')];
-    const STORAGE_KEY = 'eshkere:hero-art';
 
     /**
      * Map a rectangle given in the source image's pixels onto the rendered
@@ -156,47 +153,6 @@ const showArtworkOptions = artworks.length > 1;
     const placeVisible = () => {
       layers.filter((layer) => !layer.hidden).forEach(placeHotspots);
     };
-
-    const hero = document.querySelector<HTMLElement>('.hero');
-
-    const select = (id: string) => {
-      images.forEach((image) => {
-        image.hidden = image.dataset.artImage !== id;
-        if (hero && image.dataset.artImage === id && image.dataset.artTheme) {
-          hero.dataset.heroTheme = image.dataset.artTheme;
-        }
-      });
-      layers.forEach((layer) => {
-        layer.hidden = layer.dataset.artHotspots !== id;
-      });
-      options.forEach((option) => {
-        option.setAttribute('aria-pressed', String(option.dataset.artChoice === id));
-      });
-      placeVisible();
-    };
-
-    options.forEach((option) => {
-      option.addEventListener('click', () => {
-        const id = option.dataset.artChoice;
-        if (!id) return;
-        select(id);
-        try {
-          localStorage.setItem(STORAGE_KEY, id);
-        } catch {
-          /* storage unavailable — the choice simply doesn't persist */
-        }
-      });
-    });
-
-    let stored: string | null = null;
-    try {
-      stored = localStorage.getItem(STORAGE_KEY);
-    } catch {
-      /* ignore */
-    }
-    if (stored && images.some((image) => image.dataset.artImage === stored)) {
-      select(stored);
-    }
 
     placeVisible();
     window.addEventListener('resize', placeVisible, { passive: true });
@@ -341,18 +297,45 @@ const showArtworkOptions = artworks.length > 1;
     background: var(--line-soft);
   }
 
-  .art-switcher__option--universe {
+  .art-switcher__option--universe,
+  .art-switcher__option--region {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
     padding-left: 0.15rem;
+  }
+
+  .art-switcher__option--universe {
     color: var(--cyan);
+  }
+
+  /* The example galaxy gets its own accent so the two entries read as two
+     destinations rather than a button and its dropdown. */
+  .art-switcher__option--region {
+    color: var(--violet);
   }
 
   .art-switcher__option--universe:hover,
   .art-switcher__option--universe:focus-visible {
     color: #ffffff;
     text-shadow: 0 0 14px rgba(77, 227, 255, 0.75);
+  }
+
+  .art-switcher__option--region:hover,
+  .art-switcher__option--region:focus-visible {
+    color: #ffffff;
+    text-shadow: 0 0 14px rgba(157, 107, 255, 0.8);
+  }
+
+  /* The rings turn: the galaxy this one lands in. */
+  .art-switcher__option--region:hover svg {
+    animation: universe-spin 6s linear infinite;
+  }
+
+  @keyframes universe-spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   /* The frame draws inward: the gesture the control performs. */
@@ -371,7 +354,8 @@ const showArtworkOptions = artworks.length > 1;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .art-switcher__option--universe:hover svg {
+    .art-switcher__option--universe:hover svg,
+    .art-switcher__option--region:hover svg {
       animation: none;
     }
   }

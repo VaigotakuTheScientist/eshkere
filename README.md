@@ -75,8 +75,8 @@ at rest is byte-for-byte the hero that was there before.
 
 - **No WebGL** — `.universe-index`, a complete text version of the map built
   from the same data, stops being a screen-reader mirror and becomes the
-  visible map. The Universe option removes itself from the view switcher
-  rather than promising something it cannot do.
+  visible map. The switcher's entries remove themselves rather than promising
+  something they cannot do.
 - **`prefers-reduced-motion`** — the flight, the streaks and the drift are
   replaced by a short crossfade to the resolved map. Everything is still
   reachable.
@@ -215,6 +215,7 @@ All content lives in editable files — no code changes needed to publish:
 | `src/data/history.json` | Timeline events — confirmed events only |
 | `src/data/careers.json` | Open roles — real vacancies only |
 | `src/data/site.ts` | Site config: partnership/press contacts (`null` renders honest "forthcoming" states), social links |
+| `src/data/hero-art.ts` | The hero artwork, its clickable regions, and the globe geometry the universe map borrows |
 
 Each collection has a `_template.md` showing the frontmatter. Files starting
 with `_` are ignored by the build.

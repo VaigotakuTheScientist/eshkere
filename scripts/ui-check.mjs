@@ -369,7 +369,7 @@ for (const viewport of viewports) {
   await context.close();
 }
 
-// ------------------------------------------------- artwork switcher
+// ------------------------------------------------------ the one artwork
 {
   const context = await browser.newContext({
     ...CTX,
@@ -379,49 +379,30 @@ for (const viewport of viewports) {
   const page = await context.newPage();
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
 
-  const choices = await page.locator('[data-art-choice]').count();
-  note(choices >= 2, `artwork switcher offers ${choices} artworks`);
+  const art = await page.evaluate(() => {
+    const shown = [...document.querySelectorAll('[data-art-image]')].filter((el) => !el.hidden);
+    const layers = [...document.querySelectorAll('[data-art-hotspots]')].filter((el) => !el.hidden);
+    return {
+      images: document.querySelectorAll('[data-art-image]').length,
+      shown: shown.map((el) => el.dataset.artImage),
+      layers: layers.length,
+      theme: document.querySelector('.hero').dataset.heroTheme,
+      expectedTheme: shown[0]?.dataset.artTheme,
+      choices: document.querySelectorAll('[data-art-choice]').length,
+    };
+  });
+  note(
+    art.images === 1 && art.shown[0] === 'nebula',
+    `hero ships exactly one artwork (${art.shown.join(', ')})`
+  );
+  note(art.layers === 1, `one hotspot layer is live (${art.layers})`);
+  note(art.theme === art.expectedTheme, `hero applies the artwork's theme (${art.theme})`);
+  note(art.choices === 0, `no artwork comparison buttons remain (${art.choices})`);
 
-  if (choices >= 2) {
-    const ids = await page
-      .locator('[data-art-choice]')
-      .evaluateAll((els) => els.map((el) => el.dataset.artChoice));
-
-    for (const id of ids) {
-      await page.click(`[data-art-choice="${id}"]`);
-      await page.waitForTimeout(400);
-      const state = await page.evaluate((artId) => {
-        const shown = [...document.querySelectorAll('[data-art-image]')].filter((el) => !el.hidden);
-        const spots = [...document.querySelectorAll('[data-art-hotspots]')].filter((el) => !el.hidden);
-        return {
-          visible: shown.length === 1 && shown[0].dataset.artImage === artId,
-          hotspotLayers: spots.length,
-          theme: document.querySelector('.hero').dataset.heroTheme,
-          expectedTheme: shown[0]?.dataset.artTheme,
-        };
-      }, id);
-      note(state.visible, `switcher shows only "${id}"`);
-      note(state.hotspotLayers === 1, `"${id}" exposes one hotspot layer (${state.hotspotLayers})`);
-      note(state.theme === state.expectedTheme, `"${id}" applies its theme (${state.theme})`);
-
-      // Hotspots of the selected artwork still reach their sections.
-      await page.locator('.hero__hotspot:visible').first().click({ timeout: 15000 });
-      await page.waitForLoadState('networkidle');
-      note(page.url().includes('/our-approach'), `"${id}" hotspot navigates (${page.url().split('/eshkere')[1]})`);
-      await page.goto(BASE + '/', { waitUntil: 'networkidle' });
-      await page.waitForTimeout(200);
-    }
-
-    // The choice survives a reload.
-    await page.click(`[data-art-choice="${ids[1]}"]`);
-    await page.waitForTimeout(300);
-    await page.reload({ waitUntil: 'networkidle' });
-    await page.waitForTimeout(400);
-    const remembered = await page.evaluate(
-      () => [...document.querySelectorAll('[data-art-image]')].find((el) => !el.hidden)?.dataset.artImage
-    );
-    note(remembered === ids[1], `switcher remembers the choice (${remembered})`);
-  }
+  // The artwork's own lettering still navigates.
+  await page.locator('.hero__hotspot').first().click({ timeout: 15000 });
+  await page.waitForLoadState('networkidle');
+  note(page.url().includes('/our-approach'), `hero hotspot navigates (${page.url().split('/eshkere')[1]})`);
 
   await context.close();
 }
@@ -632,19 +613,26 @@ for (const viewport of viewports) {
 
     // The way in lives with the other views, not as a CTA of its own.
     const control = await page.evaluate(() => {
-      const opener = document.querySelector('[data-universe-open]');
+      const openers = [...document.querySelectorAll('[data-universe-open]')];
       return {
-        inSwitcher: !!opener?.closest('.art-switcher'),
+        allInSwitcher: openers.every((el) => !!el.closest('.art-switcher')),
         views: [...document.querySelectorAll('.art-switcher button')].map((b) =>
           b.textContent.trim()
         ),
+        regions: openers.map((el) => el.dataset.universeRegion ?? ''),
         strayCta: document.querySelectorAll('.hero__content [data-universe-open]').length,
       };
     });
-    note(control.inSwitcher, 'universe is entered from the view switcher');
+    note(control.allInSwitcher, 'the map is entered from the view switcher');
     note(
-      control.views.length === 3 && control.views[2] === 'Universe',
-      `switcher offers three views (${control.views.join(' / ')})`
+      control.views.length === 2 &&
+        control.views[0] === 'Universe' &&
+        control.views[1] === 'AI Safety',
+      `switcher offers two entries (${control.views.join(' / ')})`
+    );
+    note(
+      control.regions.join(',') === ',ai-safety',
+      `the second entry names its galaxy (${control.regions.join(' | ')})`
     );
     note(control.strayCta === 0, 'no standalone zoom-out button in the hero CTAs');
 
@@ -792,6 +780,36 @@ for (const viewport of viewports) {
     await context.close();
   }
 
+
+  // --- the second entry lands on its galaxy
+  {
+    const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await page.click('[data-universe-region="ai-safety"]');
+    await page.waitForFunction(
+      () => document.querySelector('[data-universe-level]')?.textContent === 'Galaxy',
+      null,
+      { timeout: 30000 }
+    );
+    await page.waitForTimeout(1400);
+    const landed = await page.evaluate(() => ({
+      level: document.querySelector('[data-universe-level]').textContent,
+      crumbs: [...document.querySelectorAll('.u-crumb')].map((el) => el.textContent).join(' / '),
+      detail: document.querySelector('[data-universe-detail-title]').textContent,
+      systems: document.querySelectorAll('.u-label--system:not([hidden])').length,
+    }));
+    note(
+      landed.level === 'Galaxy' && landed.crumbs === 'Universe / AI Safety',
+      `"AI Safety" flies straight there (${landed.crumbs})`
+    );
+    note(
+      landed.detail === 'AI Safety' && landed.systems >= 5,
+      `and arrives with its systems open (${landed.systems})`
+    );
+    await page.screenshot({ path: `${SHOT_DIR}/universe-ai-safety-entry.png` });
+    await context.close();
+  }
 
   // --- the artwork's green smiley is a link, at every viewport
   {
@@ -1068,15 +1086,16 @@ for (const viewport of viewports) {
         inert: index.inert,
         visible: index.getBoundingClientRect().height > 200,
         destinations: index.querySelectorAll('a').length,
-        launcherHidden: getComputedStyle(
-          document.querySelector('.art-switcher__option--universe')
-        ).display,
+        launcherHidden: getComputedStyle(document.querySelector('.art-switcher')).display,
         heroIntact: getComputedStyle(document.querySelector('.hero__stage')).opacity,
       };
     });
     note(!fallback.inert && fallback.visible, 'without WebGL the text index becomes the map');
     note(fallback.destinations >= 1, `fallback keeps real destinations (${fallback.destinations})`);
-    note(fallback.launcherHidden === 'none', 'fallback hides a view that cannot be entered');
+    note(
+      fallback.launcherHidden === 'none',
+      'fallback hides entries that cannot be entered'
+    );
     note(fallback.heroIntact === '1', 'fallback leaves the hero alone');
     await page.screenshot({ path: `${SHOT_DIR}/universe-no-webgl.png`, fullPage: true });
     await context.close();

@@ -166,9 +166,9 @@ const gameGalaxies = regions.filter((region) => region.id !== 'health');
    * nothing for the universe beyond this handful of lines.
    */
   const overlay = document.querySelector('[data-universe]');
-  const opener = document.querySelector<HTMLElement>('[data-universe-open]');
+  const openers = [...document.querySelectorAll<HTMLElement>('[data-universe-open]')];
 
-  if (overlay && opener) {
+  if (overlay && openers.length) {
     let loading: Promise<UniverseApi | null> | null = null;
     let api: UniverseApi | null = null;
 
@@ -191,16 +191,18 @@ const gameGalaxies = regions.filter((region) => region.id !== 'health');
       window.requestIdleCallback ?? ((fn: () => void) => window.setTimeout(fn, 1800));
     window.addEventListener('load', () => idle(() => void load()), { once: true });
 
-    opener.addEventListener('pointerenter', () => void load(), { once: true });
-    opener.addEventListener('focus', () => void load(), { once: true });
+    for (const opener of openers) {
+      opener.addEventListener('pointerenter', () => void load(), { once: true });
+      opener.addEventListener('focus', () => void load(), { once: true });
 
-    // The opener is also handled inside the module once it exists; this
-    // covers the click that lands before the chunk has finished arriving.
-    opener.addEventListener('click', () => {
-      void load().then((instance) => {
-        if (instance && !instance.isOpen()) instance.open();
+      // The entries are also handled inside the module once it exists; this
+      // covers a click that lands before the chunk has finished arriving.
+      opener.addEventListener('click', () => {
+        void load().then((instance) => {
+          if (instance && !instance.isOpen()) instance.open(opener.dataset.universeRegion);
+        });
       });
-    });
+    }
 
     // A zoom-out gesture on the hero is intent too. The events are only
     // observed here — the module claims them once it is live.
@@ -666,8 +668,7 @@ const gameGalaxies = regions.filter((region) => region.id !== 'health');
      map: laid out properly, in the site's own voice. */
   /* Without a renderer the third view cannot be entered, so it stops
      offering itself. */
-  html.universe-unsupported .art-switcher__option--universe,
-  html.universe-unsupported .art-switcher__rule {
+  html.universe-unsupported .art-switcher {
     display: none;
   }
 
