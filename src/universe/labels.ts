@@ -20,6 +20,8 @@ export interface LabelHandle {
   id: string;
   node: NodeRecord;
   element: HTMLButtonElement | HTMLAnchorElement;
+  /** Leader line back to the node, for the few labels that carry one. */
+  tether: HTMLElement | null;
   /** 0 hides the label entirely; it is removed from the tab order too. */
   target: number;
   current: number;
@@ -35,6 +37,7 @@ export interface LabelHandle {
   lastY: number;
   lastOpacity: number;
   lastFocusable: boolean;
+  lastTether: string;
   /** When the visibility decision was last allowed to change. */
   settledAt: number;
 }
@@ -131,6 +134,18 @@ export function createLabelLayer(options: LabelLayerOptions) {
       element.append(status);
     }
 
+    // A leader line, for a caption that has to read as belonging to one
+    // object in a field of them. Drawn from the label's own edge to just
+    // short of the thing it names, and re-aimed every frame from the same
+    // numbers that placed the label.
+    let tether: HTMLElement | null = null;
+    if (node.tether) {
+      tether = document.createElement('span');
+      tether.className = 'u-label__tether';
+      tether.setAttribute('aria-hidden', 'true');
+      element.append(tether);
+    }
+
     // A planet with a real destination is a link and behaves like one. Every
     // other label flies the camera instead of navigating.
     element.addEventListener('click', (event) => {
@@ -148,6 +163,7 @@ export function createLabelLayer(options: LabelLayerOptions) {
       id: node.id,
       node,
       element,
+      tether,
       target: 0,
       current: 0,
       screen: { x: 0, y: 0, visible: false },
@@ -159,6 +175,7 @@ export function createLabelLayer(options: LabelLayerOptions) {
       lastY: Number.NaN,
       lastOpacity: -1,
       lastFocusable: false,
+      lastTether: '',
       settledAt: 0,
     });
   }
@@ -179,17 +196,29 @@ export function createLabelLayer(options: LabelLayerOptions) {
       handle.element.style.visibility = 'hidden';
       handle.element.hidden = false;
     }
+    let real = false;
     for (const handle of handles) {
-      handle.width = handle.element.offsetWidth || 120;
+      const width = handle.element.offsetWidth;
+      if (width > 0) real = true;
+      handle.width = width || 120;
       handle.height = handle.element.offsetHeight || 22;
     }
     for (const handle of handles) {
       handle.element.style.visibility = '';
       handle.element.hidden = !handle.placed;
     }
+    // Nothing inside a hidden overlay has a size, and the renderer is built
+    // ahead of time — before the map is ever shown — so this first pass
+    // usually measures nothing at all. Note that, and take the real numbers
+    // the first time a frame is drawn, which is the first moment there are
+    // any. Left unnoticed, every label kept the fallback width and both the
+    // collision test and the keep-it-on-screen nudge worked from a number
+    // that had nothing to do with the type.
+    unmeasured = !real;
   }
 
   let destroyed = false;
+  let unmeasured = true;
   measure();
   // Web fonts change every one of those numbers when they arrive.
   document.fonts?.ready
@@ -243,6 +272,8 @@ export function createLabelLayer(options: LabelLayerOptions) {
       viewport: { width: number; height: number },
       dt: number
     ) {
+      if (unmeasured) measure();
+
       let animating = false;
       for (const handle of handles) {
         if (Math.abs(handle.target - handle.current) > 0.002) {
@@ -463,7 +494,45 @@ export function createLabelLayer(options: LabelLayerOptions) {
     let show = buried <= threshold;
     if (show !== handle.placed && now - handle.settledAt < DWELL_MS) show = handle.placed;
 
+    if (handle.tether && show) aim(handle, box, nodeX, nodeY);
+
     settle(handle, box, show, now);
+  }
+
+  /**
+   * Point a label's leader line at its node.
+   *
+   * The line runs from the label's own edge to the point the label was
+   * placed from. Written as custom properties; the stylesheet decides what
+   * the line looks like.
+   */
+  function aim(
+    handle: LabelHandle,
+    box: { x: number; y: number; w: number; h: number },
+    nodeX: number,
+    nodeY: number
+  ) {
+    const dx = nodeX - (box.x + box.w / 2);
+    const dy = nodeY - (box.y + box.h / 2);
+    const span = Math.hypot(dx, dy);
+    if (span < 1) return;
+    const angle = Math.atan2(dy, dx);
+    // Where the line leaves the label: its own half-extent along the aim.
+    const edge = Math.min(
+      Math.abs(dx) > 1e-4 ? Math.abs((box.w / 2 + 4) / (dx / span)) : Infinity,
+      Math.abs(dy) > 1e-4 ? Math.abs((box.h / 2 + 2) / (dy / span)) : Infinity
+    );
+    // The line stops just short of the anchor, which for a captioned node is
+    // a point on its own rim rather than its centre.
+    const stop = span - 3;
+    const length = Math.max(0, stop - edge);
+    const next = `${angle.toFixed(3)} ${Math.round(edge)} ${Math.round(length)}`;
+    if (next === handle.lastTether) return;
+    handle.lastTether = next;
+    const style = handle.element.style;
+    style.setProperty('--u-tether-angle', `${angle.toFixed(3)}rad`);
+    style.setProperty('--u-tether-start', `${Math.round(edge)}px`);
+    style.setProperty('--u-tether-length', `${Math.round(length)}px`);
   }
 
   /** Commit a decision, and keep the layout list in step with it. */

@@ -43,19 +43,18 @@ const REGION_VERTEX = /* glsl */ `
   }
 `;
 
-/** `uSquare` swaps the round sprite for a hard pixel — Culture & Play only. */
 const REGION_FRAGMENT = /* glsl */ `
   precision mediump float;
   varying vec3 vColor;
   varying float vAlpha;
   uniform float uOpacity;
-  uniform float uSquare;
 
   void main() {
-    vec2 q = gl_PointCoord - vec2(0.5);
-    float round_ = smoothstep(0.5, 0.0, length(q));
-    float box = step(max(abs(q.x), abs(q.y)), 0.34);
-    float shape = mix(round_ * round_ * 0.6 + smoothstep(0.24, 0.0, length(q)), box, uSquare);
+    float d = length(gl_PointCoord - vec2(0.5));
+    // A soft halo with a tight core: reads as a star at one pixel and as a
+    // glow at ten, which is the whole range these points are drawn at.
+    float shape = smoothstep(0.5, 0.0, d) * smoothstep(0.5, 0.0, d) * 0.6
+      + smoothstep(0.24, 0.0, d);
     float a = shape * vAlpha * uOpacity;
     if (a < 0.002) discard;
     gl_FragColor = vec4(vColor, a);
@@ -72,24 +71,26 @@ interface CloudPoint {
   flow: number;
 }
 
-function pointsFromCloud(points: CloudPoint[], palette: string[], square: boolean) {
+function pointsFromCloud(points: CloudPoint[], palette: string[]) {
   const count = points.length;
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
   const sizes = new Float32Array(count);
   const seeds = new Float32Array(count);
   const flows = new Float32Array(count);
-  const a = hexToRgb(palette[0] ?? '#ffffff');
-  const b = hexToRgb(palette[1] ?? palette[0] ?? '#ffffff');
-  const c = hexToRgb(palette[2] ?? palette[1] ?? '#ffffff');
+  // A ramp across however many colours the region declares, so a palette can
+  // carry one hue per named system rather than always exactly three.
+  const ramp = (palette.length ? palette : ['#ffffff']).map(hexToRgb);
+  const last = ramp.length - 1;
   const r = rng(9001);
 
   points.forEach((point, i) => {
     positions[i * 3] = point.x;
     positions[i * 3 + 1] = point.y;
     positions[i * 3 + 2] = point.z;
-    const tint = point.tint;
-    const rgb = tint < 0.5 ? mixRgb(a, b, tint * 2) : mixRgb(b, c, (tint - 0.5) * 2);
+    const scaled = Math.max(0, Math.min(1, point.tint)) * last;
+    const step = Math.min(last, Math.floor(scaled));
+    const rgb = mixRgb(ramp[step]!, ramp[Math.min(last, step + 1)]!, scaled - step);
     colors[i * 3] = rgb[0];
     colors[i * 3 + 1] = rgb[1];
     colors[i * 3 + 2] = rgb[2];
@@ -111,7 +112,6 @@ function pointsFromCloud(points: CloudPoint[], palette: string[], square: boolea
       uPixelRatio: { value: 1 },
       uOpacity: { value: 1 },
       uBreath: { value: 1 },
-      uSquare: { value: square ? 1 : 0 },
     },
     vertexShader: REGION_VERTEX,
     fragmentShader: REGION_FRAGMENT,
@@ -137,6 +137,9 @@ function pointsFromCloud(points: CloudPoint[], palette: string[], square: boolea
  * structure now grow that structure around the things that have names.
  */
 type Anchors = Vec3[];
+
+/** Morphologies whose visible structure is built on the system anchors. */
+const ANCHORED = new Set<Region['morphology']>(['cloud', 'lattice']);
 
 /** AI Safety — a jittered shell lattice: engineered, high-energy, ordered. */
 function latticeCloud(radius: number, seed: number, count: number): CloudPoint[] {
@@ -261,7 +264,22 @@ function spiralCloud(radius: number, seed: number, count: number): CloudPoint[] 
 }
 
 /** Culture & Play — irregular neon clumps, drawn as pixels rather than stars. */
-function cloudCloud(
+/**
+ * Culture & Play — an archipelago.
+ *
+ * Its first form was a handful of overlapping gaussian blobs of hard square
+ * pixels, which additive blending turned into one white-hot pile in the
+ * middle: bright, blocky, and impossible to tell apart. This is the opposite
+ * shape. Each named system is its own small open cluster, sitting on a ring
+ * with nothing in the centre, carrying its own colour out of the region's
+ * palette and wearing a thin arc like an atoll. Between them is a sparse sea
+ * so the whole thing still reads as one galaxy rather than five islands.
+ *
+ * Nothing in a cluster flows: the labels are anchored to these positions, so
+ * dust that rotated away from them would undo the attachment. The sea drifts
+ * instead, which is where the life comes from.
+ */
+function archipelagoCloud(
   radius: number,
   seed: number,
   count: number,
@@ -269,50 +287,54 @@ function cloudCloud(
 ): CloudPoint[] {
   const r = rng(seed);
   const points: CloudPoint[] = [];
+  if (anchors.length === 0) return points;
 
-  // A clump for each named system, so everything with a label is the centre
-  // of something you can see — and a set of unnamed ones between them, so
-  // the region still sprawls like a cloud instead of resolving into five
-  // tidy islands. The named clumps carry more material and are tighter; the
-  // rest is the haze they sit in.
-  const centres = anchors.map((anchor) => ({
-    x: anchor[0],
-    y: anchor[1],
-    z: anchor[2],
-    size: range(r, 0.2, 0.3) * radius,
-    tint: r(),
-    weight: 3,
-  }));
-  for (let i = 0; i < 5; i += 1) {
-    const angle = r() * Math.PI * 2;
-    const d = range(r, 0.25, 0.95) * radius;
-    centres.push({
-      x: Math.cos(angle) * d,
-      y: Math.sin(angle) * d * 0.86,
-      z: gaussish(r) * radius * 0.4,
-      size: range(r, 0.26, 0.46) * radius,
-      tint: r(),
-      weight: 2,
-    });
-  }
-  if (centres.length === 0) return points;
+  const last = Math.max(1, anchors.length - 1);
+  const perCluster = Math.floor((count * 0.78) / anchors.length);
+  const core = radius * 0.17;
 
-  // Weighted draw, precomputed: the named clumps carry most of the material.
-  const bag: number[] = [];
-  centres.forEach((centre, index) => {
-    for (let w = 0; w < centre.weight; w += 1) bag.push(index);
+  anchors.forEach((anchor, index) => {
+    // One hue per system, so the region can be read from a distance: five
+    // colours in five places, not one neon smear.
+    const hue = index / last;
+    const tiltX = range(r, -0.5, 0.5);
+    const tiltY = range(r, -0.5, 0.5);
+
+    for (let i = 0; i < perCluster; i += 1) {
+      // A shallow power keeps the population out at the edges instead of
+      // piling it in the centre — the difference between an open cluster
+      // and a blob.
+      const onArc = i % 100 < 17;
+      const t = onArc ? 1.45 + gaussish(r) * 0.06 : Math.pow(r(), 0.72);
+      const a = r() * Math.PI * 2;
+      const d = core * t;
+      const x = Math.cos(a) * d;
+      const y = Math.sin(a) * d * (onArc ? 0.62 : 0.94);
+      const z = (onArc ? gaussish(r) * core * 0.1 : gaussish(r) * core * 0.42) + x * tiltX + y * tiltY;
+      const bright = !onArc && r() < 0.05;
+      points.push({
+        x: anchor[0] + x,
+        y: anchor[1] + y,
+        z: anchor[2] + z,
+        size: bright ? range(r, 2.6, 3.9) : range(r, 1.1, 2.4),
+        tint: hue + gaussish(r) * 0.03,
+        flow: 0,
+      });
+    }
   });
 
-  for (let i = 0; i < count; i += 1) {
-    const blob = centres[bag[i % bag.length]!]!;
+  // The sea: faint, wide, and the only part that moves.
+  const sea = count - points.length;
+  for (let i = 0; i < sea; i += 1) {
+    const a = r() * Math.PI * 2;
+    const d = Math.pow(r(), 0.5) * radius * 1.16;
     points.push({
-      x: blob.x + gaussish(r) * blob.size * 2,
-      y: blob.y + gaussish(r) * blob.size * 2,
-      z: blob.z + gaussish(r) * blob.size,
-      // Pixels, so a wide size spread reads as deliberate rather than noisy.
-      size: r() < 0.12 ? range(r, 4.2, 7.4) : range(r, 1.4, 3.4),
-      tint: Math.min(1, blob.tint + gaussish(r) * 0.5),
-      flow: 0.01 + (i % 3) * 0.004,
+      x: Math.cos(a) * d,
+      y: Math.sin(a) * d * 0.88,
+      z: gaussish(r) * radius * 0.3,
+      size: range(r, 0.8, 1.7),
+      tint: r(),
+      flow: 0.004 + r() * 0.004,
     });
   }
   return points;
@@ -433,7 +455,7 @@ const CLOUD_BUILDERS: Record<
   lattice: latticeCloud,
   vortex: vortexCloud,
   spiral: spiralCloud,
-  cloud: cloudCloud,
+  cloud: archipelagoCloud,
 };
 
 export function buildRegion(region: Region, quality: 'high' | 'low'): RegionObject {
@@ -451,7 +473,7 @@ export function buildRegion(region: Region, quality: 'high' | 'low'): RegionObje
     baseCount,
     anchors
   );
-  const dust = pointsFromCloud(cloud, region.palette, region.morphology === 'cloud');
+  const dust = pointsFromCloud(cloud, region.palette);
   group.add(dust.object);
 
   const extras: { material: THREE.Material; base: number }[] = [];
@@ -460,11 +482,14 @@ export function buildRegion(region: Region, quality: 'high' | 'low'): RegionObje
     group.add(object);
   };
 
-  // Every region gets a halo; the core gets a much larger, warmer one.
-  const haloStrength = region.morphology === 'core' ? 0.48 : 0.44;
+  // Every region gets a halo; the core gets a much larger, warmer one, and
+  // the archipelago gets a much fainter one — it has no bright middle to
+  // sit behind, and a strong glow there was most of what made it muddy.
+  const haloStrength =
+    region.morphology === 'core' ? 0.48 : region.morphology === 'cloud' ? 0.16 : 0.44;
   const halo = createHalo(
     region.palette[0] ?? '#ffffff',
-    region.radius * (region.morphology === 'core' ? 4.4 : 3.0),
+    region.radius * (region.morphology === 'core' ? 4.4 : region.morphology === 'cloud' ? 2.2 : 3.0),
     haloStrength
   );
   addExtra(halo, haloStrength);
@@ -556,22 +581,61 @@ export function buildRegion(region: Region, quality: 'high' | 'low'): RegionObje
       break;
     }
     case 'cloud': {
-      // Small surreal shapes scattered through the neon: the visual jokes.
+      // An island glow under each cluster, in that cluster's own colour, so
+      // the archipelago reads as five lit places rather than one field.
+      const last = Math.max(1, anchors.length - 1);
+      anchors.forEach((anchor, index) => {
+        const colour = region.palette[
+          Math.min(region.palette.length - 1, Math.round((index / last) * (region.palette.length - 1)))
+        ];
+        const island = createHalo(colour ?? '#ffffff', region.radius * 0.8, 0.3);
+        island.position.set(anchor[0], anchor[1], anchor[2]);
+        addExtra(island, 0.3);
+      });
+
+      // And a figure joining them: the thing that turns a scatter of
+      // clusters into a constellation. Each island is drawn to the next
+      // around the ring, which is the order they were authored in.
+      if (anchors.length > 2) {
+        const vertices: number[] = [];
+        anchors.forEach((from, index) => {
+          const to = anchors[(index + 1) % anchors.length]!;
+          vertices.push(from[0], from[1], from[2], to[0], to[1], to[2]);
+        });
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        const material = new THREE.LineBasicMaterial({
+          color: new THREE.Color('#eaf6ff'),
+          transparent: true,
+          opacity: 0.09,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+        });
+        const figure = new THREE.LineSegments(geometry, material);
+        figure.frustumCulled = false;
+        extras.push({ material, base: 0.09 });
+        group.add(figure);
+      }
+
+      // Small surreal shapes drifting outside the ring: the visual jokes,
+      // now out where they read as objects rather than as more debris.
       for (let i = 0; i < 5; i += 1) {
         const glyph = createRing({
-          radius: range(r, 12, 30),
-          thickness: range(r, 1.5, 3.5),
-          color: ['#c8f542', '#ff4fc8', '#4de3ff'][i % 3] ?? '#c8f542',
-          opacity: 0.5,
+          radius: range(r, 14, 32),
+          thickness: range(r, 1.2, 2.6),
+          color: region.palette[i % region.palette.length] ?? '#c8f542',
+          opacity: 0.42,
           arc: range(r, 1.2, Math.PI * 2),
           rotation: new THREE.Euler(r() * 2, r() * 2, r() * 2),
         });
+        const angle = r() * Math.PI * 2;
+        const away = range(r, 1.35, 1.95) * region.radius;
         glyph.position.set(
-          gaussish(r) * region.radius * 1.7,
-          gaussish(r) * region.radius * 1.7,
-          gaussish(r) * region.radius * 0.7
+          Math.cos(angle) * away,
+          Math.sin(angle) * away * 0.8,
+          gaussish(r) * region.radius * 0.5
         );
-        addExtra(glyph, 0.5);
+        addExtra(glyph, 0.42);
       }
       break;
     }
@@ -629,7 +693,12 @@ export function buildRegion(region: Region, quality: 'high' | 'low'): RegionObje
       dust.material.uniforms.uTime!.value = time;
       dust.material.uniforms.uPixelRatio!.value = pixelRatio;
       dust.material.uniforms.uBreath!.value = breath;
-      group.rotation.z = time * 0.004 * (region.morphology === 'spiral' ? -1 : 1);
+      // A region whose structure is built on its named systems cannot turn:
+      // the labels are pinned to those positions, and dust that rotated away
+      // from them would pull the whole thing apart over a minute or two.
+      group.rotation.z = ANCHORED.has(region.morphology)
+        ? 0
+        : time * 0.004 * (region.morphology === 'spiral' ? -1 : 1);
     },
   };
 }

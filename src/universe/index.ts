@@ -10,12 +10,6 @@ import { createStage, supportsWebGL, type Mode, type Stage } from './stage';
  */
 
 export interface UniverseApi {
-  /** Drive the hero → universe transition directly, 0 to 1. */
-  setProgress(value: number): void;
-  /** Finish opening from wherever the gesture left off. */
-  commit(): void;
-  /** Abandon the gesture and fall back to the hero. */
-  release(): void;
   /** Build the renderer ahead of time, without showing anything. */
   prepare(): void;
   open(region?: string): void;
@@ -38,7 +32,6 @@ interface Refs {
   detailLink: HTMLAnchorElement;
   detailKind: HTMLElement;
   hint: HTMLElement;
-  rail: HTMLElement;
   openers: HTMLElement[];
   hero: HTMLElement | null;
 }
@@ -81,16 +74,11 @@ export function createUniverse(): UniverseApi | null {
   let open = false;
   let intro = 0;
   let introRaf = 0;
-  let gestureTimer = 0;
-  let gestureValue = 0;
   let lastReturnFocus: HTMLElement | null = null;
   /** Which entry was used, and the galaxy it asked for, if any. */
   let activeOpener: HTMLElement | null = null;
   let pendingRegion: string | null = null;
   let regionTimer = 0;
-  let steppedThisGesture = false;
-  let lastEventStamp = 0;
-  let nudgeTimer = 0;
   let hoverX = 0;
   let hoverY = 0;
   let hoverQueued = false;
@@ -111,40 +99,6 @@ export function createUniverse(): UniverseApi | null {
       if (!stage || stage.mode !== 'universe') return;
       stage.setHover(stage.pick(hoverX, hoverY));
     });
-  }
-
-  /**
-   * Answer an outward gesture that has nowhere left to go by pointing at the
-   * control that does — rather than doing nothing, which reads as broken.
-   */
-  function nudgeExit() {
-    const exit = refs.hud.querySelector<HTMLElement>('[data-universe-action="exit"]');
-    if (!exit) return;
-    exit.classList.add('is-nudged');
-    window.clearTimeout(nudgeTimer);
-    nudgeTimer = window.setTimeout(() => exit.classList.remove('is-nudged'), 1100);
-  }
-
-  /**
-   * One semantic level per gesture, not one per event.
-   *
-   * A trackpad flick is a dozen wheel events. What separates one flick from
-   * the next is the gap between them — but measured when the browser *made*
-   * the events, not when it got round to delivering them. Under load those
-   * differ by hundreds of milliseconds, which is enough to make a wall-clock
-   * cooldown let a single flick fall through two levels.
-   */
-  const GESTURE_GAP = 320;
-
-  function noteGestureEvent(stamp: number) {
-    if (stamp - lastEventStamp > GESTURE_GAP) steppedThisGesture = false;
-    lastEventStamp = stamp;
-  }
-
-  function stepAllowed() {
-    if (steppedThisGesture) return false;
-    steppedThisGesture = true;
-    return true;
   }
 
   /* ------------------------------------------------------------- staging */
@@ -197,13 +151,11 @@ export function createUniverse(): UniverseApi | null {
     setPageInert(false);
     stage?.stop();
     window.clearTimeout(regionTimer);
-    gestureValue = 0;
     intro = 0;
     refs.canvas.style.opacity = '0';
     stage?.setIntro(0);
     refs.hero?.style.removeProperty('--universe-progress');
     refs.hero?.style.removeProperty('--universe-intro');
-    refs.rail.hidden = true;
     pendingRegion = null;
     for (const opener of refs.openers) opener.setAttribute('aria-pressed', 'false');
     lastReturnFocus?.focus?.();
@@ -293,10 +245,6 @@ export function createUniverse(): UniverseApi | null {
   function handleProgress(value: number) {
     refs.hero?.style.setProperty('--universe-progress', value.toFixed(3));
     refs.levelText.textContent = stage ? (LEVEL_NAMES[stage.level] ?? '') : '';
-    // Because the gesture holds wherever it is released, there has to be
-    // something on screen saying where that is.
-    refs.rail.style.setProperty('--universe-rail', value.toFixed(3));
-    refs.rail.hidden = value <= 0.02 || value >= 0.995;
   }
 
   function handleHover(node: NodeRecord | null) {
@@ -349,112 +297,17 @@ export function createUniverse(): UniverseApi | null {
     }
   }
 
-  /* --------------------------------------------------------------- input */
+  /* ------------------------------------------------------- pointer input */
   /**
-   * How close to an end state counts as "there". Inside this band the
-   * transition settles onto the state rather than leaving someone parked at
-   * 0.96 of the way into the universe. Everywhere else, a pause holds.
-   */
-  const MAGNET = 0.14;
-
-  function beginGesture(delta: number) {
-    const instance = ensureStage();
-    if (!open) showOverlay();
-    gestureValue = Math.max(0, Math.min(1, gestureValue + delta));
-    instance.setProgress(gestureValue);
-    window.clearTimeout(gestureTimer);
-    gestureTimer = window.setTimeout(endGesture, 180);
-  }
-
-  /**
-   * The gesture is sticky.
+   * Pointer only: drag to pan, hover to light a node, click to fly into it.
    *
-   * Lifting your fingers off a trackpad is not a decision — it is what
-   * happens every second or so while you are looking at something. So
-   * pausing holds the camera exactly where it was left, and the only ways
-   * back to the page are an intentional reverse gesture, Escape, or the
-   * exit control. Only the two ends are magnetic.
+   * There is deliberately no wheel or pinch handler here. Scrubbing the
+   * hero → universe reveal with a trackpad made entering the map feel like
+   * operating a slider rather than crossing a threshold, and it left the
+   * visitor parked at arbitrary points inside a transition that only reads
+   * as cinematic when it plays. Entry and exit are now discrete: the
+   * switcher goes in, the HUD and Escape come back.
    */
-  function endGesture() {
-    if (!stage) return;
-    if (gestureValue <= MAGNET) {
-      stage.runTo(0);
-      gestureValue = 0;
-      return;
-    }
-    if (gestureValue >= 1 - MAGNET) {
-      stage.runTo(1);
-      gestureValue = 1;
-      return;
-    }
-    stage.hold();
-  }
-
-  /**
-   * How far one input event should carry the transition. Pinch deltas are
-   * small and continuous; wheel notches are large and discrete, so they are
-   * damped much harder or a single flick would swallow the whole reveal.
-   */
-  const advance = (event: WheelEvent) => {
-    // Positive means "further out". A trackpad pinch inward reports a
-    // positive deltaY; scrolling up past the top of the page reports a
-    // negative one. Both mean the same thing here.
-    const raw = event.ctrlKey ? event.deltaY : -event.deltaY;
-    // Deliberately slow. Crossing the whole reveal takes a sustained pull
-    // rather than a flick, which is what makes pausing part-way useful.
-    return raw / (event.ctrlKey ? 220 : 780);
-  };
-
-  window.addEventListener(
-    'wheel',
-    (event) => {
-      // --- on the page: only the zoom-out direction is claimed, only at the
-      // top of the hero, and only until the universe takes over. Browser
-      // zoom is never permanently hijacked.
-      if (!open) {
-        if (window.scrollY > 8) return;
-        const pinchIn = event.ctrlKey && event.deltaY > 0;
-        const pullUp = !event.ctrlKey && event.deltaY < -2;
-        if (!pinchIn && !pullUp) return;
-        event.preventDefault();
-        beginGesture(advance(event));
-        return;
-      }
-
-      if (!stage) return;
-
-      // --- mid-transition: keep feeding the same gesture, in either
-      // direction, so the reveal tracks the fingers instead of running away
-      // from them.
-      if (stage.mode === 'transition') {
-        event.preventDefault();
-        beginGesture(advance(event));
-        return;
-      }
-
-      // --- in the universe: whole semantic levels.
-      event.preventDefault();
-      noteGestureEvent(event.timeStamp);
-      const outward = advance(event) > 0;
-      if (outward && stage.level === 1) {
-        // The overview is as far out as the map goes. Pulling further does
-        // not quietly reverse the transition — the same direction would
-        // then mean two opposite things — so it points at the way back
-        // instead, which is an explicit action by design.
-        nudgeExit();
-        return;
-      }
-      // One flick is one level. Without this a single trackpad flick, which
-      // fires a dozen events, would fall straight through every level.
-      if (!stepAllowed()) return;
-      if (outward) stage.zoomOutOneLevel();
-      else stage.zoomInOneLevel();
-    },
-    { passive: false, signal }
-  );
-
-  /* --------------------------------------------------------------- touch */
-  let pinchStart = 0;
   let panPointer: { id: number; x: number; y: number } | null = null;
 
   refs.canvas.addEventListener(
@@ -499,45 +352,6 @@ export function createUniverse(): UniverseApi | null {
     },
     { signal }
   );
-
-  window.addEventListener(
-    'touchmove',
-    (event) => {
-      if (event.touches.length !== 2) return;
-      const [a, b] = [event.touches[0]!, event.touches[1]!];
-      const distance = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-      if (!pinchStart) {
-        pinchStart = distance;
-        return;
-      }
-      const ratio = distance / pinchStart;
-      if (!open && window.scrollY <= 8 && ratio < 0.92) {
-        event.preventDefault();
-        beginGesture((0.92 - ratio) * 1.4);
-        pinchStart = distance;
-      } else if (open && stage?.mode === 'transition') {
-        // Pinching in carries on out; spreading pulls back to the page.
-        event.preventDefault();
-        beginGesture((1 - ratio) * 1.4);
-        pinchStart = distance;
-      } else if (open && stage?.mode === 'universe') {
-        noteGestureEvent(event.timeStamp);
-        if (ratio < 0.86) {
-          if (stage.level === 1) nudgeExit();
-          else if (stepAllowed()) stage.zoomOutOneLevel();
-          pinchStart = distance;
-        } else if (ratio > 1.16) {
-          if (stepAllowed()) stage.zoomInOneLevel();
-          pinchStart = distance;
-        }
-      }
-    },
-    { passive: false, signal }
-  );
-
-  window.addEventListener('touchend', () => {
-    pinchStart = 0;
-  }, { signal });
 
   /* ------------------------------------------------------------ keyboard */
   window.addEventListener(
@@ -629,7 +443,6 @@ export function createUniverse(): UniverseApi | null {
         // the moment the map has resolved.
         pendingRegion = opener.dataset.universeRegion ?? null;
         if (!open) showOverlay();
-        gestureValue = 0;
         if (stage?.mode === 'universe') {
           if (pendingRegion) instance.focusRegion(pendingRegion);
           else instance.recentre();
@@ -665,18 +478,6 @@ export function createUniverse(): UniverseApi | null {
   );
 
   return {
-    setProgress(value) {
-      const instance = ensureStage();
-      if (!open) showOverlay();
-      gestureValue = value;
-      instance.setProgress(value);
-    },
-    commit() {
-      ensureStage().runTo(1);
-    },
-    release() {
-      stage?.runTo(0);
-    },
     prepare() {
       ensureStage();
     },
@@ -715,7 +516,6 @@ function collectRefs(root: HTMLElement): Refs | null {
   const detailKind = query('[data-universe-detail-kind]');
   const detailLink = query<HTMLAnchorElement>('[data-universe-detail-link]');
   const hint = query('[data-universe-hint]');
-  const rail = query('[data-universe-rail]');
 
   if (
     !canvas ||
@@ -728,8 +528,7 @@ function collectRefs(root: HTMLElement): Refs | null {
     !detailBlurb ||
     !detailKind ||
     !detailLink ||
-    !hint ||
-    !rail
+    !hint
   ) {
     return null;
   }
@@ -748,7 +547,6 @@ function collectRefs(root: HTMLElement): Refs | null {
     detailKind,
     detailLink,
     hint,
-    rail,
     openers: [...document.querySelectorAll<HTMLElement>('[data-universe-open]')],
     hero: document.querySelector<HTMLElement>('.hero'),
   };

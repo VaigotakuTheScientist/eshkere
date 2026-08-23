@@ -943,14 +943,20 @@ for (const viewport of viewports) {
     await context.close();
   }
 
-  // --- the zoom-out gesture is sticky
+  // --- there is no gesture zoom any more
   {
+    /**
+     * The reveal used to be scrubbable with a trackpad, which made entering
+     * the map feel like operating a slider and left visitors parked inside a
+     * transition that only reads as cinematic when it plays. Entry and exit
+     * are discrete now, and the wheel belongs to the page again.
+     */
     const context = await browser.newContext({ ...CTX, viewport: { width: 1280, height: 720 } });
     const page = await context.newPage();
     await page.goto(BASE + '/', { waitUntil: 'networkidle' });
     await page.waitForTimeout(2200);
 
-    const read = () =>
+    const progress = () =>
       page.evaluate(
         () =>
           Number(
@@ -960,95 +966,94 @@ for (const viewport of viewports) {
           ) || 0
       );
 
-    for (let i = 0; i < 3; i += 1) {
+    for (let i = 0; i < 6; i += 1) {
       await page.mouse.wheel(0, -120);
-      await page.waitForTimeout(90);
-    }
-    const moved = await read();
-    note(moved > 0.1, `zoom-out gesture engages (progress ${moved.toFixed(2)})`);
-
-    // The whole point: letting go must not undo it.
-    await page.waitForTimeout(1500);
-    const held = await read();
-    note(
-      Math.abs(held - moved) < 0.02 && held > 0.1,
-      `pausing holds the transition (${moved.toFixed(2)} → ${held.toFixed(2)})`
-    );
-    await page.screenshot({ path: `${SHOT_DIR}/universe-held.png` });
-
-    // Reversing is deliberate, and it works.
-    for (let i = 0; i < 2; i += 1) {
-      await page.mouse.wheel(0, 120);
-      await page.waitForTimeout(90);
+      await page.waitForTimeout(60);
     }
     await page.waitForTimeout(900);
-    const reversed = await read();
-    note(reversed < held - 0.05, `reversing pulls back in (${held.toFixed(2)} → ${reversed.toFixed(2)})`);
+    const afterWheel = await progress();
+    note(afterWheel === 0, `wheeling on the hero opens nothing (progress ${afterWheel})`);
+    note(
+      (await page.evaluate(() => document.documentElement.className)) === '',
+      'and leaves the page a page'
+    );
 
-    // And a small amount of progress settles back to the page.
-    for (let i = 0; i < 4; i += 1) {
-      await page.mouse.wheel(0, 120);
-      await page.waitForTimeout(90);
-    }
-    await page.waitForTimeout(2200);
-    const home = await page.evaluate(() => document.documentElement.className);
-    note(home === '', `reversing all the way returns the page ("${home}")`);
-    await context.close();
-  }
+    // A two-finger pinch is a browser zoom again, not a map control.
+    await page.evaluate(() => {
+      for (let i = 0; i < 8; i += 1) {
+        window.dispatchEvent(
+          new WheelEvent('wheel', { deltaY: 40, ctrlKey: true, cancelable: true, bubbles: true })
+        );
+      }
+    });
+    await page.waitForTimeout(700);
+    note((await progress()) === 0, 'pinching on the hero opens nothing either');
 
-  // --- one flick is one level
-  {
-    const context = await browser.newContext({ ...CTX, viewport: { width: 1280, height: 720 } });
-    const page = await context.newPage();
-    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    // The switcher does, in one move.
     await openUniverse(page);
+    await page.waitForTimeout(1200);
+    note((await progress()) > 0.99, 'the switcher goes all the way in, in one step');
 
+    // And in the map the wheel changes no levels.
     await page.evaluate(() => {
       window.__levels = [];
       const el = document.querySelector('[data-universe-level]');
-      new MutationObserver(() =>
-        window.__levels.push(el.textContent)
-      ).observe(el, { childList: true, characterData: true, subtree: true });
-    });
-    // Dispatched from inside the page rather than driven through the
-    // browser: one flick's events are milliseconds apart, and CDP-driven
-    // input in a software-rendered container is hundreds of milliseconds
-    // apart — which is several separate gestures as far as the rule is
-    // concerned, and would not be testing the rule at all.
-    await page.evaluate(() => {
+      new MutationObserver(() => window.__levels.push(el.textContent)).observe(el, {
+        childList: true,
+        characterData: true,
+        subtree: true,
+      });
       for (let i = 0; i < 12; i += 1) {
         window.dispatchEvent(
           new WheelEvent('wheel', { deltaY: 120, cancelable: true, bubbles: true })
         );
       }
     });
-    await page.waitForTimeout(1600);
-    const steps = await page.evaluate(() => window.__levels);
-    note(steps.length === 1 && steps[0] === 'Galaxy', `one flick is one level (${steps.join(' → ')})`);
-
-    // Pulling outward at the overview points at the way back rather than
-    // silently reversing the reveal.
-    await page.keyboard.press('Escape');
-    await page.waitForTimeout(1400);
-    await page.evaluate(() => {
-      for (let i = 0; i < 6; i += 1) {
-        window.dispatchEvent(
-          new WheelEvent('wheel', { deltaY: -120, cancelable: true, bubbles: true })
-        );
-      }
-    });
-    await page.waitForTimeout(300);
-    const outer = await page.evaluate(() => ({
-      level: document.querySelector('[data-universe-level]').textContent,
-      nudged: !!document.querySelector('.universe__control--exit.is-nudged'),
-    }));
+    await page.waitForTimeout(1200);
+    const levels = await page.evaluate(() => window.__levels);
+    note(levels.length === 0, `the wheel changes no levels in the map (${levels.length} changes)`);
     note(
-      outer.level === 'Universe' && outer.nudged,
-      `overview is the outer limit and says so (nudged=${outer.nudged})`
+      (await page.evaluate(() => document.querySelector('[data-universe-level]').textContent)) ===
+        'Universe',
+      'and the map stays where it was put'
     );
+    await page.screenshot({ path: `${SHOT_DIR}/universe-held.png` });
     await context.close();
   }
 
+  // --- entering and leaving is all controls and keys now
+  {
+    const context = await browser.newContext({ ...CTX, viewport: { width: 1280, height: 720 } });
+    const page = await context.newPage();
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await openUniverse(page);
+
+    // Click a galaxy to fly in.
+    await page.evaluate(() => document.querySelector('.u-label[data-node-id="power"]')?.click());
+    await page.waitForFunction(
+      () => document.querySelector('[data-universe-level]')?.textContent === 'Galaxy',
+      null,
+      { timeout: 30000 }
+    );
+    note(true, 'clicking a galaxy flies into it');
+
+    // The Universe crumb takes you back out to the overview.
+    await page.click('.u-crumb:first-child');
+    await page.waitForFunction(
+      () => document.querySelector('[data-universe-level]')?.textContent === 'Universe',
+      null,
+      { timeout: 30000 }
+    );
+    note(true, 'UNIVERSE returns to the overview');
+
+    // Back to the page returns the hero.
+    await page.click('[data-universe-action="exit"]');
+    await page.waitForFunction(() => document.documentElement.className === '', null, {
+      timeout: 30000,
+    });
+    note(true, 'Back to the page returns the hero');
+    await context.close();
+  }
 
   // --- labels must not flicker
   {
@@ -1389,6 +1394,22 @@ for (const viewport of viewports) {
     note(phone.regions >= 4, `phone shows the composition (${phone.regions} regions)`);
     note(phone.overflow <= 1, `phone has no horizontal overflow (${phone.overflow}px)`);
     note(phone.controls === 4, `phone keeps visible zoom controls (${phone.controls})`);
+
+    // Every label is measured before it is placed, and the renderer is built
+    // ahead of time inside a hidden overlay where nothing has a size — so a
+    // first measurement there reads zero for everything, and a fallback
+    // width is what then decides both collisions and this nudge.
+    const spill = await page.evaluate(() => {
+      const out = [];
+      for (const el of document.querySelectorAll('.u-label:not([hidden])')) {
+        const rect = el.getBoundingClientRect();
+        if (rect.left < -1 || rect.right > window.innerWidth + 1) {
+          out.push(`${el.dataset.nodeId} ${Math.round(rect.left)}..${Math.round(rect.right)}`);
+        }
+      }
+      return out;
+    });
+    note(spill.length === 0, `and keeps every label on screen (${spill.join(', ') || 'all inside'})`);
     await page.screenshot({ path: `${SHOT_DIR}/universe-phone.png` });
     await context.close();
   }

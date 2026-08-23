@@ -40,12 +40,16 @@ partners, funding, portfolio, publications or history.
 ## The universe map
 
 This is the live version of the site. The homepage hero is the *near camera
-state* of a larger map. Zooming out —
-with the **Zoom out to the universe** control, a trackpad pinch, a two-finger
-scroll up at the top of the page, or `+`/`-` and `Esc` once inside — pulls the
+state* of a larger map. **The Universe** in the hero's view switcher pulls the
 camera back until the artwork turns out to be one planet in an Eshkere
 universe: a **Health Core** at the centre with **AI Safety**, **Power**,
-**Knowledge & Science** and **Culture & Play** arranged around it.
+**Knowledge & Science** and **Culture & Play** arranged around it, each on a
+thread from the core.
+
+Navigation is discrete and explicit — there is no gesture-scrubbed zoom.
+Click a galaxy to fly into it, **Universe** in the breadcrumb to come back
+out, **Back to the page** to leave; `+`/`-` and `Esc` do the same from the
+keyboard.
 
 Design and interaction decisions live in
 [`docs/universe-map-spec.md`](docs/universe-map-spec.md), which is the

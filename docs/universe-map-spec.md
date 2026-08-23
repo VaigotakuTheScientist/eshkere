@@ -140,6 +140,14 @@ Support all of these:
 
 1. **Trackpad pinch inward / zoom-out gesture** when the browser exposes it in a controllable way.
 2. **Mouse wheel / trackpad scroll with an explicit “zoom universe” interaction mode** if appropriate.
+
+> **Amended, 2026-08-23.** Both gesture routes were built, shipped and then
+> removed as a product decision: scrubbing the reveal with a trackpad made
+> entering the map feel like operating a slider, and left visitors parked
+> part-way through a transition that only reads as cinematic when it plays.
+> Entry and exit are discrete — the hero's view switcher goes in, clicking a
+> galaxy flies into it, the breadcrumb comes back out, and `Esc` / **Back to
+> the page** leave. The wheel and pinch belong to the browser again.
 3. A visible but elegant **“ZOOM OUT” / “EXPLORE THE GAMES”** control for discoverability.
 4. Keyboard accessibility: `-` / `+` or equivalent controls, plus an explicit UI control.
 

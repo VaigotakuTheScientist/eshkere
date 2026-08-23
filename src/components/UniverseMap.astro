@@ -58,16 +58,8 @@ const gameGalaxies = regions.filter((region) => region.id !== 'health');
     </button>
   </aside>
 
-  <div class="universe__rail" data-universe-rail aria-hidden="true" hidden>
-    <span class="universe__rail-fill"></span>
-    <span class="universe__rail-ends">
-      <span>Hero</span>
-      <span>Universe</span>
-    </span>
-  </div>
-
   <p class="universe__hint" data-universe-hint hidden>
-    Click a galaxy to fly in · <kbd>−</kbd>/<kbd>+</kbd> to change level · <kbd>Esc</kbd> to go back to the page
+    Click a galaxy to fly in · <b>Universe</b> to come back out · <kbd>Esc</kbd> one level back
   </p>
 </div>
 
@@ -161,9 +153,9 @@ const gameGalaxies = regions.filter((region) => region.id !== 'health');
    * Boot: nothing heavy until it is wanted.
    *
    * The renderer module is prefetched once the browser is idle, and again
-   * the moment a visitor shows intent — hovering the control, or starting a
-   * zoom-out gesture. Until one of those happens the homepage has paid
-   * nothing for the universe beyond this handful of lines.
+   * the moment a visitor shows intent by reaching for the switcher. Until
+   * one of those happens the homepage has paid nothing for the universe
+   * beyond this handful of lines.
    */
   const overlay = document.querySelector('[data-universe]');
   const openers = [...document.querySelectorAll<HTMLElement>('[data-universe-open]')];
@@ -192,10 +184,10 @@ const gameGalaxies = regions.filter((region) => region.id !== 'health');
     };
 
     // Warm the chunk when nothing else is competing for the network, and on
-    // a pointer device go one further and build the renderer too — that is
-    // where the trackpad gesture lives, so the map can be entered without
-    // any deliberate aim at a control. Touch and low-power devices wait for
-    // an actual tap rather than carrying a WebGL context they may never use.
+    // a capable pointer device go one further and build the renderer too, so
+    // the reveal starts on the first frame after the click. Touch and
+    // low-power devices wait for an actual tap rather than carrying a WebGL
+    // context they may never use.
     const idle =
       window.requestIdleCallback ?? ((fn: () => void) => window.setTimeout(fn, 1800));
     window.addEventListener(
@@ -222,16 +214,6 @@ const gameGalaxies = regions.filter((region) => region.id !== 'health');
         });
       });
     }
-
-    // A zoom-out gesture on the hero is intent too. The events are only
-    // observed here — the module claims them once it is live.
-    const arm = (event: WheelEvent) => {
-      if (window.scrollY > 8) return;
-      if (!(event.ctrlKey && event.deltaY > 0) && !(!event.ctrlKey && event.deltaY < -2)) return;
-      warm();
-      window.removeEventListener('wheel', arm);
-    };
-    window.addEventListener('wheel', arm, { passive: true });
   }
 </script>
 
@@ -341,6 +323,23 @@ const gameGalaxies = regions.filter((region) => region.id !== 'health');
 
   .u-label--home .u-label__text {
     color: var(--cyan);
+  }
+
+  /* ------------------------------------------------------------- tether
+     A leader line from a caption to the object it names. Rotated about the
+     label's own centre and started at its edge, so the geometry is two
+     numbers the label layer already knows. It fades out towards the object
+     rather than touching it, which keeps a hairline off a bright rim. */
+  .u-label__tether {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    height: 1px;
+    width: var(--u-tether-length, 0);
+    transform-origin: 0 50%;
+    transform: rotate(var(--u-tether-angle, 0rad)) translateX(var(--u-tether-start, 0));
+    background: linear-gradient(90deg, rgba(77, 227, 255, 0.65), rgba(77, 227, 255, 0.06));
+    pointer-events: none;
   }
 
   .u-label--comet .u-label__text {
@@ -466,30 +465,6 @@ const gameGalaxies = regions.filter((region) => region.id !== 'health');
     text-transform: uppercase;
   }
 
-  /* Pulsed when someone keeps pulling outward at the overview: there is no
-     further level, and this is where they were trying to go. */
-  .universe__control--exit.is-nudged {
-    color: #ffffff;
-    animation: universe-nudge 1.1s var(--ease-out);
-  }
-
-  @keyframes universe-nudge {
-    0%,
-    100% {
-      box-shadow: 0 0 0 0 rgba(77, 227, 255, 0);
-    }
-    35% {
-      box-shadow: 0 0 0 2px rgba(77, 227, 255, 0.55), 0 0 24px rgba(77, 227, 255, 0.4);
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .universe__control--exit.is-nudged {
-      animation: none;
-      box-shadow: 0 0 0 2px rgba(77, 227, 255, 0.55);
-    }
-  }
-
   .universe__control:hover,
   .universe__control:focus-visible {
     color: #ffffff;
@@ -557,37 +532,6 @@ const gameGalaxies = regions.filter((region) => region.id !== 'health');
     color: var(--ink);
   }
 
-  /* ----------------------------------------------------------------- rail
-     The zoom-out gesture holds wherever it is released, so there has to be
-     something saying where that is and which way is out. It exists only
-     between the two end states. */
-  .universe__rail {
-    position: absolute;
-    inset-inline: 0;
-    bottom: 0;
-    pointer-events: none;
-  }
-
-  .universe__rail-fill {
-    display: block;
-    height: 2px;
-    background: linear-gradient(90deg, rgba(157, 107, 255, 0.5), var(--cyan));
-    transform: scaleX(var(--universe-rail, 0));
-    transform-origin: left center;
-    box-shadow: 0 0 18px rgba(77, 227, 255, 0.45);
-  }
-
-  .universe__rail-ends {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.5rem clamp(1rem, 3vw, 2rem) 0.7rem;
-    color: var(--ink-faint);
-    font-family: var(--font-pixel);
-    font-size: 0.52rem;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-  }
-
   /* ----------------------------------------------------------------- hint */
   .universe__hint {
     position: absolute;
@@ -597,6 +541,11 @@ const gameGalaxies = regions.filter((region) => region.id !== 'health');
     font-size: 0.62rem;
     letter-spacing: 0.14em;
     text-transform: uppercase;
+  }
+
+  .universe__hint b {
+    font-weight: 500;
+    color: var(--ink-soft);
   }
 
   .universe__hint kbd {

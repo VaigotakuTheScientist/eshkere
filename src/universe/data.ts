@@ -50,7 +50,11 @@ export interface Region {
   morphology: Morphology;
   position: Vec3;
   radius: number;
-  /** Two or three colours the region's dust is drawn from. */
+  /**
+   * The colours the region's dust is drawn from, as a ramp. Two or three for
+   * a region with one mood; one per system for one that wants each of its
+   * parts to be identifiable at a distance.
+   */
   palette: string[];
   /**
    * How far a system's label sits from its star, as a fraction of the
@@ -60,6 +64,12 @@ export interface Region {
    * needs much more room than a galaxy whose dust is evenly spread.
    */
   labelReach?: number;
+  /**
+   * How far below the region's centre its own name hangs, as a fraction of
+   * the radius. A galaxy built as a ring needs its name clear of the ring
+   * rather than sitting on whatever is at the bottom of it.
+   */
+  labelDrop?: number;
   /** Seed for this region's point cloud — stable across builds. */
   seed: number;
   systems: System[];
@@ -126,7 +136,7 @@ const aiSafety: Region = {
   label: 'AI Safety',
   tagline: 'Keeping the foundation standing as powerful systems arrive.',
   morphology: 'lattice',
-  position: [-500, 210, -140],
+  position: [-850, 231, -110],
   radius: 240,
   palette: ['#4de3ff', '#9d6bff', '#eaf6ff'],
   seed: 2027,
@@ -225,7 +235,7 @@ const power: Region = {
   label: 'Power',
   tagline: 'The ability to cause outcomes — and to convert it into them.',
   morphology: 'vortex',
-  position: [600, -170, -300],
+  position: [668, -358, -250],
   radius: 225,
   palette: ['#ff4fc8', '#ffb992', '#9d6bff'],
   seed: 733,
@@ -268,7 +278,7 @@ const knowledge: Region = {
   label: 'Knowledge & Science',
   tagline: 'Understanding reality, and getting good at it.',
   morphology: 'spiral',
-  position: [-360, -320, 60],
+  position: [-479, -374, 60],
   radius: 210,
   palette: ['#eaf6ff', '#4de3ff', '#c8f542'],
   seed: 314,
@@ -311,40 +321,50 @@ const culture: Region = {
   label: 'Culture & Play',
   tagline: 'The optional layer — and most of what makes a life worth it.',
   morphology: 'cloud',
-  position: [450, 330, 140],
+  position: [656, 286, 110],
   radius: 200,
-  palette: ['#c8f542', '#ff4fc8', '#4de3ff'],
+  // One colour per system, in the order the systems are declared: the
+  // archipelago gives each island its own hue, which is what lets the
+  // region be read at overview distance.
+  palette: ['#c8f542', '#9d6bff', '#ff4fc8', '#ffb992', '#4de3ff'],
   labelReach: 0.2,
+  // Its structure is a ring, so its name has to clear the ring rather than
+  // land on the island at the bottom of it.
+  labelDrop: 1.25,
   seed: 8080,
+  // Laid out as a ring with an open middle, and with the bottom of the ring
+  // deliberately left empty — that is where the galaxy's own name hangs.
+  // The five used to sit at scattered distances with two of them nearly on
+  // top of each other, which is most of why the region read as a pile.
   systems: [
     {
       id: 'culture-games',
       label: 'Games',
-      offset: [-120, 66, 28],
+      offset: [-111, 142, 30],
       blurb: 'Chosen stakes, learnable rules, the freedom to stop.',
     },
     {
       id: 'culture-fiction',
       label: 'Fiction',
-      offset: [104, 96, -24],
+      offset: [111, 142, -30],
       blurb: 'Lives you get to run without living them.',
     },
     {
       id: 'culture-music',
       label: 'Music',
-      offset: [142, -58, 18],
+      offset: [171, -56, 26],
       blurb: 'The one that needs no justification at all.',
     },
     {
       id: 'culture-art',
       label: 'Art & Design',
-      offset: [-16, -134, 34],
+      offset: [-62, -169, -20],
       blurb: 'Making things that did not have to exist.',
     },
     {
       id: 'culture-exploration',
       label: 'Exploration',
-      offset: [-136, -66, -12],
+      offset: [-177, -31, 44],
       blurb: 'Going and finding out. Often how the discoveries happen.',
     },
   ],
@@ -388,7 +408,7 @@ export const homeWorld = {
   id: 'home',
   label: 'You were here',
   blurb: 'The Eshkere homepage — one close-up inside a much larger map.',
-  position: [-150, -95, 150] as Vec3,
+  position: [-168, -154, 170] as Vec3,
   radius: 40,
 };
 
@@ -458,6 +478,8 @@ export interface NodeRecord {
   origin?: Vec3;
   /** Extra clearance in screen pixels, for nodes drawn larger than a point. */
   labelPad?: number;
+  /** Draw a leader line from the label back to the node. */
+  tether?: boolean;
   kind: 'region' | 'system' | 'planet' | 'home' | 'comet' | 'mark';
   /** Region this node belongs to, for dimming and breadcrumbs. */
   regionId: string;
@@ -482,7 +504,7 @@ export const nodeIndex: NodeRecord[] = (() => {
       labelOffset:
         region.id === 'health'
           ? [0, region.radius * 1.2, 0]
-          : [0, -region.radius * 0.86, 0],
+          : [0, -region.radius * (region.labelDrop ?? 0.86), 0],
       kind: 'region',
       regionId: region.id,
     });
@@ -538,9 +560,14 @@ export const nodeIndex: NodeRecord[] = (() => {
     label: homeWorld.label,
     blurb: homeWorld.blurb,
     position: homeWorld.position,
-    // Outward from the core it orbits, and clear of its own disc.
-    origin: [0, 0, 0],
-    labelPad: 34,
+    // A caption, not a satellite. It hangs straight below the planet from a
+    // point on the rim — world-space, so it stays on the rim at every
+    // composition scale — with a short leader line across the gap. Placed
+    // radially like the galaxies' systems, it drifted to wherever "away
+    // from the core" happened to point and read as merely nearby.
+    labelOffset: [0, -(homeWorld.radius + 6), 0],
+    labelPad: 24,
+    tether: true,
     kind: 'home',
     regionId: 'health',
   });

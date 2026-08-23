@@ -32,9 +32,15 @@ const FOV = 50;
 const HERO_DISTANCE = 420;
 /** Camera distance in the universe overview. */
 const UNIVERSE_DISTANCE = 1450;
-/** Half-extents the overview composition needs to show, in world units. */
-const FIT_HALF_WIDTH = 900;
-const FIT_HALF_HEIGHT = 620;
+/**
+ * Half-extents the overview composition needs to show, in world units.
+ *
+ * Wider than it is tall, and deliberately so: a 16:9 frame has roughly
+ * twice as much room across as down, and the composition used to leave the
+ * outer third of both sides empty while nearly touching the top and bottom.
+ */
+const FIT_HALF_WIDTH = 1100;
+const FIT_HALF_HEIGHT = 600;
 /**
  * The composition is wide and a phone is tall. Rather than shrink the whole
  * universe to a postage stamp in the middle of the screen, portrait
@@ -578,9 +584,11 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
     for (const filament of filaments) {
       const touches =
         active !== null && (filament.link.from === active || filament.link.to === active);
-      // Health's own threads stay faintly lit at all times: the substrate is
-      // supposed to look connected to everything.
-      const ambient = filament.link.from === 'health' && level === 1 ? 0.16 : 0;
+      // Health's own threads stay lit at all times. In the overview they are
+      // the composition's connective tissue — four slow pulses running from
+      // the core out to the galaxies, which is what makes five bodies read
+      // as one system rather than five things placed in a frame.
+      const ambient = filament.link.from === 'health' && level === 1 ? 0.6 : 0;
       filament.setOpacity(touches ? 1 : ambient);
     }
   }
@@ -1042,6 +1050,10 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
       wanted.position.copy(target.position);
       wanted.target.copy(target.target);
       applyLabelTargets(1);
+      // Arriving is a change of level too. Without this the core's ambient
+      // threads stayed dark until the first hover — which is to say they
+      // were never seen, since nothing else asks for them.
+      refreshFilaments();
     }
     if (next === 'hero') {
       labels.setAll(0);
@@ -1118,29 +1130,22 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
     start,
     stop,
     resize,
-    /** Stop any timed transition and stay exactly where the gesture left it. */
-    hold() {
-      timedTransition = false;
-    },
     /** Weight of the DOM → canvas hand-over, 0 to 1. */
     setIntro(value: number) {
       introFade = clamp(value);
       applyProgress(progress, true);
     },
-    /** Drive the transition directly — used by continuous gestures. */
-    setProgress(value: number) {
-      timedTransition = false;
-      // Anything short of the universe is the transition, including the way
-      // back out of it — otherwise reversing would leave the HUD up over a
-      // scene that is no longer the map.
-      if (value < 0.999 && mode !== 'transition') setMode('transition');
-      applyProgress(value);
-      if (value >= 1) settleMode();
-    },
-    /** Run to the end (or the start) on a timer. */
+    /**
+     * Play the reveal, or play it backwards. The only way the transition is
+     * ever driven: it runs on its own clock from wherever it is to the end
+     * it was asked for, so it always reads as one cinematic move.
+     */
     runTo(target: number) {
       progressTarget = clamp(target);
       timedTransition = true;
+      // Only entering flips the mode up front. Leaving stays 'universe'
+      // until the reveal has finished playing backwards, so the camera does
+      // not snap out of a galaxy the instant the exit is pressed.
       if (mode === 'hero' && target > 0) setMode('transition');
       start();
     },
