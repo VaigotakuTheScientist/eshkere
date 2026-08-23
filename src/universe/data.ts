@@ -557,7 +557,10 @@ export const nodeIndex: NodeRecord[] = (() => {
   }
   list.push({
     id: homeWorld.id,
-    label: homeWorld.label,
+    // Two forms, one meaning. At rest it says where you are; reach for it and
+    // it says what it does, because it is the way back to the page.
+    label: `${homeWorld.label} — back to the page`,
+    shortLabel: homeWorld.label,
     blurb: homeWorld.blurb,
     position: homeWorld.position,
     // A caption, not a satellite. It hangs straight below the planet from a

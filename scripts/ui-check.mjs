@@ -943,6 +943,129 @@ for (const viewport of viewports) {
     await context.close();
   }
 
+  // --- the home world is the way back
+  {
+    /**
+     * Both the planet and its caption do what "Back to the page" does, and
+     * neither of them is a link — they run the same return transition. The
+     * smiley on the planet's face keeps its own destination, which is why
+     * the two hit areas had to stop being the same size.
+     */
+    const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+
+    const caption = () => page.locator('.u-label[data-node-id="home"]');
+    const home = async () =>
+      page.waitForFunction(() => document.documentElement.className === '', null, {
+        timeout: 30000,
+      });
+
+    // 1. Clicking the caption returns to the page.
+    await openUniverse(page);
+    await page.waitForTimeout(1600);
+    note(
+      (await caption().getAttribute('href')) === null,
+      'the home caption is a control, not a link'
+    );
+    await caption().click();
+    let returned = true;
+    await home().catch(() => (returned = false));
+    note(returned, 'clicking "You were here" returns to the page');
+
+    // 2. So does pressing it from the keyboard.
+    await openUniverse(page);
+    await page.waitForTimeout(1600);
+    const focusable = await page.evaluate(() => {
+      const el = document.querySelector('.u-label[data-node-id="home"]');
+      el.focus();
+      return document.activeElement === el;
+    });
+    note(focusable, 'the home caption takes keyboard focus');
+    await page.keyboard.press('Enter');
+    returned = true;
+    await home().catch(() => (returned = false));
+    note(returned, 'and Enter on it returns to the page');
+
+    // 3. And so does the planet itself. Its hit area is found by walking up
+    //    from the caption until the canvas offers a pointer — which also
+    //    checks that hovering the planet says it is interactive.
+    await openUniverse(page);
+    await page.waitForTimeout(1600);
+    const found = await (async () => {
+      const box = await caption().boundingBox();
+      if (!box) return null;
+      const x = Math.round(box.x + box.width / 2);
+      for (let y = Math.round(box.y) - 4; y > box.y - 220; y -= 4) {
+        await page.mouse.move(x, y);
+        await page.waitForTimeout(40);
+        const cursor = await page.evaluate(
+          () => document.querySelector('[data-universe-canvas]').style.cursor
+        );
+        if (cursor === 'pointer') return { x, y };
+      }
+      return null;
+    })();
+    note(!!found, `hovering the home planet offers a pointer (${found ? `${found.x},${found.y}` : 'never'})`);
+    if (found) {
+      await page.mouse.click(found.x, found.y - 6);
+      returned = true;
+      await home().catch(() => (returned = false));
+      note(returned, 'clicking the home planet returns to the page');
+    } else {
+      note(false, 'clicking the home planet returns to the page (planet not found)');
+    }
+
+    // 4. Including the middle of it, where the smiley sits. The two used to
+    //    share a hit area, so the click that looks most like "press the
+    //    planet" is the one most at risk of opening a link instead.
+    await openUniverse(page);
+    await page.waitForTimeout(1600);
+    if (found) {
+      const stray = await page.waitForEvent('popup', { timeout: 4000 }).catch(() => null);
+      await page.mouse.click(found.x, found.y - 40);
+      returned = true;
+      await home().catch(() => (returned = false));
+      note(returned, 'so does clicking the middle of it, where the smiley is');
+      note(!stray, 'and it opens nothing');
+    } else {
+      note(false, 'so does clicking the middle of it (planet not found)');
+      note(false, 'and it opens nothing (planet not found)');
+    }
+
+    // 5. The smiley is still its own destination, and pressing it does not
+    //    leave the map. It is drawn on the world rather than captioned, so
+    //    it has to be reached for before it can be pressed.
+    await openUniverse(page);
+    await page.waitForTimeout(1600);
+    await page.evaluate(async () => {
+      const el = document.querySelector('.u-label--mark');
+      el.dispatchEvent(new PointerEvent('pointerenter', { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+    const [popup] = await Promise.all([
+      page.waitForEvent('popup', { timeout: 15000 }).catch(() => null),
+      page.locator('.u-label--mark').click(),
+    ]);
+    // The destination is the anchor's own href — this container has no route
+    // to Notion, so what is checked is that pressing it opens a tab and that
+    // the tab is aimed at the right place.
+    const smileHref = (await page.locator('.u-label--mark').getAttribute('href')) ?? '';
+    note(
+      !!popup && /Grantmaking-OS/.test(smileHref),
+      `the smiley still opens Grantmaking OS in a new tab (${
+        popup ? 'opened' : 'no tab'
+      }, ${smileHref.slice(0, 40)})`
+    );
+    await popup?.close();
+    await page.waitForTimeout(600);
+    note(
+      (await page.evaluate(() => document.documentElement.className)).includes('universe-open'),
+      'and pressing it does not leave the map'
+    );
+    await context.close();
+  }
+
   // --- there is no gesture zoom any more
   {
     /**

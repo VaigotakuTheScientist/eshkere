@@ -690,6 +690,21 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
     callbacks.onSelect(node);
   }
 
+  /**
+   * Play the reveal, or play it backwards. The only way the transition is
+   * ever driven: it runs on its own clock from wherever it is to the end it
+   * was asked for, so it always reads as one cinematic move.
+   */
+  function runTo(target: number) {
+    progressTarget = clamp(target);
+    timedTransition = true;
+    // Only entering flips the mode up front. Leaving stays 'universe' until
+    // the reveal has finished playing backwards, so the camera does not snap
+    // out of a galaxy the instant the exit is pressed.
+    if (mode === 'hero' && target > 0) setMode('transition');
+    start();
+  }
+
   function activate(node: NodeRecord) {
     if (node.kind === 'region') focusRegion(node.id);
     else if (node.kind === 'system') focusSystem(node.id);
@@ -698,8 +713,13 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
       callbacks.onSelect(node);
       refreshFilaments();
     } else if (node.kind === 'home') {
-      selectedId = node.id;
-      callbacks.onSelect(node);
+      // The home world is the way back. It is the page you came from, so
+      // activating it does what "Back to the page" does — the same call, so
+      // there is only ever one way out of the map.
+      runTo(0);
+    } else if (node.kind === 'mark' && node.href) {
+      // Except the smiley on its face, which is its own destination.
+      window.open(node.href, '_blank', 'noopener,noreferrer');
     }
   }
 
@@ -814,7 +834,11 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
     }
     for (const marker of markers.values()) {
       if (!marker.group.visible) continue;
-      consider(marker.node, marker.position, 44);
+      // The smiley is a small thing drawn on a much larger one, and the two
+      // now do different things. It gets a hit area the size of the drawing
+      // rather than the size every other marker uses, so a click lands on
+      // whichever of them was actually aimed at.
+      consider(marker.node, marker.position, marker.node.kind === 'mark' ? 20 : 44);
     }
     if (cometNode && comet.group.visible) consider(cometNode, comet.head, 44);
 
@@ -1135,20 +1159,7 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
       introFade = clamp(value);
       applyProgress(progress, true);
     },
-    /**
-     * Play the reveal, or play it backwards. The only way the transition is
-     * ever driven: it runs on its own clock from wherever it is to the end
-     * it was asked for, so it always reads as one cinematic move.
-     */
-    runTo(target: number) {
-      progressTarget = clamp(target);
-      timedTransition = true;
-      // Only entering flips the mode up front. Leaving stays 'universe'
-      // until the reveal has finished playing backwards, so the camera does
-      // not snap out of a galaxy the instant the exit is pressed.
-      if (mode === 'hero' && target > 0) setMode('transition');
-      start();
-    },
+    runTo,
     focusRegion,
     focusSystem,
     activate,
