@@ -777,6 +777,58 @@ for (const viewport of viewports) {
       'comet opens safely in a new tab'
     );
     note(comet?.short === 'Current source', 'comet is compact until hovered');
+
+    // The comet is the one thing that keeps moving while the camera holds
+    // still. The label layer skips its whole layout pass in a stationary
+    // view, so unless it also notices a node that moved on its own, the name
+    // stays where the comet used to be and drifts across the map away from
+    // it — which is exactly what it did.
+    await page.waitForTimeout(1200);
+    const tracking = await page.evaluate(async () => {
+      const el = document.querySelector('.u-label--comet');
+      const region = document.querySelector('.u-label--region');
+      const read = (node) => {
+        const rect = node.getBoundingClientRect();
+        return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2, on: !node.hidden };
+      };
+      const anchored = read(region);
+      const seen = [];
+      for (let i = 0; i < 180; i += 1) {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        const at = read(el);
+        if (at.on) seen.push(at);
+      }
+      let biggestStep = 0;
+      for (let i = 1; i < seen.length; i += 1) {
+        biggestStep = Math.max(
+          biggestStep,
+          Math.hypot(seen[i].x - seen[i - 1].x, seen[i].y - seen[i - 1].y)
+        );
+      }
+      const first = seen[0];
+      const last = seen[seen.length - 1];
+      const regionAfter = read(region);
+      return {
+        samples: seen.length,
+        travelled: first && last ? Math.hypot(last.x - first.x, last.y - first.y) : 0,
+        biggestStep,
+        regionMoved: Math.hypot(regionAfter.x - anchored.x, regionAfter.y - anchored.y),
+      };
+    });
+    note(
+      tracking.samples > 60 && tracking.travelled > 2,
+      `the comet's name travels with it (${tracking.travelled.toFixed(1)}px over ${
+        tracking.samples
+      } visible frames)`
+    );
+    note(
+      tracking.biggestStep < 16,
+      `and follows it smoothly rather than jumping (worst step ${tracking.biggestStep.toFixed(1)}px)`
+    );
+    note(
+      tracking.regionMoved === 0,
+      `while the still labels stay still (${tracking.regionMoved}px)`
+    );
     await context.close();
   }
 

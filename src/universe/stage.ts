@@ -220,10 +220,11 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
         shortLabel: 'Current source',
         blurb: 'The source the Eshkere hero star is pointing at right now.',
         position: [0, 0, 0],
-        // It belongs to nothing, so it takes its bearing from the middle of
-        // the map: wherever the orbit has carried it, its name is written on
-        // the outward side, away from whatever it is passing.
+        // Rewritten every frame to the galaxy the comet is passing, so the
+        // name is always on the outward side of it. See `render`.
         origin: [0, 0, 0],
+        // Enough to clear the head's own glow.
+        labelPad: 18,
         kind: 'comet',
         regionId: 'health',
         href: currentSourceComet.href,
@@ -281,6 +282,13 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
   const ESCAPE_CONTROL = new THREE.Vector3();
   const SMILEY_AT = new THREE.Vector3();
   const cometPeelStart = new THREE.Vector3();
+  const cometBearing = new THREE.Vector3();
+  /**
+   * Softening for the comet's bearing, in world units squared — roughly a
+   * galaxy radius. Nearer than this and one galaxy takes the weighting over;
+   * further out and the bearing settles back towards the middle of the map.
+   */
+  const BEARING_SOFTEN = 320 * 320;
   const cometScratch = new THREE.Vector3();
   let hasPeelOrigin = false;
 
@@ -852,6 +860,33 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
       at[0] = comet.head.x;
       at[1] = comet.head.y;
       at[2] = comet.head.z;
+
+      // The comet belongs to nothing, so it takes its bearing from whatever
+      // it is passing — a distance-weighted centre of gravity of the
+      // galaxies. Whichever one it is nearest dominates, so its name is
+      // written on the far side of that galaxy rather than laid across the
+      // particles; and because the weighting shifts continuously, the label
+      // never swings around the head the way picking a nearest neighbour
+      // makes it (5px worst per-frame step, against 18px).
+      const origin = cometNode.origin;
+      if (origin) {
+        cometBearing.set(0, 0, 0);
+        let total = 0;
+        for (const region of regions) {
+          const dx = region.position[0] - comet.head.x;
+          const dy = region.position[1] - comet.head.y;
+          const dz = region.position[2] - comet.head.z;
+          const weight = 1 / (dx * dx + dy * dy + dz * dz + BEARING_SOFTEN);
+          total += weight;
+          cometBearing.x += region.position[0] * weight;
+          cometBearing.y += region.position[1] * weight;
+          cometBearing.z += region.position[2] * weight;
+        }
+        cometBearing.divideScalar(total || 1);
+        origin[0] = cometBearing.x;
+        origin[1] = cometBearing.y;
+        origin[2] = cometBearing.z;
+      }
     }
 
     camera.position.copy(view.position);

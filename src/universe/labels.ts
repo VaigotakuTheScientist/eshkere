@@ -213,6 +213,9 @@ export function createLabelLayer(options: LabelLayerOptions) {
     h: 0,
   }));
   const placedBoxes: typeof boxes = [];
+  // Last frame's node positions, so a stationary view can still notice the
+  // one or two things in the map that move on their own.
+  const positions = new Float64Array(handles.length * 3);
 
   return {
     handles,
@@ -276,129 +279,43 @@ export function createLabelLayer(options: LabelLayerOptions) {
           }
         }
       }
-      if (!moved && !animating) return;
       previous.set(fingerprint);
       hasPrevious = true;
 
       const now = performance.now();
-      placedBoxes.length = 0;
 
+      if (moved || animating) {
+        // Everything may have shifted: place the whole set, in priority
+        // order, so a name is only ever buried by a more important one.
+        placedBoxes.length = 0;
+        for (let index = 0; index < ordered.length; index += 1) {
+          place(index, camera, root, viewport, now);
+        }
+        rememberPositions();
+        return;
+      }
+
+      // The view is holding still, but the map is not entirely static: the
+      // comet travels its orbit, and the home world's smiley rides the
+      // planet. Rather than name those, notice that a node's position has
+      // changed and re-place just that label against the layout the last
+      // full pass settled on. Comparing a hundred floats is nothing next to
+      // projecting and colliding every label again, and it means anything
+      // that starts moving later is handled without being told about.
       for (let index = 0; index < ordered.length; index += 1) {
-        const handle = ordered[index]!;
-
-        if (handle.current < 0.02) {
-          commit(handle, false, now);
+        const at = ordered[index]!.node.position;
+        const slot = index * 3;
+        if (
+          positions[slot] === at[0] &&
+          positions[slot + 1] === at[1] &&
+          positions[slot + 2] === at[2]
+        ) {
           continue;
         }
-
-        // The node's place is the universe's business; the label's offset is
-        // the screen's. Transform the position by the root (which may be
-        // scaled and, in portrait, turned a quarter turn) and only then step
-        // the label away from it along world axes — so "below the galaxy"
-        // stays below on screen whichever way the composition is oriented.
-        projected
-          .set(handle.node.position[0], handle.node.position[1], handle.node.position[2])
-          .applyMatrix4(root.matrixWorld);
-        // The world-space step first: it scales with the scene, so it is
-        // what clears whatever the region draws around this node at any
-        // zoom. The screen-space gap below is only the final few pixels.
-        const offset = handle.node.labelOffset;
-        if (offset) {
-          const scale = root.scale.x;
-          projected.x += offset[0] * scale;
-          projected.y += offset[1] * scale;
-          projected.z += offset[2] * scale;
-        }
-        projected.project(camera);
-
-        if (projected.z > 1) {
-          commit(handle, false, now);
-          continue;
-        }
-
-        const nodeX = (projected.x * 0.5 + 0.5) * viewport.width;
-        const nodeY = (0.5 - projected.y * 0.5) * viewport.height;
-
-        const box = boxes[index]!;
-        box.w = handle.width;
-        box.h = handle.height;
-
-        // Where the label goes relative to its node.
-        //
-        // A galaxy name keeps its world-space offset, because it has to
-        // scale with the galaxy. Everything smaller is placed on the far
-        // side of its node from whatever it belongs to — a system away from
-        // its galaxy, a planet away from its system. That is what keeps a
-        // label out of the bright middle of a dense region, where the type
-        // simply cannot be read over the particles, and it makes which star
-        // a name belongs to unambiguous.
-        let x = nodeX;
-        let y = nodeY;
-        if (handle.node.kind !== 'region') {
-          let dirX = 0;
-          let dirY = 1;
-          const origin = handle.node.origin;
-          if (origin) {
-            originProjected.set(origin[0], origin[1], origin[2]).applyMatrix4(root.matrixWorld);
-            originProjected.project(camera);
-            dirX = nodeX - (originProjected.x * 0.5 + 0.5) * viewport.width;
-            dirY = nodeY - (0.5 - originProjected.y * 0.5) * viewport.height;
-            const length = Math.hypot(dirX, dirY);
-            // A node sitting on top of its own origin — a galaxy's central
-            // system, say — has no outward direction, so it falls back to
-            // straight down.
-            if (length < 1) {
-              dirX = 0;
-              dirY = 1;
-            } else {
-              dirX /= length;
-              dirY /= length;
-            }
-          }
-          // Distance from the label's centre to its own edge along that
-          // direction, so the gap is the same whichever way it points.
-          const edge = Math.min(
-            Math.abs(dirX) > 1e-4 ? Math.abs(box.w / 2 / dirX) : Infinity,
-            Math.abs(dirY) > 1e-4 ? Math.abs(box.h / 2 / dirY) : Infinity
-          );
-          const reach = edge + ATTACH_GAP + (handle.node.labelPad ?? 0);
-          x = nodeX + dirX * reach;
-          y = nodeY + dirY * reach;
-        }
-
-        box.x = x - box.w / 2;
-        box.y = y - box.h / 2;
-
-        // Keep every label whole and clear of the HUD. A narrow viewport is
-        // the common case here — a galaxy name is wider than a third of a
-        // phone — so nudge the label back inside rather than dropping it,
-        // and only give up when the nudge would be big enough to point at
-        // the wrong object.
-        const fitX = fit(box.x, box.w, SAFE.left, viewport.width - SAFE.right);
-        const fitY = fit(box.y, box.h, SAFE.top, viewport.height - SAFE.bottom);
-        if (Math.abs(fitX - box.x) > box.w * 0.45 || Math.abs(fitY - box.y) > box.h * 1.5) {
-          commit(handle, false, now);
-          continue;
-        }
-        box.x = fitX;
-        box.y = fitY;
-
-        // How much of this label the labels above it have already taken.
-        let buried = 0;
-        for (let other = 0; other < placedBoxes.length; other += 1) {
-          buried += overlapFraction(box, placedBoxes[other]!);
-          if (buried >= 1) break;
-        }
-
-        // Hysteresis, so a label on the boundary does not flip on sub-pixel
-        // camera drift, plus a dwell floor so nothing can oscillate quickly
-        // even if the geometry does something unexpected.
-        const threshold = handle.placed ? BURY : CLEAR;
-        let show = buried <= threshold;
-        if (show !== handle.placed && now - handle.settledAt < DWELL_MS) show = handle.placed;
-
-        if (show) placedBoxes.push(box);
-        commit(handle, show, now, box, handle.current);
+        positions[slot] = at[0];
+        positions[slot + 1] = at[1];
+        positions[slot + 2] = at[2];
+        place(index, camera, root, viewport, now);
       }
     },
     destroy() {
@@ -406,6 +323,161 @@ export function createLabelLayer(options: LabelLayerOptions) {
       for (const handle of handles) handle.element.remove();
     },
   };
+
+  /** Cache every node's position, so the next frame can spot what moved. */
+  function rememberPositions() {
+    for (let index = 0; index < ordered.length; index += 1) {
+      const at = ordered[index]!.node.position;
+      const slot = index * 3;
+      positions[slot] = at[0];
+      positions[slot + 1] = at[1];
+      positions[slot + 2] = at[2];
+    }
+  }
+
+  /**
+   * Project one label, decide where it sits, and show it unless the labels
+   * already placed have taken too much of it. `placedBoxes` is the layout so
+   * far: a full pass fills it in priority order, and a single moving label
+   * re-enters it in place.
+   */
+  function place(
+    index: number,
+    camera: THREE.PerspectiveCamera,
+    root: THREE.Object3D,
+    viewport: { width: number; height: number },
+    now: number
+  ) {
+    const handle = ordered[index]!;
+    const box = boxes[index]!;
+
+    if (handle.current < 0.02) {
+      settle(handle, box, false, now);
+      return;
+    }
+
+    // The node's place is the universe's business; the label's offset is the
+    // screen's. Transform the position by the root (which may be scaled and,
+    // in portrait, turned a quarter turn) and only then step the label away
+    // from it along world axes — so "below the galaxy" stays below on screen
+    // whichever way the composition is oriented.
+    projected
+      .set(handle.node.position[0], handle.node.position[1], handle.node.position[2])
+      .applyMatrix4(root.matrixWorld);
+    // The world-space step first: it scales with the scene, so it is what
+    // clears whatever the region draws around this node at any zoom. The
+    // screen-space gap below is only the final few pixels.
+    const offset = handle.node.labelOffset;
+    if (offset) {
+      const scale = root.scale.x;
+      projected.x += offset[0] * scale;
+      projected.y += offset[1] * scale;
+      projected.z += offset[2] * scale;
+    }
+    projected.project(camera);
+
+    if (projected.z > 1) {
+      settle(handle, box, false, now);
+      return;
+    }
+
+    const nodeX = (projected.x * 0.5 + 0.5) * viewport.width;
+    const nodeY = (0.5 - projected.y * 0.5) * viewport.height;
+
+    box.w = handle.width;
+    box.h = handle.height;
+
+    // Where the label goes relative to its node.
+    //
+    // A galaxy name keeps its world-space offset, because it has to scale
+    // with the galaxy. Everything smaller is placed on the far side of its
+    // node from whatever it belongs to — a system away from its galaxy, a
+    // planet away from its system. That is what keeps a label out of the
+    // bright middle of a dense region, where the type simply cannot be read
+    // over the particles, and it makes which star a name belongs to
+    // unambiguous.
+    let x = nodeX;
+    let y = nodeY;
+    if (handle.node.kind !== 'region') {
+      let dirX = 0;
+      let dirY = 1;
+      const origin = handle.node.origin;
+      if (origin) {
+        originProjected.set(origin[0], origin[1], origin[2]).applyMatrix4(root.matrixWorld);
+        originProjected.project(camera);
+        dirX = nodeX - (originProjected.x * 0.5 + 0.5) * viewport.width;
+        dirY = nodeY - (0.5 - originProjected.y * 0.5) * viewport.height;
+        const length = Math.hypot(dirX, dirY);
+        // A node sitting on top of its own origin — a galaxy's central
+        // system, say — has no outward direction, so it falls back to
+        // straight down.
+        if (length < 1) {
+          dirX = 0;
+          dirY = 1;
+        } else {
+          dirX /= length;
+          dirY /= length;
+        }
+      }
+      // Distance from the label's centre to its own edge along that
+      // direction, so the gap is the same whichever way it points.
+      const edge = Math.min(
+        Math.abs(dirX) > 1e-4 ? Math.abs(box.w / 2 / dirX) : Infinity,
+        Math.abs(dirY) > 1e-4 ? Math.abs(box.h / 2 / dirY) : Infinity
+      );
+      const reach = edge + ATTACH_GAP + (handle.node.labelPad ?? 0);
+      x = nodeX + dirX * reach;
+      y = nodeY + dirY * reach;
+    }
+
+    box.x = x - box.w / 2;
+    box.y = y - box.h / 2;
+
+    // Keep every label whole and clear of the HUD. A narrow viewport is the
+    // common case here — a galaxy name is wider than a third of a phone — so
+    // nudge the label back inside rather than dropping it, and only give up
+    // when the nudge would be big enough to point at the wrong object.
+    const fitX = fit(box.x, box.w, SAFE.left, viewport.width - SAFE.right);
+    const fitY = fit(box.y, box.h, SAFE.top, viewport.height - SAFE.bottom);
+    if (Math.abs(fitX - box.x) > box.w * 0.45 || Math.abs(fitY - box.y) > box.h * 1.5) {
+      settle(handle, box, false, now);
+      return;
+    }
+    box.x = fitX;
+    box.y = fitY;
+
+    // How much of this label the labels above it have already taken. A label
+    // never buries itself: on a re-place its own box is still in the layout.
+    let buried = 0;
+    for (let other = 0; other < placedBoxes.length; other += 1) {
+      const against = placedBoxes[other]!;
+      if (against === box) continue;
+      buried += overlapFraction(box, against);
+      if (buried >= 1) break;
+    }
+
+    // Hysteresis, so a label on the boundary does not flip on sub-pixel
+    // camera drift, plus a dwell floor so nothing can oscillate quickly even
+    // if the geometry does something unexpected.
+    const threshold = handle.placed ? BURY : CLEAR;
+    let show = buried <= threshold;
+    if (show !== handle.placed && now - handle.settledAt < DWELL_MS) show = handle.placed;
+
+    settle(handle, box, show, now);
+  }
+
+  /** Commit a decision, and keep the layout list in step with it. */
+  function settle(
+    handle: LabelHandle,
+    box: { x: number; y: number; w: number; h: number },
+    show: boolean,
+    now: number
+  ) {
+    const at = placedBoxes.indexOf(box);
+    if (show && at < 0) placedBoxes.push(box);
+    else if (!show && at >= 0) placedBoxes.splice(at, 1);
+    commit(handle, show, now, box, handle.current);
+  }
 
   /** Write to the DOM only where something actually changed. */
   function commit(
