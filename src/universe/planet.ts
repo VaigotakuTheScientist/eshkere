@@ -62,17 +62,6 @@ const FRAGMENT = /* glsl */ `
       f.z);
   }
 
-  float fbm(vec3 p) {
-    float amplitude = 0.5;
-    float sum = 0.0;
-    for (int i = 0; i < 4; i += 1) {
-      sum += amplitude * noise3(p);
-      p = p * 2.07 + vec3(11.3, 5.7, 19.1);
-      amplitude *= 0.5;
-    }
-    return sum;
-  }
-
   vec3 spin(vec3 p, float a) {
     float c = cos(a), s = sin(a);
     return vec3(c * p.x + s * p.z, p.y, -s * p.x + c * p.z);
@@ -95,11 +84,30 @@ const FRAGMENT = /* glsl */ `
        a completely different object from the one that just handed over. */
     vec3 sp = spin(normalize(vPos), uSpin);
 
-    float continent = fbm(sp * 1.7);
+    // One walk through the noise field instead of five.
+    //
+    // The old shader called a four-octave fbm five times over — twenty-one
+    // noise lookups, each of them a sin(), for every fragment of a planet
+    // that fills the screen at the loudest moment of the transition. It was
+    // the single most expensive thing drawn. Walking the octaves once and
+    // keeping what each contributed gives the same continents from the same
+    // arithmetic, and the higher octaves stand in for the fields that only
+    // ever tinted or textured what those continents had already decided.
+    vec3 q = sp * 1.7;
+    float o1 = noise3(q);
+    q = q * 2.07 + vec3(11.3, 5.7, 19.1);
+    float o2 = noise3(q);
+    q = q * 2.07 + vec3(11.3, 5.7, 19.1);
+    float o3 = noise3(q);
+    q = q * 2.07 + vec3(11.3, 5.7, 19.1);
+    float o4 = noise3(q);
+
+    // Bit-for-bit the previous fbm(sp * 1.7): the coastlines are unchanged.
+    float continent = 0.5 * o1 + 0.25 * o2 + 0.125 * o3 + 0.0625 * o4;
     float land = smoothstep(0.50, 0.56, continent);
 
-    vec3 ocean = mix(vec3(0.006, 0.012, 0.055), vec3(0.02, 0.05, 0.17), fbm(sp * 3.1));
-    vec3 ground = mix(vec3(0.03, 0.02, 0.10), vec3(0.11, 0.03, 0.17), fbm(sp * 5.2));
+    vec3 ocean = mix(vec3(0.006, 0.012, 0.055), vec3(0.02, 0.05, 0.17), o2);
+    vec3 ground = mix(vec3(0.03, 0.02, 0.10), vec3(0.11, 0.03, 0.17), o3);
     vec3 base = mix(ocean, ground, land);
 
     vec3 sun = normalize(vec3(0.52, 0.58, 0.62));
@@ -115,9 +123,12 @@ const FRAGMENT = /* glsl */ `
     lit += vec3(1.0, 0.16, 0.72) * wash * 0.5;
 
     // Filaments across the land: the glowing networks drawn on the original.
-    float ridged = 1.0 - abs(fbm(sp * 6.5) * 2.0 - 1.0);
+    // One lookup of its own — combining only the octaves above left the
+    // field too smooth, and smooth ridges are fat ridges.
+    float rn = 0.62 * noise3(sp * 6.5) + 0.25 * o4 + 0.13 * o3;
+    float ridged = 1.0 - abs(rn * 2.0 - 1.0);
     float veins = smoothstep(0.885, 0.99, ridged) * land;
-    lit += mix(vec3(1.0, 0.35, 0.85), vec3(0.45, 0.95, 1.0), fbm(sp * 2.0)) * veins * 0.85;
+    lit += mix(vec3(1.0, 0.35, 0.85), vec3(0.45, 0.95, 1.0), continent) * veins * 0.85;
 
     // City lights, on land, only where the sun is not.
     float cities = smoothstep(0.76, 0.92, noise3(sp * 34.0)) * land * (1.0 - day);

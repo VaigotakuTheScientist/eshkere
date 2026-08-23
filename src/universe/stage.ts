@@ -86,8 +86,27 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
     powerPreference: 'high-performance',
     failIfMajorPerformanceCaveat: false,
   });
+  // Three checks every shader's compile log by default, and each check is a
+  // synchronous round trip to the driver. Profiling put those calls at 46%
+  // of all JS during the transition — a ~600ms stall at the exact moment
+  // the camera starts moving. The shaders here are fixed and known good.
+  renderer.debug.checkShaderErrors = false;
   renderer.setClearColor(0x050508, 1);
-  let pixelRatio = Math.min(window.devicePixelRatio || 1, quality === 'high' ? 1.75 : 1);
+  /**
+   * Rendering resolution, adapted at runtime.
+   *
+   * Everything crisp on screen — labels, HUD, breadcrumbs — is DOM and
+   * renders at native resolution whatever this is set to. The canvas holds
+   * starfields, glows and a planet, none of which have a hard edge to lose,
+   * so this is the cheapest lever in the whole scene: fill cost falls with
+   * the square of it and almost nothing looks different.
+   */
+  const RATIO_STEPS = [0.75, 1, 1.25, 1.5, 1.75];
+  const maxRatio = Math.min(window.devicePixelRatio || 1, quality === 'high' ? 1.75 : 1);
+  const ratioCeiling = RATIO_STEPS.filter((step) => step <= maxRatio).length - 1;
+  let ratioIndex = Math.max(0, Math.min(ratioCeiling, RATIO_STEPS.indexOf(1.5)));
+  if (ratioIndex < 0) ratioIndex = ratioCeiling;
+  let pixelRatio = RATIO_STEPS[ratioIndex] ?? maxRatio;
   renderer.setPixelRatio(pixelRatio);
 
   const scene = new THREE.Scene();
@@ -105,7 +124,7 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
   camera.updateProjectionMatrix();
 
   /* --------------------------------------------------------------- sky */
-  const sky: Sky = createSky(quality);
+  const sky: Sky = createSky(renderer, quality);
   scene.add(sky.group);
 
   /* ---------------------------------------------------------- universe */
@@ -167,7 +186,20 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
   scene.add(planet.group);
 
   let headlineDust: HeadlineDust | null = null;
-  if (dom.heroHeadline) {
+
+  /**
+   * The headline particles are sampled from where the headline actually is,
+   * so a viewport change invalidates them. The stage is built on intent —
+   * a hover — which can be a long time before the transition runs, so this
+   * has to be redone rather than measured once and trusted.
+   */
+  function buildHeadlineDust() {
+    if (!dom.heroHeadline) return;
+    if (headlineDust) {
+      scene.remove(headlineDust.object);
+      headlineDust.dispose();
+      headlineDust = null;
+    }
     headlineDust = createHeadlineDust({
       element: dom.heroHeadline,
       camera,
@@ -177,6 +209,7 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
     });
     if (headlineDust) scene.add(headlineDust.object);
   }
+  buildHeadlineDust();
 
   /* ------------------------------------------------------------- labels */
   const labelNodes = nodeIndex.filter((node) => node.kind !== 'region' || true);
@@ -240,15 +273,28 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
   } | null = null;
 
   const PLANET_AT = new THREE.Vector3();
+  const ESCAPE_FROM = new THREE.Vector3();
+  const ESCAPE_CONTROL = new THREE.Vector3();
   const SMILEY_AT = new THREE.Vector3();
   const cometPeelStart = new THREE.Vector3();
   const cometScratch = new THREE.Vector3();
   let hasPeelOrigin = false;
 
   /* ------------------------------------------------------------- layout */
+  let laidOutFor = { width: 0, height: 0 };
+
   function resize() {
-    viewport.width = window.innerWidth;
-    viewport.height = window.innerHeight;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    // Opening the map calls this right after the stage was built for the
+    // same viewport. Re-laying everything out then — new plane geometry, a
+    // re-measure of every label, a fresh sampling of the headline — is a
+    // long frame at precisely the wrong moment.
+    if (width === laidOutFor.width && height === laidOutFor.height) return;
+    laidOutFor = { width, height };
+
+    viewport.width = width;
+    viewport.height = height;
     const aspect = viewport.width / Math.max(viewport.height, 1);
     camera.aspect = aspect;
     camera.updateProjectionMatrix();
@@ -274,6 +320,11 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
     universeRoot.updateMatrixWorld(true);
 
     heroPlane.layout(viewport, HERO_DISTANCE, FOV);
+    // Intrinsic label sizes change with the viewport: the phone breakpoint
+    // gives them a smaller font.
+    labels.remeasure();
+    // Only worth rebuilding while the headline still has a part to play.
+    if (progress < 0.6) buildHeadlineDust();
     applyProgress(progress, true);
   }
 
@@ -290,11 +341,11 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
     );
   }
 
+  const OVERVIEW: View = { position: new THREE.Vector3(), target: new THREE.Vector3() };
   function universeView(): View {
-    return {
-      position: new THREE.Vector3(pan.x, 40 * compositionScale + pan.y, UNIVERSE_DISTANCE),
-      target: new THREE.Vector3(pan.x, pan.y, 0),
-    };
+    OVERVIEW.position.set(pan.x, 40 * compositionScale + pan.y, UNIVERSE_DISTANCE);
+    OVERVIEW.target.set(pan.x, pan.y, 0);
+    return OVERVIEW;
   }
 
   /**
@@ -311,14 +362,16 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
       ? progress
       : 0.5 - 0.5 * Math.cos(Math.PI * Math.pow(progress, 1.35));
     const end = universeView();
-    const escape = new THREE.Vector3(0, 0, HERO_DISTANCE);
+    ESCAPE_FROM.set(0, 0, HERO_DISTANCE);
+    const escape = ESCAPE_FROM;
     // A control point off the axis turns the retreat into a curve rather
     // than a dolly straight back.
-    const control = new THREE.Vector3(
+    ESCAPE_CONTROL.set(
       130 * compositionScale,
       -70 * compositionScale,
       HERO_DISTANCE + (UNIVERSE_DISTANCE - HERO_DISTANCE) * 0.42
     );
+    const control = ESCAPE_CONTROL;
     if (!flight) {
       quadratic(escape, control, end.position, travel, view.position);
       view.target.set(0, 0, 0).lerp(end.target, travel);
@@ -481,13 +534,19 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
     }
   }
 
-  function parentSystemOf(planetId: string): string | null {
-    for (const region of regions) {
-      for (const system of region.systems) {
-        if ((system.planets ?? []).some((planet) => planet.id === planetId)) return system.id;
-      }
+  /**
+   * Which system a planet belongs to. Resolved once into a map — it used to
+   * be a scan of every region, system and planet, run for every planet
+   * marker, on every frame of the transition.
+   */
+  const parentSystem = new Map<string, string>();
+  for (const region of regions) {
+    for (const system of region.systems) {
+      for (const planet of system.planets ?? []) parentSystem.set(planet.id, system.id);
     }
-    return null;
+  }
+  function parentSystemOf(planetId: string): string | undefined {
+    return parentSystem.get(planetId);
   }
 
   function setHover(node: NodeRecord | null) {
@@ -704,40 +763,42 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
 
   /* ------------------------------------------------------------ picking */
   const pickVector = new THREE.Vector3();
+
+  /**
+   * Screen-space picking, allocation-free.
+   *
+   * This runs on pointer movement, which during a trackpad drag means many
+   * times a second — so it walks the live objects directly instead of
+   * building a candidate list and cloning a vector for each of them.
+   */
   function pick(clientX: number, clientY: number): NodeRecord | null {
-    let best: { node: NodeRecord; distance: number } | null = null;
-    const candidates: { node: NodeRecord; position: THREE.Vector3 }[] = [];
+    let best: NodeRecord | null = null;
+    let bestDistance = Infinity;
+
+    const consider = (node: NodeRecord, position: THREE.Vector3, reach: number) => {
+      pickVector.copy(position).applyMatrix4(universeRoot.matrixWorld).project(camera);
+      if (pickVector.z > 1) return;
+      const x = (pickVector.x * 0.5 + 0.5) * viewport.width;
+      const y = (0.5 - pickVector.y * 0.5) * viewport.height;
+      const distance = Math.hypot(x - clientX, y - clientY);
+      if (distance > reach || distance >= bestDistance) return;
+      best = node;
+      bestDistance = distance;
+    };
 
     for (const region of regions) {
       const object = regionObjects.get(region.id);
       const record = nodeById.get(region.id);
-      if (!object || !record) continue;
-      if (object.group.visible) {
-        candidates.push({ node: record, position: object.centre.clone() });
-      }
+      if (!object?.group.visible || !record) continue;
+      consider(record, object.centre, 150);
     }
     for (const marker of markers.values()) {
       if (!marker.group.visible) continue;
-      candidates.push({ node: marker.node, position: marker.position.clone() });
+      consider(marker.node, marker.position, 44);
     }
-    if (cometNode && comet.group.visible) {
-      candidates.push({
-        node: cometNode,
-        position: comet.head.clone(),
-      });
-    }
+    if (cometNode && comet.group.visible) consider(cometNode, comet.head, 44);
 
-    for (const candidate of candidates) {
-      pickVector.copy(candidate.position).applyMatrix4(universeRoot.matrixWorld).project(camera);
-      if (pickVector.z > 1) continue;
-      const x = (pickVector.x * 0.5 + 0.5) * viewport.width;
-      const y = (0.5 - pickVector.y * 0.5) * viewport.height;
-      const distance = Math.hypot(x - clientX, y - clientY);
-      const reach = candidate.node.kind === 'region' ? 150 : 44;
-      if (distance > reach) continue;
-      if (!best || distance < best.distance) best = { node: candidate.node, distance };
-    }
-    return best?.node ?? null;
+    return best;
   }
 
   /* -------------------------------------------------------------- render */
@@ -753,7 +814,6 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
   };
   let running = false;
   let frameHandle = 0;
-  let slowFrames = 0;
 
   function render(dt: number) {
     const time = elapsed * (reducedMotion ? 0.15 : 1);
@@ -767,19 +827,27 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
     // The planet's face is billboarded, so where it draws the smiley moves
     // with the camera. Keep the node, its marker and its label on it.
     const markNode = nodeById.get('home-mark');
-    if (markNode) {
+    if (markNode && planet.group.visible) {
       planet.smileyWorld(SMILEY_AT);
       universeRoot.worldToLocal(SMILEY_AT);
-      markNode.position = [SMILEY_AT.x, SMILEY_AT.y, SMILEY_AT.z] as Vec3;
+      // Written in place: a fresh array here is one allocation per frame,
+      // for the whole life of the map.
+      const at = markNode.position;
+      at[0] = SMILEY_AT.x;
+      at[1] = SMILEY_AT.y;
+      at[2] = SMILEY_AT.z;
       const marker = markers.get('home-mark');
       if (marker) marker.group.position.copy(SMILEY_AT);
     }
     planet.setSmileyGlow(hoveredId === 'home-mark' || selectedId === 'home-mark' ? 1 : 0);
 
-    if (cometNode) {
+    if (cometNode && comet.group.visible) {
       // The label layer applies the universe root's matrix itself, so the
       // comet's local position is what it wants.
-      cometNode.position = [comet.head.x, comet.head.y, comet.head.z] as Vec3;
+      const at = cometNode.position;
+      at[0] = comet.head.x;
+      at[1] = comet.head.y;
+      at[2] = comet.head.z;
     }
 
     camera.position.copy(view.position);
@@ -830,37 +898,82 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
       );
     }
 
-    // Adaptive quality, in the order a viewer would least miss it.
-    if (dt > 0.032) slowFrames += 1;
-    else slowFrames = Math.max(0, slowFrames - 1);
-    if (slowFrames > 45) {
-      degrade();
-      slowFrames = 0;
-    }
+    adapt(dt);
 
     render(dt);
   }
 
   /**
-   * A ladder, walked one rung per sustained slow patch: resolution first,
-   * then the nebulae, then the streak field. Composition, labels and
-   * navigation are never traded away — a map that is legible at 30fps beats
-   * a prettier one nobody can read.
+   * Adaptive quality, walked one rung at a time and — unlike before —
+   * walked back up when the machine can afford it. A device that struggles
+   * for one second while a galaxy flies past should not spend the rest of
+   * the session at three quarters resolution.
+   *
+   * Resolution moves first because it is the cheapest thing to lose. Only
+   * if that is not enough do the nebulae and then the streaks go; the
+   * composition, the labels and the navigation are never traded away.
    */
-  let degradeStep = 0;
-  function degrade() {
-    degradeStep += 1;
-    if (degradeStep === 1 && pixelRatio > 0.75) {
-      pixelRatio = Math.max(0.75, pixelRatio * 0.72);
-      renderer.setPixelRatio(pixelRatio);
+  const SLOW_FRAME = 0.032;
+  const FAST_FRAME = 0.019;
+  let slowFrames = 0;
+  let fastFrames = 0;
+  let effectsDropped = 0;
+  let lastAdaptAt = 0;
+
+  function setRatio(index: number) {
+    const next = Math.max(0, Math.min(ratioCeiling, index));
+    if (next === ratioIndex) return false;
+    ratioIndex = next;
+    pixelRatio = RATIO_STEPS[ratioIndex]!;
+    renderer.setPixelRatio(pixelRatio);
+    renderer.setSize(viewport.width, viewport.height, false);
+    return true;
+  }
+
+  function adapt(dt: number) {
+    if (dt > SLOW_FRAME) {
+      slowFrames += 1;
+      fastFrames = 0;
+    } else if (dt < FAST_FRAME) {
+      fastFrames += 1;
+      slowFrames = Math.max(0, slowFrames - 1);
+    }
+
+    const now = performance.now();
+    // A settling period after any change, so a step never chases its own
+    // cost and the two directions cannot oscillate against each other.
+    if (now - lastAdaptAt < 2500) return;
+
+    if (slowFrames > 45) {
+      slowFrames = 0;
+      lastAdaptAt = now;
+      if (setRatio(ratioIndex - 1)) return;
+      if (effectsDropped === 0) {
+        effectsDropped = 1;
+        sky.setNebulae(false);
+        return;
+      }
+      if (effectsDropped === 1) {
+        effectsDropped = 2;
+        sky.streaks.object.visible = false;
+      }
       return;
     }
-    if (degradeStep <= 2) {
-      sky.setNebulae(false);
-      return;
-    }
-    if (degradeStep <= 3) {
-      sky.streaks.object.visible = false;
+
+    if (fastFrames > 180) {
+      fastFrames = 0;
+      lastAdaptAt = now;
+      if (effectsDropped === 2) {
+        effectsDropped = 1;
+        sky.streaks.object.visible = true;
+        return;
+      }
+      if (effectsDropped === 1) {
+        effectsDropped = 0;
+        sky.setNebulae(true);
+        return;
+      }
+      setRatio(ratioIndex + 1);
     }
   }
 
@@ -913,30 +1026,40 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
   /* ------------------------------------------------------- external API */
   resize();
 
-  // Compile every shader now, while the visitor is only *considering* the
-  // universe. Left to the renderer, the galaxy programs would be compiled
-  // the first frame they are drawn — which is the middle of the transition,
-  // exactly where a stall is least forgivable.
-  universeRoot.visible = true;
-  renderer.compile(scene, camera);
-  universeRoot.visible = false;
+  /**
+   * Get every shader compiled, linked *and* bound now, while the visitor is
+   * only considering the universe.
+   *
+   * `renderer.compile` covers compilation, but a program's uniforms are not
+   * queried until the first frame that actually draws it — and querying
+   * them is what blocks until the driver has finished linking. At this
+   * point almost nothing is drawn: the galaxies, the planet and the comet
+   * are all at zero opacity waiting for the transition, so their programs
+   * were being linked in the middle of it. Profiling put a quarter of all
+   * JS during the open inside `getProgramParameter`, which is that wait.
+   *
+   * So: make everything visible, draw one frame into a 4x4 target — every
+   * program bound, no meaningful fill — and put the scene back.
+   */
+  {
+    const wasVisible = new Map<THREE.Object3D, boolean>();
+    scene.traverse((object) => {
+      wasVisible.set(object, object.visible);
+      object.visible = true;
+    });
+    scene.updateMatrixWorld(true);
+    renderer.compile(scene, camera);
 
-  if (dom.currentSourceRect) {
-    const rect = dom.currentSourceRect;
-    // Exactly where the hero's Current Source star is drawn, converted from
-    // screen pixels into the universe's own local units.
-    screenToWorld(
-      rect.left + rect.width / 2,
-      rect.top + rect.height / 2,
-      0,
-      camera,
-      viewport,
-      cometPeelStart
-    );
-    universeRoot.worldToLocal(cometPeelStart);
-    hasPeelOrigin = true;
-    comet.overrideHead(cometPeelStart);
+    // Into the canvas itself, at full size. A tiny off-screen target left
+    // some programs unbound, and the point is to pay for every one of them
+    // here rather than during the flight. The overlay is still hidden, so
+    // this frame is never seen.
+    renderer.render(scene, camera);
+
+    for (const [object, visible] of wasVisible) object.visible = visible;
+    wasVisible.clear();
   }
+
   applyProgress(0, true);
 
   return {
@@ -1010,6 +1133,7 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
     },
     destroy() {
       stop();
+      sky.dispose();
       labels.destroy();
       heroPlane.dispose();
       headlineDust?.dispose();
@@ -1078,11 +1202,14 @@ function detectQuality(): Quality {
 /** True when this browser can actually give us a WebGL context. */
 export function supportsWebGL(): boolean {
   try {
+    if (!window.WebGLRenderingContext) return false;
     const canvas = document.createElement('canvas');
-    return !!(
-      window.WebGLRenderingContext &&
-      (canvas.getContext('webgl2') || canvas.getContext('webgl'))
-    );
+    const gl = canvas.getContext('webgl2') ?? canvas.getContext('webgl');
+    if (!gl) return false;
+    // Hand the context straight back. Browsers cap how many a page may hold,
+    // and a probe has no business keeping one of them.
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    return true;
   } catch {
     return false;
   }

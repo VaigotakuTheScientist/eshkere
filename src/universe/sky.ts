@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { bakeTexture } from './bake';
 import { gaussish, hexToRgb, range, rng } from './util';
 
 /**
@@ -119,23 +120,56 @@ export function createStarLayer(options: {
   return { object, material };
 }
 
+/** The noise field a nebula is made of — evaluated once, into a texture. */
+const NEBULA_BAKE = /* glsl */ `
+  precision mediump float;
+  varying vec2 vUv;
+
+  float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+  float noise(vec2 p) {
+    vec2 i = floor(p), f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+               mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0)), u.x), u.y);
+  }
+
+  void main() {
+    // Three octaves here rather than two: this runs once, so detail is free.
+    float n = noise(vUv * 4.0) * 0.58
+            + noise(vUv * 9.0) * 0.28
+            + noise(vUv * 19.0) * 0.14;
+    gl_FragColor = vec4(vec3(n), 1.0);
+  }
+`;
+
 /**
  * A soft coloured cloud. Two of these keep the void from reading as an empty
  * black rectangle without competing with the galaxies for attention.
+ *
+ * The noise is baked once and shared by both; each still drifts across its
+ * own texture, so they keep the slow life they had when every fragment
+ * recomputed the field from scratch. Between them these two quads cover most
+ * of the screen, which made them one of the most expensive things drawn.
  */
-export function createNebula(options: {
-  position: THREE.Vector3Like;
-  size: number;
-  color: string;
-  opacity: number;
-  rotation?: number;
-}): THREE.Mesh {
+export function createNebula(
+  noise: THREE.Texture,
+  options: {
+    position: THREE.Vector3Like;
+    size: number;
+    color: string;
+    opacity: number;
+    rotation?: number;
+    drift?: number;
+  }
+): THREE.Mesh {
   const [r, g, b] = hexToRgb(options.color);
   const material = new THREE.ShaderMaterial({
     uniforms: {
       uColor: { value: new THREE.Vector3(r, g, b) },
       uOpacity: { value: options.opacity },
       uTime: { value: 0 },
+      uNoise: { value: noise },
+      uDrift: { value: options.drift ?? 0.004 },
     },
     vertexShader: /* glsl */ `
       varying vec2 vUv;
@@ -150,26 +184,15 @@ export function createNebula(options: {
       uniform vec3 uColor;
       uniform float uOpacity;
       uniform float uTime;
-
-      // Value noise — enough structure to read as gas, cheap enough to be free.
-      float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-      float noise(vec2 p) {
-        vec2 i = floor(p), f = fract(p);
-        vec2 u = f * f * (3.0 - 2.0 * f);
-        return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
-                   mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0)), u.x), u.y);
-      }
+      uniform float uDrift;
+      uniform sampler2D uNoise;
 
       void main() {
         vec2 p = vUv - 0.5;
         float falloff = smoothstep(0.5, 0.05, length(p));
-        // Two octaves, not three. The third was worth a few percent of
-        // texture and a noticeable slice of the frame budget on software
-        // rasterisers, where these two planes cover most of the screen.
-        float n = noise(vUv * 4.0 + uTime * 0.01) * 0.68
-                + noise(vUv * 9.0 - uTime * 0.014) * 0.32;
-        float a = falloff * falloff * n * uOpacity;
-        gl_FragColor = vec4(uColor, a);
+        if (falloff <= 0.0) discard;
+        float n = texture2D(uNoise, vUv + vec2(uTime * uDrift, uTime * uDrift * 0.6)).r;
+        gl_FragColor = vec4(uColor, falloff * falloff * n * uOpacity);
       }
     `,
     transparent: true,
@@ -177,7 +200,10 @@ export function createNebula(options: {
     blending: THREE.AdditiveBlending,
   });
 
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(options.size, options.size), material);
+  // A disc, not a square. The cloud's falloff reaches zero at half the
+  // quad's width, so the corners were being rasterised and then thrown away
+  // — a fifth of the most expensive surface in the scene, for nothing.
+  const mesh = new THREE.Mesh(new THREE.CircleGeometry(options.size / 2, 48), material);
   mesh.position.set(options.position.x, options.position.y, options.position.z);
   mesh.rotation.z = options.rotation ?? 0;
   mesh.frustumCulled = false;
@@ -282,7 +308,7 @@ export function createStreaks(count = 900, seed = 5150): StreakField {
 }
 
 /** Assemble the whole backdrop as one group, plus handles for animation. */
-export function createSky(quality: 'high' | 'low') {
+export function createSky(renderer: THREE.WebGLRenderer, quality: 'high' | 'low') {
   const group = new THREE.Group();
   const scale = quality === 'high' ? 1 : 0.45;
 
@@ -314,19 +340,26 @@ export function createSky(quality: 'high' | 'low') {
   ];
   for (const layer of layers) group.add(layer.object);
 
+  // One noise field, baked once and shared by both clouds.
+  const nebulaNoise = bakeTexture(renderer, NEBULA_BAKE, {}, 512);
+  nebulaNoise.texture.wrapS = THREE.RepeatWrapping;
+  nebulaNoise.texture.wrapT = THREE.RepeatWrapping;
+
   const nebulae = [
-    createNebula({
+    createNebula(nebulaNoise.texture, {
       position: { x: -760, y: 300, z: -1900 },
       size: 2900,
       color: '#5a2bd0',
       opacity: 0.16,
+      drift: 0.004,
     }),
-    createNebula({
+    createNebula(nebulaNoise.texture, {
       position: { x: 820, y: -420, z: -2100 },
       size: 3200,
       color: '#0f3f9a',
       opacity: 0.14,
       rotation: 1.1,
+      drift: -0.0032,
     }),
   ];
   for (const nebula of nebulae) group.add(nebula);
@@ -342,6 +375,19 @@ export function createSky(quality: 'high' | 'low') {
     /** First thing to go when a device cannot keep up: it is atmosphere. */
     setNebulae(visible: boolean) {
       for (const nebula of nebulae) nebula.visible = visible;
+    },
+    dispose() {
+      nebulaNoise.dispose();
+      for (const layer of layers) {
+        layer.object.geometry.dispose();
+        layer.material.dispose();
+      }
+      for (const nebula of nebulae) {
+        nebula.geometry.dispose();
+        (nebula.material as THREE.Material).dispose();
+      }
+      streaks.object.geometry.dispose();
+      streaks.material.dispose();
     },
     update(time: number, pixelRatio: number) {
       for (const layer of layers) {

@@ -172,6 +172,11 @@ const gameGalaxies = regions.filter((region) => region.id !== 'health');
     let loading: Promise<UniverseApi | null> | null = null;
     let api: UniverseApi | null = null;
 
+    // Showing intent warms the renderer too, not only the module: building
+    // the scene compiles and binds every shader, and doing that at click
+    // time put a long frame right where the camera starts moving.
+    const warm = () => void load().then((instance) => instance?.prepare());
+
     const load = () => {
       loading ??= import('../universe/index')
         .then((module) => {
@@ -186,14 +191,28 @@ const gameGalaxies = regions.filter((region) => region.id !== 'health');
       return loading;
     };
 
-    // Warm the chunk when nothing else is competing for the network.
+    // Warm the chunk when nothing else is competing for the network, and on
+    // a pointer device go one further and build the renderer too — that is
+    // where the trackpad gesture lives, so the map can be entered without
+    // any deliberate aim at a control. Touch and low-power devices wait for
+    // an actual tap rather than carrying a WebGL context they may never use.
     const idle =
       window.requestIdleCallback ?? ((fn: () => void) => window.setTimeout(fn, 1800));
-    window.addEventListener('load', () => idle(() => void load()), { once: true });
+    window.addEventListener(
+      'load',
+      () =>
+        idle(() => {
+          const eager =
+            window.matchMedia('(pointer: fine)').matches &&
+            (navigator.hardwareConcurrency ?? 4) > 4;
+          void (eager ? warm() : load());
+        }),
+      { once: true }
+    );
 
     for (const opener of openers) {
-      opener.addEventListener('pointerenter', () => void load(), { once: true });
-      opener.addEventListener('focus', () => void load(), { once: true });
+      opener.addEventListener('pointerenter', warm, { once: true });
+      opener.addEventListener('focus', warm, { once: true });
 
       // The entries are also handled inside the module once it exists; this
       // covers a click that lands before the chunk has finished arriving.
@@ -209,7 +228,7 @@ const gameGalaxies = regions.filter((region) => region.id !== 'health');
     const arm = (event: WheelEvent) => {
       if (window.scrollY > 8) return;
       if (!(event.ctrlKey && event.deltaY > 0) && !(!event.ctrlKey && event.deltaY < -2)) return;
-      void load();
+      warm();
       window.removeEventListener('wheel', arm);
     };
     window.addEventListener('wheel', arm, { passive: true });

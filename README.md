@@ -82,8 +82,34 @@ at rest is byte-for-byte the hero that was there before.
   reachable.
 - **A device that cannot keep up** — the renderer walks down a ladder as it
   detects sustained slow frames: device pixel ratio first, then the nebulae,
-  then the streak field. Composition, labels and navigation are never traded
-  away.
+  then the streak field — and walks back *up* again when frames recover, so
+  one bad second does not cost the rest of the session. Composition, labels
+  and navigation are never traded away.
+
+### Where the frames go
+
+The map is fill-bound, not CPU-bound: profiling a stationary view puts ~88%
+of main-thread samples in idle. So the things that matter are the size of
+the drawing buffer and the cost of each fragment, in that order.
+
+- Everything crisp on screen — labels, HUD, breadcrumbs — is DOM at native
+  resolution, so the canvas can render below device pixel ratio without
+  anything gaining a soft edge. It starts at 1.5 and climbs to 1.75 when
+  frames allow.
+- Static noise fields are baked once into textures rather than evaluated per
+  fragment (`src/universe/bake.ts`). The two nebula clouds cover most of the
+  screen between them and were the most expensive surface in the scene.
+- The planet's surface walks its noise octaves once and reuses them, rather
+  than calling a four-octave fbm five times over. Same continents, from the
+  same arithmetic.
+- Labels are measured once and cached. Reading `offsetWidth` during the
+  render loop forces synchronous layout, and reading it from a *hidden*
+  element returns zero — which is what made labels flicker.
+- The label layout pass is skipped entirely while the camera, the root
+  transform and the viewport all hold still and nothing is fading.
+- Shaders are compiled, linked and bound during the pre-warm, not on the
+  first frame that draws them. Program linking is synchronous, and it used
+  to land in the middle of the transition.
 
 ### How the artwork becomes a planet
 

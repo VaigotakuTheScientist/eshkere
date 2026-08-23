@@ -9,6 +9,11 @@ import { clamp } from './util';
  * uses the site's own fonts, each label is a real focusable control so the
  * map is navigable by keyboard and legible to a screen reader, and labels
  * can be laid out with ordinary CSS instead of texture atlases.
+ *
+ * The cost of that choice is that layout has to be *read* from the DOM, and
+ * reading layout in the same frame as writing it is the classic way to make
+ * a render loop slow. So sizes are measured once, in a single batched pass,
+ * and never read again during animation.
  */
 
 export interface LabelHandle {
@@ -19,6 +24,19 @@ export interface LabelHandle {
   target: number;
   current: number;
   screen: { x: number; y: number; visible: boolean };
+  /** Intrinsic size, measured while laid out and then cached. */
+  width: number;
+  height: number;
+  /** Ranking for collision priority — fixed, so computed once. */
+  rank: number;
+  /* --- committed state, so the DOM is only written when it changes --- */
+  placed: boolean;
+  lastX: number;
+  lastY: number;
+  lastOpacity: number;
+  lastFocusable: boolean;
+  /** When the visibility decision was last allowed to change. */
+  settledAt: number;
 }
 
 export interface LabelLayerOptions {
@@ -36,6 +54,27 @@ const KIND_CLASS: Record<NodeRecord['kind'], string> = {
   comet: 'u-label--comet',
   mark: 'u-label--mark',
 };
+
+/** Margins the HUD occupies, plus a little breathing room at the edges. */
+const SAFE = { top: 76, right: 16, bottom: 62, left: 16 };
+
+/**
+ * Collision hysteresis.
+ *
+ * A label that is already up keeps its place until it is properly buried;
+ * one that is down waits until it is properly clear. Without the gap between
+ * these two numbers a label sitting exactly on the boundary flips state on
+ * whatever sub-pixel the camera happens to land on.
+ */
+const BURY = 0.3;
+const CLEAR = 0.06;
+
+/**
+ * And a floor on how often that decision may change at all. Hysteresis
+ * alone is a band; this is a guarantee — nothing can oscillate faster than
+ * this no matter what the geometry does.
+ */
+const DWELL_MS = 360;
 
 export function createLabelLayer(options: LabelLayerOptions) {
   const handles: LabelHandle[] = [];
@@ -105,10 +144,68 @@ export function createLabelLayer(options: LabelLayerOptions) {
       target: 0,
       current: 0,
       screen: { x: 0, y: 0, visible: false },
+      width: 120,
+      height: 22,
+      rank: rankOf(node),
+      placed: false,
+      lastX: Number.NaN,
+      lastY: Number.NaN,
+      lastOpacity: -1,
+      lastFocusable: false,
+      settledAt: 0,
     });
   }
 
   const byId = new Map(handles.map((handle) => [handle.id, handle]));
+  // Collision priority never changes, so the order is settled once rather
+  // than re-sorted on every frame.
+  const ordered = [...handles].sort((a, b) => b.rank - a.rank);
+
+  /**
+   * Measure every label in one pass: all the reads together, then all the
+   * writes. Interleaving them is what turns a label layer into a layout
+   * thrash, and reading a hidden element's width is what made the collision
+   * result depend on the collision result.
+   */
+  function measure() {
+    for (const handle of handles) {
+      handle.element.style.visibility = 'hidden';
+      handle.element.hidden = false;
+    }
+    for (const handle of handles) {
+      handle.width = handle.element.offsetWidth || 120;
+      handle.height = handle.element.offsetHeight || 22;
+    }
+    for (const handle of handles) {
+      handle.element.style.visibility = '';
+      handle.element.hidden = !handle.placed;
+    }
+  }
+
+  let destroyed = false;
+  measure();
+  // Web fonts change every one of those numbers when they arrive.
+  document.fonts?.ready
+    .then(() => {
+      if (!destroyed) measure();
+    })
+    .catch(() => {});
+
+  /* --------------------------------------------------------- change gate */
+  // A fingerprint of everything the layout depends on. While it holds still
+  // and nothing is fading, the entire projection and collision pass is
+  // skipped — which in a stationary view is every frame.
+  const fingerprint = new Float64Array(14);
+  const previous = new Float64Array(14);
+  let hasPrevious = false;
+
+  const boxes: { x: number; y: number; w: number; h: number }[] = handles.map(() => ({
+    x: 0,
+    y: 0,
+    w: 0,
+    h: 0,
+  }));
+  const placedBoxes: typeof boxes = [];
 
   return {
     handles,
@@ -122,6 +219,8 @@ export function createLabelLayer(options: LabelLayerOptions) {
     setAll(value: number) {
       for (const handle of handles) handle.target = clamp(value);
     },
+    /** Re-measure after anything that could change intrinsic label size. */
+    remeasure: measure,
     /**
      * Project every visible label and drop the ones that would collide.
      * Bigger labels win, so a galaxy name is never hidden by one of its own
@@ -134,14 +233,54 @@ export function createLabelLayer(options: LabelLayerOptions) {
       viewport: { width: number; height: number },
       dt: number
     ) {
-      const placed: { x: number; y: number; w: number; h: number }[] = [];
-      const ordered = [...handles].sort((a, b) => rank(b.node) - rank(a.node));
+      let animating = false;
+      for (const handle of handles) {
+        if (Math.abs(handle.target - handle.current) > 0.002) {
+          handle.current += (handle.target - handle.current) * Math.min(1, dt * 6);
+          animating = true;
+        } else if (handle.current !== handle.target) {
+          handle.current = handle.target;
+          animating = true;
+        }
+      }
 
-      for (const handle of ordered) {
-        handle.current += (handle.target - handle.current) * Math.min(1, dt * 6);
+      const m = root.matrixWorld.elements;
+      fingerprint[0] = camera.position.x;
+      fingerprint[1] = camera.position.y;
+      fingerprint[2] = camera.position.z;
+      fingerprint[3] = camera.quaternion.x;
+      fingerprint[4] = camera.quaternion.y;
+      fingerprint[5] = camera.quaternion.z;
+      fingerprint[6] = camera.quaternion.w;
+      fingerprint[7] = m[0]!;
+      fingerprint[8] = m[5]!;
+      fingerprint[9] = m[12]!;
+      fingerprint[10] = m[13]!;
+      fingerprint[11] = m[14]!;
+      fingerprint[12] = viewport.width;
+      fingerprint[13] = viewport.height;
+
+      let moved = !hasPrevious;
+      if (!moved) {
+        for (let i = 0; i < fingerprint.length; i += 1) {
+          if (fingerprint[i] !== previous[i]) {
+            moved = true;
+            break;
+          }
+        }
+      }
+      if (!moved && !animating) return;
+      previous.set(fingerprint);
+      hasPrevious = true;
+
+      const now = performance.now();
+      placedBoxes.length = 0;
+
+      for (let index = 0; index < ordered.length; index += 1) {
+        const handle = ordered[index]!;
 
         if (handle.current < 0.02) {
-          hide(handle);
+          commit(handle, false, now);
           continue;
         }
 
@@ -163,7 +302,7 @@ export function createLabelLayer(options: LabelLayerOptions) {
         projected.project(camera);
 
         if (projected.z > 1) {
-          hide(handle);
+          commit(handle, false, now);
           continue;
         }
 
@@ -173,60 +312,110 @@ export function createLabelLayer(options: LabelLayerOptions) {
         // a system's name clears its own star at every zoom level.
         const drop = handle.node.kind === 'region' ? 0 : 26;
         const y = (0.5 - projected.y * 0.5) * viewport.height + drop;
-        const width = handle.element.offsetWidth || 120;
-        const height = handle.element.offsetHeight || 22;
-        const box = { x: x - width / 2, y: y - height / 2, w: width, h: height };
+
+        const box = boxes[index]!;
+        box.w = handle.width;
+        box.h = handle.height;
+        box.x = x - box.w / 2;
+        box.y = y - box.h / 2;
 
         // Keep every label whole and clear of the HUD. A narrow viewport is
         // the common case here — a galaxy name is wider than a third of a
         // phone — so nudge the label back inside rather than dropping it,
         // and only give up when the nudge would be big enough to point at
         // the wrong object.
-        const nudged = {
-          x: fit(box.x, box.w, SAFE.left, viewport.width - SAFE.right),
-          y: fit(box.y, box.h, SAFE.top, viewport.height - SAFE.bottom),
-        };
-        if (
-          Math.abs(nudged.x - box.x) > box.w * 0.45 ||
-          Math.abs(nudged.y - box.y) > box.h * 1.5
-        ) {
-          hide(handle);
+        const fitX = fit(box.x, box.w, SAFE.left, viewport.width - SAFE.right);
+        const fitY = fit(box.y, box.h, SAFE.top, viewport.height - SAFE.bottom);
+        if (Math.abs(fitX - box.x) > box.w * 0.45 || Math.abs(fitY - box.y) > box.h * 1.5) {
+          commit(handle, false, now);
           continue;
         }
-        box.x = nudged.x;
-        box.y = nudged.y;
+        box.x = fitX;
+        box.y = fitY;
 
-        const collides = placed.some(
-          (other) =>
-            box.x < other.x + other.w &&
-            box.x + box.w > other.x &&
-            box.y < other.y + other.h &&
-            box.y + box.h > other.y
-        );
-        if (collides) {
-          hide(handle);
-          continue;
+        // How much of this label the labels above it have already taken.
+        let buried = 0;
+        for (let other = 0; other < placedBoxes.length; other += 1) {
+          buried += overlapFraction(box, placedBoxes[other]!);
+          if (buried >= 1) break;
         }
-        placed.push(box);
 
-        const placedX = box.x + box.w / 2;
-        const placedY = box.y + box.h / 2;
-        handle.screen = { x: placedX, y: placedY, visible: true };
-        handle.element.style.transform = `translate3d(${Math.round(placedX)}px, ${Math.round(placedY)}px, 0) translate(-50%, -50%)`;
-        handle.element.style.opacity = String(handle.current);
-        handle.element.hidden = false;
-        handle.element.tabIndex = handle.current > 0.6 ? 0 : -1;
-        handle.element.setAttribute('aria-hidden', handle.current > 0.6 ? 'false' : 'true');
+        // Hysteresis, so a label on the boundary does not flip on sub-pixel
+        // camera drift, plus a dwell floor so nothing can oscillate quickly
+        // even if the geometry does something unexpected.
+        const threshold = handle.placed ? BURY : CLEAR;
+        let show = buried <= threshold;
+        if (show !== handle.placed && now - handle.settledAt < DWELL_MS) show = handle.placed;
+
+        if (show) placedBoxes.push(box);
+        commit(handle, show, now, box, handle.current);
       }
     },
     destroy() {
+      destroyed = true;
       for (const handle of handles) handle.element.remove();
     },
   };
+
+  /** Write to the DOM only where something actually changed. */
+  function commit(
+    handle: LabelHandle,
+    show: boolean,
+    now: number,
+    box?: { x: number; y: number; w: number; h: number },
+    opacity = 0
+  ) {
+    if (show !== handle.placed) {
+      handle.placed = show;
+      handle.settledAt = now;
+      handle.element.hidden = !show;
+    }
+    if (!show) {
+      if (handle.screen.visible) handle.screen.visible = false;
+      if (handle.lastFocusable) {
+        handle.lastFocusable = false;
+        handle.element.tabIndex = -1;
+        handle.element.setAttribute('aria-hidden', 'true');
+      }
+      return;
+    }
+    if (!box) return;
+
+    const x = Math.round(box.x + box.w / 2);
+    const y = Math.round(box.y + box.h / 2);
+    if (x !== handle.lastX || y !== handle.lastY) {
+      handle.lastX = x;
+      handle.lastY = y;
+      handle.element.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
+    }
+    const rounded = Math.round(opacity * 100) / 100;
+    if (rounded !== handle.lastOpacity) {
+      handle.lastOpacity = rounded;
+      handle.element.style.opacity = String(rounded);
+    }
+    const focusable = opacity > 0.6;
+    if (focusable !== handle.lastFocusable) {
+      handle.lastFocusable = focusable;
+      handle.element.tabIndex = focusable ? 0 : -1;
+      handle.element.setAttribute('aria-hidden', focusable ? 'false' : 'true');
+    }
+    handle.screen.x = x;
+    handle.screen.y = y;
+    handle.screen.visible = true;
+  }
 }
 
-/** Margins the HUD occupies, plus a little breathing room at the edges. */
-const SAFE = { top: 76, right: 16, bottom: 62, left: 16 };
+/** Fraction of `box` covered by `other`. */
+function overlapFraction(
+  box: { x: number; y: number; w: number; h: number },
+  other: { x: number; y: number; w: number; h: number }
+): number {
+  const dx = Math.min(box.x + box.w, other.x + other.w) - Math.max(box.x, other.x);
+  if (dx <= 0) return 0;
+  const dy = Math.min(box.y + box.h, other.y + other.h) - Math.max(box.y, other.y);
+  if (dy <= 0) return 0;
+  return (dx * dy) / (box.w * box.h);
+}
 
 /** Slide a box of width `size` back inside [min, max], if it fits at all. */
 function fit(start: number, size: number, min: number, max: number): number {
@@ -234,14 +423,7 @@ function fit(start: number, size: number, min: number, max: number): number {
   return Math.min(Math.max(start, min), max - size);
 }
 
-function hide(handle: LabelHandle) {
-  handle.screen.visible = false;
-  handle.element.hidden = true;
-  handle.element.tabIndex = -1;
-  handle.element.setAttribute('aria-hidden', 'true');
-}
-
-function rank(node: NodeRecord): number {
+function rankOf(node: NodeRecord): number {
   if (node.kind === 'region') return 4;
   if (node.kind === 'home') return 3;
   if (node.kind === 'system') return 2;

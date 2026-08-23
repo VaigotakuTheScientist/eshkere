@@ -139,6 +139,7 @@ export function createHeroPlane(options: HeroPlaneOptions): HeroPlane {
 
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material);
   mesh.frustumCulled = false;
+  const planetOffsetScratch = new THREE.Vector2();
 
   let planeHeight = 1;
   // Radius of the fully-closed mask, in image-height units. A little larger
@@ -149,6 +150,7 @@ export function createHeroPlane(options: HeroPlaneOptions): HeroPlane {
   const layout: HeroPlane['layout'] = (viewport, cameraDistance, fov) => {
     const height = 2 * cameraDistance * Math.tan((fov * Math.PI) / 360);
     const width = height * (viewport.width / viewport.height);
+    // Only ever called on a resize, and the old geometry is released first.
     mesh.geometry.dispose();
     mesh.geometry = new THREE.PlaneGeometry(width, height);
     planeHeight = height;
@@ -206,7 +208,7 @@ export function createHeroPlane(options: HeroPlaneOptions): HeroPlane {
       // Planet centre expressed in the plane's own [-0.5, 0.5] coordinates.
       const u = (options.planet.cx - vOffset.x) / Math.max(vScale.x, 0.0001) - 0.5;
       const v = (1 - options.planet.cy - vOffset.y) / Math.max(vScale.y, 0.0001) - 0.5;
-      return new THREE.Vector2(u, v);
+      return planetOffsetScratch.set(u, v);
     },
     dispose() {
       mesh.geometry.dispose();

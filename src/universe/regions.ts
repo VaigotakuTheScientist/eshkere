@@ -578,6 +578,11 @@ export function buildRegion(region: Region, quality: 'high' | 'low'): RegionObje
       }
     },
     update(time: number, pixelRatio: number) {
+      if (opacity <= 0.001) {
+        group.visible = false;
+        return;
+      }
+      group.visible = true;
       // Slow breathing: a few percent, over many seconds. Any more and the
       // whole map starts to feel like it is pulsing at you.
       breath = 1 + Math.sin(time * 0.19 + region.seed) * 0.018;
@@ -585,8 +590,6 @@ export function buildRegion(region: Region, quality: 'high' | 'low'): RegionObje
       dust.material.uniforms.uPixelRatio!.value = pixelRatio;
       dust.material.uniforms.uBreath!.value = breath;
       group.rotation.z = time * 0.004 * (region.morphology === 'spiral' ? -1 : 1);
-      if (opacity <= 0.001) group.visible = false;
-      else group.visible = true;
     },
   };
 }

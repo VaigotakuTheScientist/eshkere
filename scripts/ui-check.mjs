@@ -997,6 +997,210 @@ for (const viewport of viewports) {
     await context.close();
   }
 
+
+  // --- labels must not flicker
+  {
+    /**
+     * The regression this exists for: label widths were read from the DOM
+     * every frame, and a hidden element measures zero — so a label that had
+     * just been hidden for colliding measured narrow, stopped colliding,
+     * came back, measured wide, collided, and went again. A clean two-frame
+     * oscillation, every frame, for as long as you looked at it.
+     *
+     * Sampled at the sizes where it actually happened. 1440x900 never showed
+     * it; 1280x720 and below did.
+     */
+    for (const [width, height] of [
+      [1440, 900],
+      [1280, 720],
+      [1024, 640],
+    ]) {
+      const context = await browser.newContext({ ...CTX, viewport: { width, height } });
+      const page = await context.newPage();
+      await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+      await page.click('[data-universe-region="ai-safety"]');
+      await page.waitForFunction(
+        () => document.querySelector('[data-universe-level]')?.textContent === 'Galaxy',
+        null,
+        { timeout: 40000 }
+      );
+      // Let the flight land, so the camera is genuinely stationary.
+      await page.waitForTimeout(3000);
+
+      const result = await page.evaluate(async () => {
+        const labels = [...document.querySelectorAll('.u-label--system')];
+        const frames = [];
+        for (let i = 0; i < 90; i += 1) {
+          await new Promise((resolve) => requestAnimationFrame(resolve));
+          frames.push(labels.map((el) => (el.hidden ? 0 : 1)));
+        }
+        const worst = { id: '', flips: 0 };
+        let visible = 0;
+        labels.forEach((el, index) => {
+          const series = frames.map((frame) => frame[index]);
+          let flips = 0;
+          for (let f = 1; f < series.length; f += 1) if (series[f] !== series[f - 1]) flips += 1;
+          if (flips > worst.flips) {
+            worst.flips = flips;
+            worst.id = el.dataset.nodeId;
+          }
+          if (series[series.length - 1]) visible += 1;
+        });
+        return { worst, visible, total: labels.length, frames: frames.length };
+      });
+
+      note(
+        result.worst.flips === 0,
+        `[${width}x${height}] system labels hold still over ${result.frames} frames` +
+          (result.worst.flips ? ` (${result.worst.id} flipped ${result.worst.flips}x)` : '')
+      );
+      note(
+        result.visible >= 6,
+        `[${width}x${height}] and stay readable (${result.visible} labels up)`
+      );
+      await context.close();
+    }
+  }
+
+  // --- the stationary map does no label work at all
+  {
+    const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await openUniverse(page);
+    await page.waitForTimeout(1500);
+
+    // Writing to a label's style is the observable half of the layout pass.
+    const writes = await page.evaluate(async () => {
+      const el = document.querySelector('.u-label--region');
+      let count = 0;
+      const observer = new MutationObserver((records) => {
+        count += records.length;
+      });
+      observer.observe(el, { attributes: true, attributeFilter: ['style', 'hidden'] });
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      observer.disconnect();
+      return count;
+    });
+    note(writes === 0, `a stationary map stops touching label DOM (${writes} writes in 1.2s)`);
+    await context.close();
+  }
+
+  // --- Escape during the galaxy hand-off must not leave a flight queued
+  {
+    const context = await browser.newContext({ ...CTX, viewport: { width: 1280, height: 720 } });
+    const page = await context.newPage();
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await page.click('[data-universe-region="ai-safety"]');
+    await page.waitForFunction(
+      () => document.documentElement.classList.contains('universe-open'),
+      null,
+      { timeout: 40000 }
+    );
+    // Straight into the beat the map holds before flying on.
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(3600);
+    const after = await page.evaluate(() => document.documentElement.className);
+    note(after === '', `Escape during the hand-off wins and stays won ("${after}")`);
+    await context.close();
+  }
+
+  // --- resizing an open map, including across the portrait boundary
+  {
+    const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await openUniverse(page);
+
+    await page.setViewportSize({ width: 900, height: 1000 });
+    await page.waitForTimeout(1400);
+    const portrait = await page.evaluate(() => ({
+      regions: document.querySelectorAll('.u-label--region:not([hidden])').length,
+      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    }));
+    note(
+      portrait.regions >= 4 && portrait.overflow <= 1,
+      `resizing into portrait keeps the map whole (${portrait.regions} regions)`
+    );
+
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.waitForTimeout(1400);
+    const back = await page.evaluate(
+      () => document.querySelectorAll('.u-label--region:not([hidden])').length
+    );
+    note(back === 5, `and resizing back restores all five (${back})`);
+    note(errors.length === 0, `resizing raises no errors (${errors.join('; ').slice(0, 120)})`);
+    await context.close();
+  }
+
+  // --- the two entries are interchangeable at any depth
+  {
+    const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await page.click('[data-universe-region="ai-safety"]');
+    await page.waitForFunction(
+      () => document.querySelector('[data-universe-level]')?.textContent === 'Galaxy',
+      null,
+      { timeout: 40000 }
+    );
+    await page.waitForTimeout(1200);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(1500);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(3200);
+    await page.click('[data-universe-open]:not([data-universe-region])');
+    await page.waitForFunction(
+      () => document.documentElement.classList.contains('universe-open'),
+      null,
+      { timeout: 40000 }
+    );
+    await page.waitForTimeout(900);
+    const level = await page.evaluate(
+      () => document.querySelector('[data-universe-level]').textContent
+    );
+    note(level === 'Universe', `leaving a galaxy and re-entering by Universe lands there (${level})`);
+    await context.close();
+  }
+
+  // --- every program is compiled before the transition, not during it
+  {
+    const context = await browser.newContext({ ...CTX, viewport: { width: 1280, height: 720 } });
+    const page = await context.newPage();
+    await page.addInitScript(() => {
+      window.__gl = { link: 0, query: 0, phase: 'boot', during: 0 };
+      const proto = WebGL2RenderingContext.prototype;
+      const link = proto.linkProgram;
+      proto.linkProgram = function (...args) {
+        window.__gl.link += 1;
+        if (window.__gl.phase === 'open') window.__gl.during += 1;
+        return link.apply(this, args);
+      };
+      const query = proto.getProgramParameter;
+      proto.getProgramParameter = function (...args) {
+        window.__gl.query += 1;
+        if (window.__gl.phase === 'open') window.__gl.during += 1;
+        return query.apply(this, args);
+      };
+    });
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await page.hover('[data-universe-open]:not([data-universe-region])');
+    await page.waitForTimeout(3000);
+    await page.evaluate(() => {
+      window.__gl.phase = 'open';
+    });
+    await openUniverse(page);
+    await page.waitForTimeout(1500);
+    const gl = await page.evaluate(() => window.__gl);
+    note(
+      gl.link > 0 && gl.during === 0,
+      `shaders link before the transition, not during it (${gl.link} linked, ${gl.during} during)`
+    );
+    await context.close();
+  }
+
   // --- keyboard-only operation
   {
     const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });

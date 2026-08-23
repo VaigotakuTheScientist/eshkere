@@ -250,6 +250,8 @@ export function createComet(): Comet {
 
   const headPosition = new THREE.Vector3();
   const scratch = new THREE.Vector3();
+  /** Fixed direction the tail streams along while the comet is being placed. */
+  const PEEL_TAIL = new THREE.Vector3(1, 0.35, 0.6);
   let opacity = 0;
   let emphasis = 0;
   let override: THREE.Vector3 | null = null;
@@ -289,7 +291,7 @@ export function createComet(): Comet {
         if (override) {
           // While peeling off the hero the comet has no orbit yet, so the
           // tail simply streams behind the forced position.
-          scratch.copy(headPosition).addScaledVector(new THREE.Vector3(1, 0.35, 0.6), back * 90);
+          scratch.copy(headPosition).addScaledVector(PEEL_TAIL, back * 90);
         } else {
           orbit(t - back * 0.02, scratch);
         }

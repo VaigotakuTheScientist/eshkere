@@ -16,6 +16,8 @@ export interface UniverseApi {
   commit(): void;
   /** Abandon the gesture and fall back to the hero. */
   release(): void;
+  /** Build the renderer ahead of time, without showing anything. */
+  prepare(): void;
   open(region?: string): void;
   close(): void;
   isOpen(): boolean;
@@ -85,9 +87,31 @@ export function createUniverse(): UniverseApi | null {
   /** Which entry was used, and the galaxy it asked for, if any. */
   let activeOpener: HTMLElement | null = null;
   let pendingRegion: string | null = null;
+  let regionTimer = 0;
   let steppedThisGesture = false;
   let lastEventStamp = 0;
   let nudgeTimer = 0;
+  let hoverX = 0;
+  let hoverY = 0;
+  let hoverQueued = false;
+
+  /**
+   * Pointer movement fires far faster than the screen refreshes, and each
+   * event used to run a full pick over every object in the map. Coalescing
+   * to one pick per frame makes the cost independent of how fast the
+   * trackpad reports.
+   */
+  function queueHover(x: number, y: number) {
+    hoverX = x;
+    hoverY = y;
+    if (hoverQueued) return;
+    hoverQueued = true;
+    requestAnimationFrame(() => {
+      hoverQueued = false;
+      if (!stage || stage.mode !== 'universe') return;
+      stage.setHover(stage.pick(hoverX, hoverY));
+    });
+  }
 
   /**
    * Answer an outward gesture that has nowhere left to go by pointing at the
@@ -172,6 +196,7 @@ export function createUniverse(): UniverseApi | null {
     document.documentElement.style.removeProperty('overflow');
     setPageInert(false);
     stage?.stop();
+    window.clearTimeout(regionTimer);
     gestureValue = 0;
     intro = 0;
     refs.canvas.style.opacity = '0';
@@ -247,8 +272,13 @@ export function createUniverse(): UniverseApi | null {
         const region = pendingRegion;
         pendingRegion = null;
         // A beat at the overview first, so the scale still registers before
-        // the camera commits to one corner of it.
-        window.setTimeout(() => stage?.focusRegion(region), 420);
+        // the camera commits to one corner of it. Anything the visitor does
+        // during that beat wins — pressing Escape used to leave a flight
+        // queued that fired after the map had already started closing.
+        window.clearTimeout(regionTimer);
+        regionTimer = window.setTimeout(() => {
+          if (stage?.mode === 'universe' && stage.level === 1) stage.focusRegion(region);
+        }, 420);
       }
       // Land the keyboard inside the map itself rather than on one of its
       // controls — focusing "Back to the page" put a ring around the exit
@@ -451,8 +481,7 @@ export function createUniverse(): UniverseApi | null {
         return;
       }
       if (stage.mode !== 'universe') return;
-      const hit = stage.pick(event.clientX, event.clientY);
-      stage.setHover(hit);
+      queueHover(event.clientX, event.clientY);
     },
     { signal }
   );
@@ -601,8 +630,9 @@ export function createUniverse(): UniverseApi | null {
         pendingRegion = opener.dataset.universeRegion ?? null;
         if (!open) showOverlay();
         gestureValue = 0;
-        if (stage?.mode === 'universe' && pendingRegion) {
-          instance.focusRegion(pendingRegion);
+        if (stage?.mode === 'universe') {
+          if (pendingRegion) instance.focusRegion(pendingRegion);
+          else instance.recentre();
           pendingRegion = null;
         } else {
           instance.runTo(1);
@@ -613,7 +643,21 @@ export function createUniverse(): UniverseApi | null {
   }
 
   /* ----------------------------------------------------------- lifecycle */
-  window.addEventListener('resize', () => stage?.resize(), { passive: true, signal });
+  // Resizing fires continuously while a window is dragged, and each one
+  // rebuilds geometry and re-measures every label.
+  let resizeQueued = false;
+  window.addEventListener(
+    'resize',
+    () => {
+      if (resizeQueued || !stage) return;
+      resizeQueued = true;
+      requestAnimationFrame(() => {
+        resizeQueued = false;
+        stage?.resize();
+      });
+    },
+    { passive: true, signal }
+  );
   document.addEventListener(
     'visibilitychange',
     () => stage?.setPaused(document.hidden),
@@ -632,6 +676,9 @@ export function createUniverse(): UniverseApi | null {
     },
     release() {
       stage?.runTo(0);
+    },
+    prepare() {
+      ensureStage();
     },
     open(region?: string) {
       const instance = ensureStage();
