@@ -1062,6 +1062,84 @@ for (const viewport of viewports) {
     }
   }
 
+
+  // --- labels are attached to their systems, in the densest region there is
+  {
+    /**
+     * Culture & Play is the region where this went wrong: its dust used to
+     * be generated with no knowledge of where its systems were, so the
+     * bright clumps and the labelled stars were two independent scatterings.
+     * Every label was correctly attached to a star sitting in a gap, and one
+     * of the five could not be placed at all.
+     */
+    const context = await browser.newContext({ ...CTX, viewport: { width: 1919, height: 1010 } });
+    const page = await context.newPage();
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await openUniverse(page);
+    await page.evaluate(() => document.querySelector('.u-label[data-node-id="culture"]')?.click());
+    await page.waitForFunction(
+      () => document.querySelector('[data-universe-level]')?.textContent === 'Galaxy',
+      null,
+      { timeout: 40000 }
+    );
+    await page.waitForTimeout(2600);
+
+    const placement = await page.evaluate(() => {
+      const systems = [...document.querySelectorAll('.u-label--system:not([hidden])')];
+      const boxes = systems.map((el) => ({
+        id: el.dataset.nodeId,
+        rect: el.getBoundingClientRect(),
+      }));
+      let overlaps = 0;
+      for (let i = 0; i < boxes.length; i += 1) {
+        for (let j = i + 1; j < boxes.length; j += 1) {
+          const a = boxes[i].rect;
+          const b = boxes[j].rect;
+          if (a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top) {
+            overlaps += 1;
+          }
+        }
+      }
+      return { ids: boxes.map((b) => b.id), overlaps };
+    });
+
+    const wanted = [
+      'culture-games',
+      'culture-fiction',
+      'culture-music',
+      'culture-art',
+      'culture-exploration',
+    ];
+    note(
+      wanted.every((id) => placement.ids.includes(id)),
+      `every Culture & Play system is named (${placement.ids.length}/5: ${placement.ids
+        .map((id) => id.replace('culture-', ''))
+        .join(', ')})`
+    );
+    note(placement.overlaps === 0, `and none of them collide (${placement.overlaps} overlaps)`);
+
+    // Placement holds still in the dense region too, not only in AI Safety.
+    const stable = await page.evaluate(async () => {
+      const labels = [...document.querySelectorAll('.u-label--system')];
+      const frames = [];
+      for (let i = 0; i < 90; i += 1) {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        frames.push(labels.map((el) => (el.hidden ? 0 : 1)));
+      }
+      let worst = 0;
+      labels.forEach((_, index) => {
+        const series = frames.map((frame) => frame[index]);
+        let flips = 0;
+        for (let f = 1; f < series.length; f += 1) if (series[f] !== series[f - 1]) flips += 1;
+        worst = Math.max(worst, flips);
+      });
+      return worst;
+    });
+    note(stable === 0, `Culture & Play labels hold still over 90 frames (${stable} flips)`);
+    await page.screenshot({ path: `${SHOT_DIR}/universe-culture.png` });
+    await context.close();
+  }
+
   // --- the stationary map does no label work at all
   {
     const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });

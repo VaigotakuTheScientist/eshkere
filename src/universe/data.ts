@@ -52,6 +52,14 @@ export interface Region {
   radius: number;
   /** Two or three colours the region's dust is drawn from. */
   palette: string[];
+  /**
+   * How far a system's label sits from its star, as a fraction of the
+   * region's radius. It is world-space, so it holds at every zoom — and it
+   * is per-region because it has to clear whatever that region draws around
+   * its systems. Culture & Play builds a clump on each of its systems and
+   * needs much more room than a galaxy whose dust is evenly spread.
+   */
+  labelReach?: number;
   /** Seed for this region's point cloud — stable across builds. */
   seed: number;
   systems: System[];
@@ -306,6 +314,7 @@ const culture: Region = {
   position: [450, 330, 140],
   radius: 200,
   palette: ['#c8f542', '#ff4fc8', '#4de3ff'],
+  labelReach: 0.2,
   seed: 8080,
   systems: [
     {
@@ -440,6 +449,15 @@ export interface NodeRecord {
    * always drawn in full.
    */
   shortLabel?: string;
+  /**
+   * The point a label should sit *away* from — its galaxy for a system, its
+   * system for a planet. Labels are placed on the far side of their node
+   * from this, which pushes them out of the crowded, bright middle of a
+   * region and into the darker space around it, where they can be read.
+   */
+  origin?: Vec3;
+  /** Extra clearance in screen pixels, for nodes drawn larger than a point. */
+  labelPad?: number;
   kind: 'region' | 'system' | 'planet' | 'home' | 'comet' | 'mark';
   /** Region this node belongs to, for dimming and breadcrumbs. */
   regionId: string;
@@ -474,11 +492,23 @@ export const nodeIndex: NodeRecord[] = (() => {
         region.position[1] + system.offset[1],
         region.position[2] + system.offset[2],
       ];
+      // Step the label out along the system's own direction from the galaxy
+      // centre, by a distance the galaxy chooses. In world units, so it
+      // holds as the camera flies in rather than being a fixed number of
+      // pixels that is right at one zoom and wrong at every other.
+      const reach = region.radius * (region.labelReach ?? 0.1);
+      const span = Math.hypot(system.offset[0], system.offset[1]) || 1;
       list.push({
         id: system.id,
         label: system.label,
         blurb: system.blurb,
         position: systemPosition,
+        labelOffset: [
+          (system.offset[0] / span) * reach,
+          (system.offset[1] / span) * reach,
+          0,
+        ],
+        origin: region.position,
         kind: 'system',
         regionId: region.id,
       });
@@ -492,6 +522,10 @@ export const nodeIndex: NodeRecord[] = (() => {
             systemPosition[1] + planet.offset[1],
             systemPosition[2] + planet.offset[2],
           ],
+          // A planet points away from its own system, not from the galaxy:
+          // at that zoom the system star is the thing it must not collide
+          // with.
+          origin: systemPosition,
           kind: 'planet',
           regionId: region.id,
           href: planet.href,
@@ -504,7 +538,9 @@ export const nodeIndex: NodeRecord[] = (() => {
     label: homeWorld.label,
     blurb: homeWorld.blurb,
     position: homeWorld.position,
-    labelOffset: [-homeWorld.radius * 1.5, -homeWorld.radius * 1.5, 0],
+    // Outward from the core it orbits, and clear of its own disc.
+    origin: [0, 0, 0],
+    labelPad: 34,
     kind: 'home',
     regionId: 'health',
   });
@@ -515,6 +551,7 @@ export const nodeIndex: NodeRecord[] = (() => {
     label: homeMark.label,
     blurb: homeMark.blurb,
     position: [...homeWorld.position] as Vec3,
+    origin: [...homeWorld.position] as Vec3,
     kind: 'mark',
     regionId: 'health',
     href: homeMark.href,

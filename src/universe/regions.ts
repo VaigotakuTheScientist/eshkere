@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Region } from './data';
+import type { Region, Vec3 } from './data';
 import { gaussish, hexToRgb, mixRgb, range, rng } from './util';
 
 /**
@@ -127,6 +127,17 @@ function pointsFromCloud(points: CloudPoint[], palette: string[], square: boolea
 
 /* -------------------------------------------------------- morphologies */
 
+/**
+ * Where the region's named systems sit, in the region's own coordinates.
+ *
+ * A galaxy's dust used to be generated with no knowledge of this, which is
+ * how Culture & Play ended up with seven bright clumps in one set of places
+ * and five labelled stars in another — every label correctly attached to a
+ * star that happened to be sitting in a gap. The shapes that have visible
+ * structure now grow that structure around the things that have names.
+ */
+type Anchors = Vec3[];
+
 /** AI Safety — a jittered shell lattice: engineered, high-energy, ordered. */
 function latticeCloud(radius: number, seed: number, count: number): CloudPoint[] {
   const r = rng(seed);
@@ -250,24 +261,50 @@ function spiralCloud(radius: number, seed: number, count: number): CloudPoint[] 
 }
 
 /** Culture & Play — irregular neon clumps, drawn as pixels rather than stars. */
-function cloudCloud(radius: number, seed: number, count: number): CloudPoint[] {
+function cloudCloud(
+  radius: number,
+  seed: number,
+  count: number,
+  anchors: Anchors = []
+): CloudPoint[] {
   const r = rng(seed);
   const points: CloudPoint[] = [];
-  const blobs = 7;
-  const centres = Array.from({ length: blobs }, () => {
+
+  // A clump for each named system, so everything with a label is the centre
+  // of something you can see — and a set of unnamed ones between them, so
+  // the region still sprawls like a cloud instead of resolving into five
+  // tidy islands. The named clumps carry more material and are tighter; the
+  // rest is the haze they sit in.
+  const centres = anchors.map((anchor) => ({
+    x: anchor[0],
+    y: anchor[1],
+    z: anchor[2],
+    size: range(r, 0.2, 0.3) * radius,
+    tint: r(),
+    weight: 3,
+  }));
+  for (let i = 0; i < 5; i += 1) {
     const angle = r() * Math.PI * 2;
-    const d = Math.pow(r(), 0.7) * radius * 0.8;
-    return {
+    const d = range(r, 0.25, 0.95) * radius;
+    centres.push({
       x: Math.cos(angle) * d,
       y: Math.sin(angle) * d * 0.86,
       z: gaussish(r) * radius * 0.4,
-      size: range(r, 0.22, 0.5) * radius,
+      size: range(r, 0.26, 0.46) * radius,
       tint: r(),
-    };
+      weight: 2,
+    });
+  }
+  if (centres.length === 0) return points;
+
+  // Weighted draw, precomputed: the named clumps carry most of the material.
+  const bag: number[] = [];
+  centres.forEach((centre, index) => {
+    for (let w = 0; w < centre.weight; w += 1) bag.push(index);
   });
 
   for (let i = 0; i < count; i += 1) {
-    const blob = centres[i % blobs]!;
+    const blob = centres[bag[i % bag.length]!]!;
     points.push({
       x: blob.x + gaussish(r) * blob.size * 2,
       y: blob.y + gaussish(r) * blob.size * 2,
@@ -390,7 +427,7 @@ function createRing(options: {
 
 const CLOUD_BUILDERS: Record<
   Region['morphology'],
-  (radius: number, seed: number, count: number) => CloudPoint[]
+  (radius: number, seed: number, count: number, anchors: Anchors) => CloudPoint[]
 > = {
   core: coreCloud,
   lattice: latticeCloud,
@@ -407,7 +444,13 @@ export function buildRegion(region: Region, quality: 'high' | 'low'): RegionObje
   const baseCount = Math.round(
     (region.morphology === 'core' ? 2600 : 5200) * density
   );
-  const cloud = CLOUD_BUILDERS[region.morphology](region.radius, region.seed, baseCount);
+  const anchors: Anchors = region.systems.map((system) => system.offset);
+  const cloud = CLOUD_BUILDERS[region.morphology](
+    region.radius,
+    region.seed,
+    baseCount,
+    anchors
+  );
   const dust = pointsFromCloud(cloud, region.palette, region.morphology === 'cloud');
   group.add(dust.object);
 
@@ -443,14 +486,11 @@ export function buildRegion(region: Region, quality: 'high' | 'low'): RegionObje
           0.42
         );
       }
-      // Signal beacons — a few bright fixed points inside the structure.
-      for (let i = 0; i < 4; i += 1) {
+      // Signal beacons, sitting on the systems themselves — the lattice's
+      // bright points and its named points are the same points.
+      for (const [i, anchor] of anchors.slice(0, 4).entries()) {
         const beacon = createHalo(i % 2 ? '#9d6bff' : '#8ff0ff', region.radius * 0.34, 0.44);
-        beacon.position.set(
-          gaussish(r) * region.radius * 1.4,
-          gaussish(r) * region.radius * 1.4,
-          gaussish(r) * region.radius * 0.5
-        );
+        beacon.position.set(anchor[0], anchor[1], anchor[2]);
         addExtra(beacon, 0.44);
       }
       addExtra(createHalo('#4de3ff', region.radius * 1.4, 0.26), 0.26);

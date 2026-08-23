@@ -76,9 +76,16 @@ const CLEAR = 0.06;
  */
 const DWELL_MS = 360;
 
+/**
+ * How far a label's edge sits from the thing it names, in pixels. Close
+ * enough to read as attached, far enough not to sit on it.
+ */
+const ATTACH_GAP = 10;
+
 export function createLabelLayer(options: LabelLayerOptions) {
   const handles: LabelHandle[] = [];
   const projected = new THREE.Vector3();
+  const originProjected = new THREE.Vector3();
 
   for (const node of options.nodes) {
     const external = !!node.href && /^https?:\/\//i.test(node.href);
@@ -292,6 +299,9 @@ export function createLabelLayer(options: LabelLayerOptions) {
         projected
           .set(handle.node.position[0], handle.node.position[1], handle.node.position[2])
           .applyMatrix4(root.matrixWorld);
+        // The world-space step first: it scales with the scene, so it is
+        // what clears whatever the region draws around this node at any
+        // zoom. The screen-space gap below is only the final few pixels.
         const offset = handle.node.labelOffset;
         if (offset) {
           const scale = root.scale.x;
@@ -306,16 +316,56 @@ export function createLabelLayer(options: LabelLayerOptions) {
           continue;
         }
 
-        const x = (projected.x * 0.5 + 0.5) * viewport.width;
-        // Galaxy names are offset in world space so they scale with the
-        // galaxy; everything smaller gets a fixed drop in screen pixels, so
-        // a system's name clears its own star at every zoom level.
-        const drop = handle.node.kind === 'region' ? 0 : 26;
-        const y = (0.5 - projected.y * 0.5) * viewport.height + drop;
+        const nodeX = (projected.x * 0.5 + 0.5) * viewport.width;
+        const nodeY = (0.5 - projected.y * 0.5) * viewport.height;
 
         const box = boxes[index]!;
         box.w = handle.width;
         box.h = handle.height;
+
+        // Where the label goes relative to its node.
+        //
+        // A galaxy name keeps its world-space offset, because it has to
+        // scale with the galaxy. Everything smaller is placed on the far
+        // side of its node from whatever it belongs to — a system away from
+        // its galaxy, a planet away from its system. That is what keeps a
+        // label out of the bright middle of a dense region, where the type
+        // simply cannot be read over the particles, and it makes which star
+        // a name belongs to unambiguous.
+        let x = nodeX;
+        let y = nodeY;
+        if (handle.node.kind !== 'region') {
+          let dirX = 0;
+          let dirY = 1;
+          const origin = handle.node.origin;
+          if (origin) {
+            originProjected.set(origin[0], origin[1], origin[2]).applyMatrix4(root.matrixWorld);
+            originProjected.project(camera);
+            dirX = nodeX - (originProjected.x * 0.5 + 0.5) * viewport.width;
+            dirY = nodeY - (0.5 - originProjected.y * 0.5) * viewport.height;
+            const length = Math.hypot(dirX, dirY);
+            // A node sitting on top of its own origin — a galaxy's central
+            // system, say — has no outward direction, so it falls back to
+            // straight down.
+            if (length < 1) {
+              dirX = 0;
+              dirY = 1;
+            } else {
+              dirX /= length;
+              dirY /= length;
+            }
+          }
+          // Distance from the label's centre to its own edge along that
+          // direction, so the gap is the same whichever way it points.
+          const edge = Math.min(
+            Math.abs(dirX) > 1e-4 ? Math.abs(box.w / 2 / dirX) : Infinity,
+            Math.abs(dirY) > 1e-4 ? Math.abs(box.h / 2 / dirY) : Infinity
+          );
+          const reach = edge + ATTACH_GAP + (handle.node.labelPad ?? 0);
+          x = nodeX + dirX * reach;
+          y = nodeY + dirY * reach;
+        }
+
         box.x = x - box.w / 2;
         box.y = y - box.h / 2;
 

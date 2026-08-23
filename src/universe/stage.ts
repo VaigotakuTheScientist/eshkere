@@ -220,6 +220,10 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
         shortLabel: 'Current source',
         blurb: 'The source the Eshkere hero star is pointing at right now.',
         position: [0, 0, 0],
+        // It belongs to nothing, so it takes its bearing from the middle of
+        // the map: wherever the orbit has carried it, its name is written on
+        // the outward side, away from whatever it is passing.
+        origin: [0, 0, 0],
         kind: 'comet',
         regionId: 'health',
         href: currentSourceComet.href,
