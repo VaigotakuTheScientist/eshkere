@@ -224,6 +224,9 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
         id: 'current-source',
         label: `Currently reading: ${currentSourceComet.title}`,
         shortLabel: 'Current source',
+        // The one label worth expanding: what it is pointing at is the point
+        // of it, and the title is far too long to sit on the map at rest.
+        expands: true,
         blurb: 'The source the Eshkere hero star is pointing at right now.',
         position: [0, 0, 0],
         // Rewritten every frame to the galaxy the comet is passing, so the

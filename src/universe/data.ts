@@ -469,6 +469,8 @@ export interface NodeRecord {
    * always drawn in full.
    */
   shortLabel?: string;
+  /** Draw the full label too, on hover and focus, in place of the short one. */
+  expands?: boolean;
   /**
    * The point a label should sit *away* from — its galaxy for a system, its
    * system for a planet. Labels are placed on the far side of their node
@@ -557,8 +559,9 @@ export const nodeIndex: NodeRecord[] = (() => {
   }
   list.push({
     id: homeWorld.id,
-    // Two forms, one meaning. At rest it says where you are; reach for it and
-    // it says what it does, because it is the way back to the page.
+    // The caption stays "You were here" on screen, always. The longer form
+    // is the accessible name only — it says what the control does for anyone
+    // who cannot see that it is drawn on the page you came from.
     label: `${homeWorld.label} — back to the page`,
     shortLabel: homeWorld.label,
     blurb: homeWorld.blurb,

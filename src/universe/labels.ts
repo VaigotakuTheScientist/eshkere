@@ -107,9 +107,14 @@ export function createLabelLayer(options: LabelLayerOptions) {
     }
 
     if (node.shortLabel) {
-      // Two forms, one meaning: the short one is drawn at rest and the full
-      // one on hover or focus. The accessible name is always the full one.
+      // Two names for one thing: `label` is what it is called, `shortLabel`
+      // is what fits on the map. The accessible name is always the full one.
       element.setAttribute('aria-label', node.label);
+    }
+    if (node.shortLabel && node.expands) {
+      // And where the full name is worth reading — a source title, say — it
+      // is drawn too, on hover or focus. Only where it is worth reading:
+      // text that rewrites itself under the pointer is noise, not detail.
       for (const [variant, value] of [
         ['short', node.shortLabel],
         ['full', node.label],
@@ -123,7 +128,8 @@ export function createLabelLayer(options: LabelLayerOptions) {
     } else {
       const text = document.createElement('span');
       text.className = 'u-label__text';
-      text.textContent = node.label;
+      text.textContent = node.shortLabel ?? node.label;
+      if (node.shortLabel) text.setAttribute('aria-hidden', 'true');
       element.append(text);
     }
 

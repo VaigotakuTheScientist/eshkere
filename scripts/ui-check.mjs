@@ -513,6 +513,40 @@ for (const viewport of viewports) {
   await context.close();
 }
 
+// ------------------------------------------------- a quieter hero
+{
+  const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+
+  const hero = await page.evaluate(() => {
+    const support = document.querySelector('.hero__support');
+    const after = getComputedStyle(support, '::after');
+    return {
+      line: support.textContent.trim(),
+      flourish: after.content,
+      switcherLabel: !!document.querySelector('.art-switcher__label'),
+      options: [...document.querySelectorAll('.art-switcher__option')].map((el) =>
+        el.textContent.trim()
+      ),
+    };
+  });
+  note(
+    hero.line === 'Health is non-optional. Everything else is a game.',
+    'the supporting line reads as written'
+  );
+  note(
+    hero.flourish === 'none' || hero.flourish === 'normal',
+    `and stands on its own, with no arrow after it (${hero.flourish})`
+  );
+  note(!hero.switcherLabel, 'the switcher has no category label');
+  note(
+    hero.options.length === 2 && hero.options.join(' / ') === 'Universe / AI Safety',
+    `just its two entries (${hero.options.join(' / ')})`
+  );
+  await context.close();
+}
+
 // ---------------------------------------------------- page titles
 {
   const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });
@@ -968,6 +1002,26 @@ for (const viewport of viewports) {
       (await caption().getAttribute('href')) === null,
       'the home caption is a control, not a link'
     );
+
+    // Its text does not move. A caption that rewrites itself under the
+    // pointer reads as noise; the longer form is the accessible name only.
+    const reading = async () => (await caption().textContent()).trim();
+    const atRest = await reading();
+    await caption().hover();
+    await page.waitForTimeout(500);
+    const onHover = await reading();
+    await page.evaluate(() => document.querySelector('.u-label[data-node-id="home"]').focus());
+    await page.waitForTimeout(300);
+    const onFocus = await reading();
+    note(
+      atRest === 'You were here' && onHover === atRest && onFocus === atRest,
+      `the home caption holds its text (${atRest} / ${onHover} / ${onFocus})`
+    );
+    note(
+      /back to the page/i.test((await caption().getAttribute('aria-label')) ?? ''),
+      'while its accessible name still says what it does'
+    );
+
     await caption().click();
     let returned = true;
     await home().catch(() => (returned = false));
