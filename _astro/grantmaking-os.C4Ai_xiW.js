@@ -1,0 +1,1 @@
+var e=`https://vadymsulzhenko.notion.site/grantmaking-os-template`;function t(){try{return globalThis.localStorage?.getItem(`eshkere.owner`)===`true`}catch{return!1}}function n(){return t()?`https://app.notion.com/p/3c275628fc8381239c0ec4e75f6d686f`:e}export{n,t as r,e as t};
