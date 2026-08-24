@@ -23,4 +23,25 @@ const { Content } = await render(entry);
   backLabel="Back to portfolio"
 >
   <Content />
+  {
+    entry.data.url && (
+      <p class="portfolio-detail__link">
+        <a
+          class="arrow-link arrow-link--accent"
+          href={entry.data.url}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Open {entry.data.title}
+          <span class="visually-hidden"> (opens in a new tab)</span>
+        </a>
+      </p>
+    )
+  }
 </ArticleLayout>
+
+<style>
+  .portfolio-detail__link {
+    margin-top: 2rem;
+  }
+</style>

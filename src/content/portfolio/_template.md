@@ -8,6 +8,9 @@ summary: 'One or two sentences on what this is and why it exists.'
 category: project # project | program | experiment | supported-work
 status: exploring # exploring | in-progress | active | paused | completed
 date: 2026-01-01
+# Optional. When the work itself lives somewhere else, the portfolio card and
+# the search result point there instead of at this page.
+# url: 'https://example.com/the-thing'
 tags: ['health']
 prototype: false
 ---

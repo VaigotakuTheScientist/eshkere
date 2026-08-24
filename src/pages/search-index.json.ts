@@ -154,7 +154,7 @@ export const GET: APIRoute = async () => {
     })),
     ...portfolio.map((entry) => ({
       title: entry.data.title,
-      href: url(`/portfolio/${entry.id}`),
+      href: entry.data.url ?? url(`/portfolio/${entry.id}`),
       section: 'Portfolio',
       excerpt: entry.data.summary,
       text: [entry.data.title, entry.data.category, entry.data.tags.join(' '), plain(entry.body)]

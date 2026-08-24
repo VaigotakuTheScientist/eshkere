@@ -1,5 +1,6 @@
 import artNebula from '../assets/hero-nebula.png';
 import currentSource from './current-source.generated.json';
+import { GRANTMAKING_OS_PRIVATE, GRANTMAKING_OS_TEMPLATE } from '../lib/grantmaking-os';
 
 /**
  * A clickable region baked into the artwork, described in the source
@@ -15,6 +16,8 @@ export interface HeroHotspot {
   /** Accessible name — the artwork's own lettering. */
   label: string;
   href: string;
+  /** Where this hotspot goes instead, in the owner's own browser. */
+  ownerHref?: string;
   x: number;
   y: number;
   w: number;
@@ -38,9 +41,14 @@ export interface HeroPlanet {
   r: number;
 }
 
-/** The private page the artwork's green smiley points at, on every artwork. */
-export const GRANTMAKING_OS_URL =
-  'https://app.notion.com/p/vadymsulzhenko/Grantmaking-OS-3c275628fc8381239c0ec4e75f6d686f';
+/**
+ * Where the artwork's green smiley points, on every artwork.
+ *
+ * The built page always carries the public template. The owner's browser
+ * swaps in the private working copy at runtime — see `ownerHref` below and
+ * `src/lib/grantmaking-os.ts`.
+ */
+export const GRANTMAKING_OS_URL = GRANTMAKING_OS_TEMPLATE;
 
 /**
  * Where the smiley sits on the globe's visible face, in unit-disc
@@ -142,6 +150,7 @@ export const heroArtworks: HeroArtwork[] = [
       {
         label: 'Grantmaking OS',
         href: GRANTMAKING_OS_URL,
+        ownerHref: GRANTMAKING_OS_PRIVATE,
         x: 1047,
         y: 421,
         w: 34,

@@ -513,6 +513,163 @@ for (const viewport of viewports) {
   await context.close();
 }
 
+// ------------------------------------------- Grantmaking OS destinations
+{
+  /**
+   * Two addresses, one rule: everything the site publishes points at the
+   * public template, and only the green smiley — a shortcut, not a citation
+   * — swaps to the private working copy, and only in a browser that has
+   * been told it is the owner's.
+   */
+  const TEMPLATE = 'https://vadymsulzhenko.notion.site/grantmaking-os-template';
+  const PRIVATE = 'https://app.notion.com/p/3c275628fc8381239c0ec4e75f6d686f';
+
+  const smileHrefs = async (page) => {
+    const hero = await page.evaluate(
+      () =>
+        [...document.querySelectorAll('[data-art-hotspots]:not([hidden]) .hero__hotspot')]
+          .find((el) => el.textContent.includes('Grantmaking OS'))
+          ?.getAttribute('href') ?? null
+    );
+    await page.click('[data-universe-open]:not([data-universe-region])');
+    await page.waitForFunction(
+      () => document.documentElement.classList.contains('universe-open'),
+      null,
+      { timeout: 40000 }
+    );
+    await page.waitForTimeout(1400);
+    const universe = await page.evaluate(
+      () => document.querySelector('.u-label--mark')?.getAttribute('href') ?? null
+    );
+    return { hero, universe };
+  };
+
+  // --- an ordinary visitor
+  {
+    const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await page.waitForTimeout(1200);
+    const seen = await smileHrefs(page);
+    note(seen.hero === TEMPLATE, `no owner flag: the hero smile opens the template (${seen.hero})`);
+    note(
+      seen.universe === TEMPLATE,
+      `and so does the universe smile (${seen.universe})`
+    );
+
+    // The private page's address is in the source — deliberately, since the
+    // owner's browser has to know it, and the page behind it is permission
+    // protected. What must hold is that nothing a visitor can follow points
+    // at it.
+    const leaks = await page.evaluate(() =>
+      [...document.querySelectorAll('[href]')]
+        .map((el) => el.getAttribute('href'))
+        .filter((href) => href?.includes('3c275628fc8381239c0ec4e75f6d686f'))
+    );
+    note(leaks.length === 0, `and nothing a visitor can follow points at the private OS (${leaks.length})`);
+    await context.close();
+  }
+
+  // --- the owner's own browser
+  {
+    const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });
+    await context.addInitScript(() => {
+      try {
+        localStorage.setItem('eshkere.owner', 'true');
+      } catch {
+        /* storage may be unavailable; the check below will say so */
+      }
+    });
+    const page = await context.newPage();
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await page.waitForTimeout(1200);
+    const seen = await smileHrefs(page);
+    note(seen.hero === PRIVATE, `owner flag: the hero smile opens the private OS (${seen.hero})`);
+    note(seen.universe === PRIVATE, `and so does the universe smile (${seen.universe})`);
+
+    // Pressing it still opens a tab rather than leaving the map, and the
+    // planet beside it still goes back to the page.
+    await page.evaluate(async () => {
+      document
+        .querySelector('.u-label--mark')
+        .dispatchEvent(new PointerEvent('pointerenter', { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+    const [popup] = await Promise.all([
+      page.waitForEvent('popup', { timeout: 15000 }).catch(() => null),
+      page.locator('.u-label--mark').click(),
+    ]);
+    note(!!popup, 'the owner smile still opens in a new tab');
+    await popup?.close();
+    await page.waitForTimeout(500);
+    note(
+      (await page.evaluate(() => document.documentElement.className)).includes('universe-open'),
+      'and pressing it still does not leave the map'
+    );
+    await page.locator('.u-label[data-node-id="home"]').click();
+    const back = await page
+      .waitForFunction(() => document.documentElement.className === '', null, { timeout: 30000 })
+      .then(() => true, () => false);
+    note(back, 'while the home world still goes back to the page in owner mode');
+    await context.close();
+  }
+
+  // --- the portfolio never follows the flag
+  {
+    const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });
+    await context.addInitScript(() => {
+      try {
+        localStorage.setItem('eshkere.owner', 'true');
+      } catch {
+        /* as above */
+      }
+    });
+    const page = await context.newPage();
+    await page.goto(BASE + '/portfolio', { waitUntil: 'networkidle' });
+
+    const card = await page.evaluate(() => {
+      const link = [...document.querySelectorAll('.portfolio-card__title a')].find((el) =>
+        el.textContent.includes('Grantmaking OS')
+      );
+      const article = link?.closest('.portfolio-card');
+      return link
+        ? {
+            href: link.getAttribute('href'),
+            target: link.getAttribute('target'),
+            rel: link.getAttribute('rel'),
+            summary: article?.querySelector('.portfolio-card__summary')?.textContent.trim(),
+          }
+        : null;
+    });
+    note(!!card, 'Grantmaking OS is in the portfolio');
+    note(card?.href === TEMPLATE, `and the entry opens the template (${card?.href})`);
+    note(
+      card?.target === '_blank' && card.rel?.includes('noopener'),
+      'in a new tab, safely'
+    );
+    note(
+      /operating system for moving from a broad funding area/i.test(card?.summary ?? ''),
+      'with the framing on the card'
+    );
+
+    // Its own page carries the same destination.
+    await page.goto(BASE + '/portfolio/grantmaking-os', { waitUntil: 'networkidle' });
+    const detail = await page.evaluate(() => {
+      const link = document.querySelector('.portfolio-detail__link a');
+      return {
+        href: link?.getAttribute('href') ?? null,
+        heading: document.querySelector('h1')?.textContent.trim(),
+        tags: [...document.querySelectorAll('.tag, .tag-list li')].map((el) =>
+          el.textContent.trim()
+        ),
+      };
+    });
+    note(detail.href === TEMPLATE, `and so does its own page (${detail.href})`);
+    note(detail.heading === 'Grantmaking OS', `titled as itself (${detail.heading})`);
+    await context.close();
+  }
+}
+
 // ------------------------------------------------- a quieter hero
 {
   const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });
@@ -737,7 +894,7 @@ for (const viewport of viewports) {
         : null;
     });
     note(
-      planet?.tag === 'A' && planet.href?.includes('Grantmaking-OS') && planet.target === '_blank',
+      planet?.tag === 'A' && planet.href?.includes('grantmaking-os-template') && planet.target === '_blank',
       `Grantmaking OS is a real link (${planet?.href?.slice(0, 48)})`
     );
 
@@ -925,7 +1082,7 @@ for (const viewport of viewports) {
         };
       });
       note(
-        !!mark && mark.reachable && !!mark.href?.includes('Grantmaking-OS'),
+        !!mark && mark.reachable && !!mark.href?.includes('grantmaking-os-template'),
         `[${width}x${height}] hero smiley is clickable (${mark?.blockedBy || 'reachable'})`
       );
       await context.close();
@@ -952,7 +1109,7 @@ for (const viewport of viewports) {
         : null;
     });
     note(
-      mark?.tag === 'A' && !!mark.href?.includes('Grantmaking-OS') && mark.target === '_blank',
+      mark?.tag === 'A' && !!mark.href?.includes('grantmaking-os-template') && mark.target === '_blank',
       `universe smiley is the same link (${mark?.href?.slice(0, 46)})`
     );
     note(mark?.quietAtRest === true, 'universe smiley is drawn on the world, not captioned');
@@ -1106,7 +1263,7 @@ for (const viewport of viewports) {
     // the tab is aimed at the right place.
     const smileHref = (await page.locator('.u-label--mark').getAttribute('href')) ?? '';
     note(
-      !!popup && /Grantmaking-OS/.test(smileHref),
+      !!popup && /grantmaking-os-template/.test(smileHref),
       `the smiley still opens Grantmaking OS in a new tab (${
         popup ? 'opened' : 'no tab'
       }, ${smileHref.slice(0, 40)})`

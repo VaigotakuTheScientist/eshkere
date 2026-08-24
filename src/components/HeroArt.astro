@@ -54,6 +54,7 @@ const artworks = heroArtworks;
             <a
               class="hero__hotspot"
               href={url(spot.href)}
+              data-owner-href={spot.ownerHref}
               target={external ? '_blank' : undefined}
               rel={external ? 'noopener noreferrer' : undefined}
               data-shape={spot.shape}
@@ -112,6 +113,19 @@ const artworks = heroArtworks;
 </div>
 
 <script>
+  import { isOwner } from '../lib/grantmaking-os';
+
+  /**
+   * A hotspot may have a second destination meant only for the browser that
+   * has been told it is the owner's. The page ships with the public one, so
+   * that is what everyone else — and every crawler — ever sees.
+   */
+  if (isOwner()) {
+    for (const spot of document.querySelectorAll<HTMLAnchorElement>('a[data-owner-href]')) {
+      spot.href = spot.dataset.ownerHref!;
+    }
+  }
+
   const stage = document.querySelector<HTMLElement>('.hero__stage');
 
   if (stage) {

@@ -1,4 +1,5 @@
 import currentSource from '../data/current-source.generated.json';
+import { GRANTMAKING_OS_TEMPLATE, grantmakingOsHref } from '../lib/grantmaking-os';
 
 /**
  * The authored Eshkere universe.
@@ -128,8 +129,8 @@ const healthCore: Region = {
 };
 
 /**
- * The example galaxy for V1 — fully populated, including the real
- * Grantmaking OS destination that already exists on the hero.
+ * The example galaxy for V1 — fully populated, including the published
+ * Grantmaking OS template the hero's smiley also points at.
  */
 const aiSafety: Region = {
   id: 'ai-safety',
@@ -165,7 +166,9 @@ const aiSafety: Region = {
         {
           id: 'ais-grantmaking-os',
           label: 'Grantmaking OS',
-          href: 'https://app.notion.com/p/vadymsulzhenko/Grantmaking-OS-3c275628fc8381239c0ec4e75f6d686f',
+          // The catalogue entry, not the shortcut: this one is the published
+          // template for everybody, owner included.
+          href: GRANTMAKING_OS_TEMPLATE,
           offset: [62, -34, 20],
           blurb: 'The working system behind how grants get considered.',
         },
@@ -415,13 +418,14 @@ export const homeWorld = {
 /**
  * The green smiley the artist drew on the globe. It is a link on the hero
  * and it stays one out here: the home world keeps its mark, and the mark
- * keeps its destination.
+ * keeps its destination — including the owner's shortcut to the working copy,
+ * since this module is evaluated in the browser when the map loads.
  */
 export const homeMark = {
   id: 'home-mark',
   label: 'Grantmaking OS',
   blurb: 'The working system behind how grants get considered.',
-  href: 'https://app.notion.com/p/vadymsulzhenko/Grantmaking-OS-3c275628fc8381239c0ec4e75f6d686f',
+  href: grantmakingOsHref(),
 };
 
 /**

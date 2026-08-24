@@ -23,6 +23,8 @@ const portfolio = defineCollection({
     category: z.enum(['project', 'program', 'experiment', 'supported-work']),
     status: z.enum(['exploring', 'in-progress', 'active', 'paused', 'completed']),
     date: z.coerce.date().optional(),
+    /** Where the work itself lives, when it lives somewhere else. */
+    url: z.string().url().optional(),
     tags: z.array(z.string()).default([]),
     prototype: z.boolean().default(false),
   }),
