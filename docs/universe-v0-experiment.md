@@ -48,6 +48,11 @@ Current reading changes over time and is already represented by the dynamic **Cu
 
 A resource should become a permanent map object only if it is a durable landmark in the user's mental model.
 
+Acted on in the v0.1 patch: the three static article planets under Grantmaking
+are removed. What remains under that system is Grantmaking OS — the operational
+engine — and the AI Safety Power Map, which is a landmark because it is a place
+to think rather than a thing to read once.
+
 ---
 
 ## 4. Universe is a cognitive layer, not a second database

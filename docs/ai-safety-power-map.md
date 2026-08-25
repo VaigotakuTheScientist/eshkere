@@ -356,6 +356,50 @@ For the first pass, a sensible image seed is the six currently modeled individua
 
 ---
 
+## 12a. v0.1 prototype — what was built
+
+Implemented on a side branch and delivered as a PR; the default branch
+auto-deploys and this is an experiment.
+
+```text
+src/lib/power-map/model.ts     one node/edge snapshot + evidence — no layout in it
+src/lib/power-map/lenses.ts    lenses as selections over that one model
+src/lib/power-map/layout.ts    arenas as rows, authored left-to-right order
+src/pages/universe/power-map.astro   the layered network, and the map as text
+```
+
+Reachable from `Universe → AI Safety → Grantmaking & Resource Allocation`.
+The cosmic renderer is untouched: the child map is an ordinary page, which is
+what MoM as map → map actually looks like when the grammars differ.
+
+Decisions worth carrying forward:
+
+- **Core is a node selection, not an edge filter.** Filtering Core's edges by
+  strength was tried and reverted — it hid OpenAI's second cloud supplier,
+  which is exactly the shared-chokepoint fact the map exists to surface.
+- **Collapsed institutions inherit their children's edges at display time.**
+  With the United States collapsed, BIS's export-control edge to NVIDIA is
+  drawn from the United States and dashed. The relationship records are never
+  rewritten and the detail panel always names the real counterparty, so the
+  view-level simplification cannot become a belief.
+- **Rows are spread, not pinned to a fixed grid.** Actors are placed in an
+  authored order and spread evenly across the visible row, so a lens always
+  renders identically without Core inheriting Full's gaps.
+- **The server renders the whole snapshot as text.** That text is the map
+  without a script, and it is the same data the network is drawn from.
+- **A phone gets a different map.** Below 48rem the network becomes stacked
+  arena bands of full-width chips with no edge lines; dependencies are read in
+  the detail panel instead of traced.
+
+Not built, deliberately: stance overlays, network diagnostics, imagery,
+typed-relationship filter chips, scenario lenses.
+
+Public evidence in the snapshot is limited to official public presences. They
+support what the map claims at the level it claims it and no finer; richer
+per-claim evidence stays in Notion until it can be published safely.
+
+---
+
 ## 12. First visualization direction
 
 The research gate is passed for a first prototype.
