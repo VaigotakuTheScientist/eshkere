@@ -1,6 +1,6 @@
 # AI Safety Power Map — product / implementation brief
 
-Status: **current research-to-visualization brief** for a likely Universe v0.1 Map-of-Maps experiment.
+Status: **active research-to-visualization brief** for a likely Universe v0.1 Map-of-Maps experiment.
 
 The richer strategic/research source of truth lives in Notion on the page `Study Key Decision Makers` under Grantmaking OS. This repository should keep only the public-safe product model and implementation constraints needed by coding agents.
 
@@ -183,3 +183,51 @@ The first visualization should be a view over a model we actually believe, not a
 - Preserve the current Universe privacy boundary; do not expose private Notion data on the public site.
 - Do not build a generic graph engine or skin system before the first power-map use case proves the need.
 - Use a side branch + PR for nontrivial implementation work; the current default branch auto-deploys.
+
+---
+
+## 9. Current v0.1 research seed
+
+The structured source of truth is now the Notion database **`AI Safety Power Map — Decision Centers`** under `Study Key Decision Makers`.
+
+The first seed contains **19 nodes**: 13 institutional/state decision centers plus six individual leaders.
+
+Institutional/state seed:
+
+- OpenAI
+- Anthropic
+- Google DeepMind / Google
+- Meta
+- SpaceXAI
+- Microsoft / Azure
+- Amazon / AWS
+- NVIDIA
+- TSMC
+- United States federal government
+- China — central AI governance / industrial apparatus
+- European Commission / EU AI Office
+- UK AI Security Institute
+
+Initial individual seed:
+
+- Sam Altman
+- Dario Amodei
+- Demis Hassabis
+- Mark Zuckerberg
+- Elon Musk
+- Jensen Huang
+
+Each Notion row records a provisional tier, qualitative power vector, rationale, key relationships, public evidence, confidence and update date. **Do not copy these scores into code yet.** They are research hypotheses and should remain easy to revise.
+
+### Next research target
+
+Before rendering, add a typed relationship/dependency layer and stress-test missing decision centers. In particular, inspect:
+
+- Chinese frontier labs and cloud/compute actors;
+- US government sub-bodies whose powers differ materially (White House/NSC, Commerce/BIS, DoD, DOE, etc.);
+- semiconductor chokepoints beyond NVIDIA/TSMC (advanced lithography, HBM, packaging/networking where decision-relevant);
+- data-centre / energy / permitting nodes where they create real constraints;
+- governance boards/ownership nodes when they have authority distinct from the CEO;
+- safety-evaluation/funding nodes only where their epistemic or ecosystem power is consequential.
+
+The highest-value next question is whether the **relationship graph** reveals chokepoints, dependencies or coordination nodes that a ranked actor list hides.
