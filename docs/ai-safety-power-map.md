@@ -10,12 +10,13 @@ The richer strategic/research source of truth lives in Notion on the page `Study
 
 Build a map that helps the user reason about **who can materially influence frontier-AI and AI-safety-relevant outcomes, through which levers, and through which dependencies**.
 
-This is not a directory of people who identify as AI safety. It includes actors with power over safety-relevant outcomes even when safety is not their mission: frontier labs, cloud providers, chip/infrastructure actors, states, regulators, capital providers, evaluators, safety organizations, etc.
+This is not a directory of people who identify as AI safety. It includes actors with power over safety-relevant outcomes even when safety is not their mission: frontier labs, cloud providers, chip/infrastructure actors, energy/grid actors, states, regulators, capital providers, evaluators, safety organizations, etc.
 
 The map should answer questions such as:
 
 - Who can directly change or delay a frontier training/deployment decision?
 - Who controls scarce compute or physical infrastructure?
+- Who can bring enough electricity online for frontier clusters, and who controls grid connection/permitting?
 - Which actors constrain or enable a frontier lab?
 - Where can regulation, export controls, procurement or evaluation evidence enter the system?
 - Which relationships create chokepoints, dependencies or coordination opportunities?
@@ -31,7 +32,7 @@ Start from the **power / leverage types**, then map actors who control them:
 1. model-development power
 2. deployment power
 3. compute allocation
-4. physical infrastructure / energy
+4. physical infrastructure / energy / grid
 5. capital / ownership
 6. talent
 7. regulation / coercion
@@ -46,7 +47,8 @@ Actor classes likely include:
 - frontier model developers + leadership
 - hyperscalers / cloud / compute allocators
 - semiconductor / supply-chain chokepoints
-- data-centre / energy / permitting actors
+- energy developers / utilities / grid operators / permitting actors
+- data-centre developers and physical infrastructure
 - great-power governments and key state institutions
 - regulators / government technical bodies
 - capital providers / boards / major owners
@@ -57,6 +59,32 @@ Actor classes likely include:
 - international coordination bodies / alliances
 
 People, organizations, states and infrastructure are different node types. Preserve those distinctions.
+
+### Energy is first-class
+
+Do not treat electricity as an invisible input hidden inside `compute`.
+
+Useful stack:
+
+```text
+chips
+  ↓
+servers
+  ↓
+data centre
+  ↓
+grid connection / substations / transmission
+  ↓
+generation + storage
+  ↓
+permits / regulators
+  ↓
+usable megawatts
+```
+
+A bottleneck at any layer can delay frontier capacity even when a lab has enough money and accelerator supply.
+
+Energy/grid power is often **local and contextual**: a municipal utility may have little global agenda power but substantial veto/delay power over a particular 500 MW–1 GW site.
 
 ---
 
@@ -83,7 +111,7 @@ A highly safety-concerned actor may have little direct power. A skeptical or acc
 - **Tier 1:** direct frontier control or veto over at least one major lever/decision.
 - **Tier 2:** major enabling/constraining power that materially changes cost, speed, feasibility or incentives but usually requires counterparties/coalitions.
 - **Tier 3:** strong indirect, epistemic or agenda power.
-- **Contextual / latent:** power becomes high only in a scenario such as a crisis, election, accident, export-control change, war, etc.
+- **Contextual / latent:** power becomes high only in a scenario or locality such as a crisis, election, accident, export-control change, grid bottleneck, site-permit decision, war, etc.
 
 Prefer `tier + power vector` over one universal score.
 
@@ -99,7 +127,7 @@ Conceptually:
 frontier labs / leaders ──→ model development + deployment ──┐
 cloud / hyperscalers ─────→ compute allocation ──────────────┤
 chips / manufacturing ────→ compute supply ─────────────────┤
-data centres / energy ────→ physical scale ─────────────────┤
+energy / grid / permits ──→ usable megawatts ───────────────┤
 capital / boards ──────────→ scale + incentives ─────────────┤
 top talent ────────────────→ technical capability ───────────┤
 states / governments ──────→ regulation/export/procurement ─┤→ frontier AI trajectory
@@ -114,7 +142,7 @@ Possible interaction:
 
 - node size = direct leverage under the selected view
 - cluster/position = source of power / institutional arena
-- typed edges = owns, funds, supplies compute, regulates, evaluates, employs, partners, competes, advises, depends on
+- typed edges = executive authority, owns/governs, funds, supplies compute, manufactures, supplies energy/grid access, regulates, evaluates, employs, partners, procures, depends on
 - click an actor = evidence-backed profile + power vector
 - click a lever = actors who can move it
 - overlays = power, risk stance, acceleration/precaution, governance, geography/jurisdiction
@@ -142,7 +170,7 @@ Before visual implementation, the underlying actor records should support at lea
 
 - stable ID
 - display name
-- node type (person / organization / state / infrastructure / institution)
+- node type (person / organization / state / government body / infrastructure)
 - role / institution
 - actor class
 - provisional power tier + rationale
@@ -154,28 +182,25 @@ Before visual implementation, the underlying actor records should support at lea
 - last updated
 - public sources
 
+Relationship records should support:
+
+- from actor
+- to actor
+- typed relationship
+- affected levers
+- strength
+- rationale
+- evidence/sources
+- confidence
+- last updated
+
 Do not infer private beliefs. Public stance claims must be based on attributable evidence and should remain explicitly uncertain where appropriate.
 
 Do not hard-code current political/company roles as timeless facts; this map will need refreshable data.
 
 ---
 
-## 7. Research-before-render workflow
-
-Before implementing the visualization:
-
-1. refine the actor population;
-2. define the power-tier rubric and power-vector fields;
-3. gather primary/public sources for each high-priority actor;
-4. identify the most decision-relevant relationships;
-5. decide what the first view must help the user think about;
-6. only then choose layout and renderer.
-
-The first visualization should be a view over a model we actually believe, not a visual taxonomy invented because it looks nice.
-
----
-
-## 8. Product constraints
+## 7. Product constraints
 
 - Grantmaking OS remains the operational/database system; Universe is a selective cognitive/thinking layer over it.
 - Do not mirror a reading queue into Universe. Current reading is ephemeral and already represented by the dynamic Current Source primitive.
@@ -186,13 +211,18 @@ The first visualization should be a view over a model we actually believe, not a
 
 ---
 
-## 9. Current v0.1 research seed
+## 8. Current v0.1 research state
 
-The structured source of truth is now the Notion database **`AI Safety Power Map — Decision Centers`** under `Study Key Decision Makers`.
+The structured source of truth in Notion now has two databases under `Study Key Decision Makers`:
 
-The first seed contains **19 nodes**: 13 institutional/state decision centers plus six individual leaders.
+- **`AI Safety Power Map — Decision Centers`**
+- **`AI Safety Power Map — Relationships`**
 
-Institutional/state seed:
+### Decision-center seed
+
+Current seed: **23 nodes**.
+
+Initial institutional/state/energy set includes:
 
 - OpenAI
 - Anthropic
@@ -207,8 +237,12 @@ Institutional/state seed:
 - China — central AI governance / industrial apparatus
 - European Commission / EU AI Office
 - UK AI Security Institute
+- SB Energy
+- Entergy Louisiana
+- Tennessee Valley Authority (TVA)
+- Memphis Light, Gas and Water (MLGW)
 
-Initial individual seed:
+Initial individual set:
 
 - Sam Altman
 - Dario Amodei
@@ -217,17 +251,53 @@ Initial individual seed:
 - Elon Musk
 - Jensen Huang
 
-Each Notion row records a provisional tier, qualitative power vector, rationale, key relationships, public evidence, confidence and update date. **Do not copy these scores into code yet.** They are research hypotheses and should remain easy to revise.
+Each row records a provisional tier, qualitative power vector, rationale, key relationships, public evidence, confidence and update date. **Do not copy these scores into code yet.** They are research hypotheses and should remain easy to revise.
 
-### Next research target
+### Relationship seed
 
-Before rendering, add a typed relationship/dependency layer and stress-test missing decision centers. In particular, inspect:
+The relationships database currently has **19 typed edges** spanning:
+
+- executive authority
+- cloud / compute
+- chip supply
+- manufacturing
+- energy / grid
+- regulation / constraints
+
+Examples include:
+
+```text
+Microsoft / Azure ──cloud/compute──→ OpenAI
+Amazon / AWS ──cloud/compute──→ Anthropic
+Amazon / AWS ──cloud/compute──→ OpenAI
+TSMC ──manufacturing──→ NVIDIA
+NVIDIA ──chip supply──→ Meta
+NVIDIA ──chip supply──→ SpaceXAI
+SB Energy ──energy/grid──→ OpenAI
+Entergy Louisiana ──energy/grid──→ Meta
+TVA ──energy/grid──→ SpaceXAI
+MLGW ──energy/grid──→ SpaceXAI
+US federal government ──regulates/constrains──→ NVIDIA
+EU AI Office ──regulates/constrains──→ OpenAI / Anthropic
+```
+
+The important emerging insight is that **usable frontier compute is jointly controlled across several layers**. Money, chips, data centres, electricity, grid connection, permitting and state constraints are complements rather than substitutes.
+
+---
+
+## 9. Next research target
+
+Do **not render yet**.
+
+Stress-test the graph for missing high-leverage nodes and edges, especially:
 
 - Chinese frontier labs and cloud/compute actors;
-- US government sub-bodies whose powers differ materially (White House/NSC, Commerce/BIS, DoD, DOE, etc.);
+- US government sub-bodies whose powers differ materially (White House/NSC, Commerce/BIS, DoD, DOE, FERC/state utility regulation where relevant);
 - semiconductor chokepoints beyond NVIDIA/TSMC (advanced lithography, HBM, packaging/networking where decision-relevant);
-- data-centre / energy / permitting nodes where they create real constraints;
+- energy/grid actors for other major frontier sites, including transmission/interconnection/permitting;
 - governance boards/ownership nodes when they have authority distinct from the CEO;
-- safety-evaluation/funding nodes only where their epistemic or ecosystem power is consequential.
+- evaluator/funder nodes only where their epistemic or ecosystem power is consequential.
 
-The highest-value next question is whether the **relationship graph** reveals chokepoints, dependencies or coordination nodes that a ranked actor list hides.
+Then identify which nodes/edges behave like **chokepoints** or high-leverage coordination points.
+
+Only after that should the first visual layout be selected.
