@@ -78,21 +78,27 @@ Likewise:
 ```text
 United States federal government
   ↓ expand
-BIS / DOE-OE / future DoD / White House-NSC / Congress / ...
+BIS / DOE-OE / DoD / White House-NSC / Congress / ...
 ```
 
-**Semantic zoom is not merely camera zoom.** It may change ontology granularity and visual grammar.
+“Sam Altman roughly equals OpenAI” is therefore a **view-level simplification**, not a data-model identity.
+
+Implementation principle:
+
+> **Semantic zoom is not merely camera zoom. It may change the ontology granularity and visual grammar shown to the user.**
+
+Do not duplicate the same fact into independent map objects to achieve this effect.
 
 ---
 
-## 4. Power model
+## 4. Model actors through power, not fame
 
-Start from levers, not fame:
+Start from the levers that determine the trajectory, then map who can move them:
 
 1. model development
 2. deployment
-3. compute
-4. infrastructure / energy / grid
+3. compute allocation
+4. physical infrastructure / energy / grid
 5. capital / ownership
 6. talent
 7. regulation / coercion
@@ -102,46 +108,67 @@ Start from levers, not fame:
 11. agenda / information
 12. veto / delay
 
-Current node types include individuals, organizations, states, government bodies, governance bodies, evaluators/standards actors, and infrastructure.
-
-### Provisional tiers
-
-- **Tier 1:** direct frontier control/veto over at least one major lever or decision.
-- **Tier 2:** major enabling/constraining power that changes feasibility, cost, speed or incentives but usually requires counterparties/coalitions.
-- **Tier 3:** strong indirect, epistemic or agenda power.
-- **Contextual / latent:** high power only in a particular scenario or locality.
-
-Prefer `tier + power vector`; do not reduce power to one score.
+People, organizations, governance bodies, states, government bodies and infrastructure are different node types. Preserve those distinctions.
 
 ### Energy is first-class
 
-Do not hide electricity inside `compute`:
+Do not hide electricity inside `compute`.
 
 ```text
 chips
- ↓
+  ↓
 servers
- ↓
+  ↓
 data center
- ↓
+  ↓
 grid connection / substations / transmission
- ↓
+  ↓
 generation + storage
- ↓
+  ↓
 permits / regulators
- ↓
+  ↓
 usable megawatts
 ```
 
-Local utilities/permitting actors can have narrow but high veto/delay power over a specific frontier-compute site.
+Energy/grid power may be highly contextual: a municipal utility can have little global agenda power but major veto/delay leverage over one specific frontier-compute site.
 
 ---
 
-## 5. Relationship model
+## 5. Separate power from stance
+
+Keep these dimensions independent:
+
+- power tier / directness;
+- actor/node type;
+- actor class;
+- power vector;
+- risk stance;
+- development/deployment stance;
+- governance/coordination stance;
+- observed actions vs public words;
+- relationships/dependencies;
+- confidence/date/sources.
+
+A safety-concerned actor may have little power. An acceleration-oriented actor may have enormous power.
+
+### Provisional power tiers
+
+- **Tier 1:** direct frontier control or veto over at least one major lever/decision.
+- **Tier 2:** major enabling/constraining power that changes cost, speed, feasibility or incentives but usually requires counterparties/coalitions.
+- **Tier 3:** strong indirect, epistemic or agenda power.
+- **Contextual / latent:** power becomes high in a particular scenario or locality.
+
+Prefer `tier + power vector` over one universal score.
+
+**Core Map != Tier 1 filter.** A lower-tier actor can be structurally indispensable on a critical path.
+
+---
+
+## 6. Relationship model
 
 Relationships are part of the knowledge model, not decorative lines.
 
-Current edge types include:
+Current relationship types include:
 
 - executive authority
 - governance / ownership
@@ -157,48 +184,112 @@ Current edge types include:
 - procurement / customer
 - partnership / coordination
 
-Each edge should carry affected levers, strength, rationale, sources, confidence and update date.
+Store/show an edge when it changes how we reason about power, dependency, substitution, coordination or intervention. Do **not** ingest every partnership announcement.
 
-Only store/display an edge if it materially changes reasoning about power, dependency, substitution, coordination or intervention. Do not ingest every partnership announcement.
+Relationship records should support:
 
-Potential later diagnostics: critical-path membership, substitutability, dependency concentration, betweenness/brokerage and scenario-specific veto power. Network metrics are prompts for judgment, not ground truth.
+- from actor
+- to actor
+- typed relationship
+- affected levers
+- strength
+- rationale
+- evidence/sources
+- confidence
+- last updated
+
+Potential later diagnostics:
+
+- critical-path membership
+- substitutability
+- dependency concentration / single-point-of-failure
+- betweenness / brokerage
+- scenario-specific veto power
+
+Do not equate network centrality with real-world power automatically. Metrics are prompts for judgment, not ground truth.
 
 ---
 
-## 6. Current public-safe research snapshot — 2026-08-25
+## 7. Map-of-Maps / Universe implication
 
-Verified Notion research state:
+This is the first strong non-cosmic child-map candidate.
+
+The highest AI Safety level may remain a galaxy. Entering `Study Key Decision Makers` may switch visual grammar to a network, matrix, faces-and-relations view or another representation chosen for the question.
+
+**MoM means map → map, not galaxy → smaller galaxy.**
+
+This experiment also demonstrates a second MoM primitive: **one graph → many lenses**.
+
+Representation and abstraction level should follow the thinking task.
+
+---
+
+## 8. Current research state — 2026-08-25
+
+Structured source of truth in Notion:
+
+- `AI Safety Power Map — Decision Centers`
+- `AI Safety Power Map — Relationships`
+
+Verified current counts:
 
 - **32 decision centers**
 - **24 typed relationships**
 
-High-priority nodes currently include:
+Current high-priority seed includes:
 
-### Frontier / model / cloud
-OpenAI; Anthropic; Google DeepMind / Google; Meta; SpaceXAI; Alibaba / Alibaba Cloud / Qwen; ByteDance / Seed; DeepSeek; Microsoft / Azure; Amazon / AWS.
+### Frontier / cloud / model actors
+- OpenAI
+- Anthropic
+- Google DeepMind / Google
+- Meta
+- SpaceXAI
+- Alibaba / Alibaba Cloud / Qwen
+- ByteDance / Seed
+- DeepSeek
+- Microsoft / Azure
+- Amazon / AWS
 
 ### Semiconductor / compute chokepoints
-NVIDIA; TSMC; ASML; SK hynix.
+- NVIDIA
+- TSMC
+- ASML
+- SK hynix
 
 ### Energy / grid
-SB Energy; Entergy Louisiana; Tennessee Valley Authority (TVA); Memphis Light, Gas and Water (MLGW).
+- SB Energy
+- Entergy Louisiana
+- Tennessee Valley Authority (TVA)
+- Memphis Light, Gas and Water (MLGW)
 
 ### State / regulation / evaluation
-United States federal government; U.S. Bureau of Industry and Security (BIS); U.S. DOE Office of Electricity; China — central AI governance / industrial apparatus; European Commission / EU AI Office; UK AI Security Institute.
+- United States federal government
+- U.S. Bureau of Industry and Security (BIS)
+- U.S. DOE Office of Electricity
+- China — central AI governance / industrial apparatus
+- European Commission / EU AI Office
+- UK AI Security Institute
 
 ### Internal governance
-OpenAI Foundation Board; Anthropic Long-Term Benefit Trust.
+- OpenAI Foundation Board
+- Anthropic Long-Term Benefit Trust
 
 ### Initial individuals
-Sam Altman; Dario Amodei; Demis Hassabis; Mark Zuckerberg; Elon Musk; Jensen Huang.
+- Sam Altman
+- Dario Amodei
+- Demis Hassabis
+- Mark Zuckerberg
+- Elon Musk
+- Jensen Huang
 
-Example dependencies:
+Examples of typed dependencies now represented:
 
 ```text
 OpenAI Foundation Board ──governance──→ OpenAI
 Anthropic LTBT ──governance──→ Anthropic
 Microsoft / Azure ──cloud/compute──→ OpenAI
-Amazon / AWS ──cloud/compute──→ Anthropic / OpenAI
+Amazon / AWS ──cloud/compute──→ Anthropic
+Amazon / AWS ──cloud/compute──→ OpenAI
 ASML ──equipment──→ TSMC
 TSMC ──manufacturing──→ NVIDIA
 SK hynix ──memory──→ NVIDIA
@@ -210,63 +301,84 @@ BIS ──regulates/constrains──→ NVIDIA
 EU AI Office ──regulates/constrains──→ OpenAI / Anthropic
 ```
 
-These scores/tiers are research hypotheses. **Do not hard-code the entire Notion research database or treat its provisional ratings as permanent truth.** Export/author a deliberately curated public-safe snapshot for the prototype.
+The major emerging insight remains that **usable frontier compute is jointly controlled across multiple complementary layers**.
+
+Do not copy provisional Notion scores into production code yet; they are research hypotheses and should remain revisable.
 
 ---
 
-## 7. Comparable-work lessons
+## 9. Comparable-work lessons
 
-- **BlueDot Impact:** the old AGI Strategy character-card page is not currently retrievable, so do not claim its contents. BlueDot’s current Frontier AI Governance course explicitly includes a `Power, Windows, and Dependencies` unit and a mapping exercise across labs/governments/international bodies. This validates the problem framing.
-- **aisafety.com/map:** strong field-orientation precedent; useful for holding a landscape in mind, but not primarily a power/dependency graph.
-- **IAPP AI governance ecosystem:** useful stakeholder-role decomposition.
-- **MIT AI Governance Map:** useful actor-network/filter precedent.
-- **Igarapé AI-GED / Kumu:** useful precedent for one graph with multiple views/filters and optional network diagnostics.
-- **Compute-governance work:** useful precedent for treating compute as a concentrated, governable physical stack.
+Do not copy these projects mechanically; use them as design precedents.
 
-Do not copy any of these mechanically. Universe should be more personalized and question-driven.
+- **BlueDot Impact:** the old AGI Strategy character-card page is not currently retrievable, so do not claim its card contents. The current Frontier AI Governance course explicitly frames a unit around **Power, Windows, and Dependencies** and asks learners to map who has power across labs, governments and international bodies. This supports the problem framing.
+- **aisafety.com/map:** strong field-orientation precedent; useful for keeping organizations/work mentally available, but it is not primarily a power/dependency graph.
+- **IAPP AI governance ecosystem:** useful stakeholder-role decomposition; reinforces mapping actors by mechanism/role rather than fame.
+- **MIT AI Governance Map:** useful actor-network/filter precedent; different questions can justify different visible subgraphs.
+- **Igarapé AI-GED / Kumu / Kumu generally:** useful precedent for one graph with multiple views, filters/focus, node/edge data and optional network diagnostics.
+- **Compute-governance work:** useful conceptual precedent for treating compute as a governable stack with concentrated physical chokepoints.
 
 ---
 
-## 8. First visualization grammar
+## 10. Imagery / identity assets
 
-Build an **authored layered dependency network**, not a generic force-directed hairball.
+Imagery should **not block the v0.1 prototype**.
 
-Conceptual layout:
+Use image assets as progressive enhancement rather than as a structural dependency.
+
+Recommended asset policy:
+
+- organization/state/governance nodes should work with a clean typographic/logo-free treatment by default;
+- people nodes may optionally use headshots, but must have a strong fallback (initials/monogram or other non-photo identity treatment);
+- logo/headshot files, when used, should live in the repository under `src/assets/power-map/` rather than being hotlinked from third-party websites;
+- keep people and organization imagery in separate folders such as `src/assets/power-map/people/` and `src/assets/power-map/orgs/`;
+- add an optional `image` / `imageSrc` field to the semantic node model only if a real asset is used;
+- do not require an image for every node;
+- prefer SVG for logos when an official/licensed source is available and a modest-size WebP/AVIF/PNG for portraits;
+- avoid embedding third-party copyrighted portraits without a clear reusable license or permission;
+- do not spend time collecting dozens of assets before the map proves useful.
+
+For the first pass, a sensible image seed is the six currently modeled individuals plus only the most useful institution marks if they materially improve scanning. The Core structural view should remain understandable with **zero imagery**.
+
+---
+
+## 11. Product / implementation constraints
+
+- Grantmaking OS remains the operational/database system; Universe is the selective cognitive/thinking layer.
+- Do not mirror a reading queue into Universe.
+- Permanent map objects should earn permanence by being landmarks in the mental model.
+- Preserve the public/private Notion boundary.
+- Do not build a generalized graph engine, skin engine, accounts system or backend platform merely because they might be useful later.
+- Do not hard-code current company/political roles as timeless facts.
+- Do not infer private beliefs.
+- Public stance claims require attributable evidence and should remain explicitly uncertain where appropriate.
+- Use a side branch + PR for nontrivial implementation work; the current default branch auto-deploys.
+
+---
+
+## 12. First visualization direction
+
+The research gate is passed for a first prototype.
+
+Use an **authored layered dependency network**, not a generic force-directed graph.
+
+Conceptual arenas:
 
 ```text
-                 STATE / REGULATION / GOVERNANCE
-                    ↓        ↓        ↓
-
-                 FRONTIER MODEL DEVELOPERS
-               OpenAI  Anthropic  GDM  Meta ...
-                    ↑        ↑        ↑
-
-              CLOUD / COMPUTE ALLOCATION
-                 Azure / AWS / ...
-                    ↑
-
-        ACCELERATORS / MEMORY / MANUFACTURING
-          NVIDIA ← SK hynix   TSMC ← ASML
-                    ↑
-
-             ENERGY / GRID / PHYSICAL SITE
-       generation → transmission → interconnection
+STATE / REGULATION / GOVERNANCE
+             ↓
+FRONTIER MODEL DEVELOPERS
+             ↑
+CLOUD / COMPUTE
+             ↑
+ACCELERATORS / MEMORY / MANUFACTURING
+             ↑
+ENERGY / GRID / PHYSICAL SITE
 ```
 
-Exact geometry should be art-directed for legibility, consistent with the existing authored Universe map philosophy.
+Default to organizations/states collapsed. Reveal people/governance through semantic expansion.
 
-### Default state
-
-- start on **Core**;
-- organizations/states collapsed;
-- show only core/major decision-relevant edges;
-- keep critical Tier 2 nodes on important paths;
-- visually distinguish source/mechanism of power without conflating it with risk stance;
-- selecting a node opens an evidence/profile panel with power vector and relationship rationale.
-
-### First lens switcher
-
-Keep the prototype compact:
+First prototype lenses should be limited to:
 
 - Core
 - Full
@@ -274,68 +386,6 @@ Keep the prototype compact:
 - Compute + Energy
 - Government + Governance
 
-Typed relationship filters can be a secondary control.
+Do not build stance overlays yet.
 
-### Semantic expansion examples
-
-- OpenAI → Sam Altman + OpenAI Foundation Board
-- Anthropic → Dario Amodei + Long-Term Benefit Trust
-- United States → BIS + DOE/OE + future specific bodies
-
----
-
-## 9. Universe integration
-
-The existing cosmic map remains the top-level representation.
-
-A likely path is:
-
-```text
-Universe
-→ AI Safety
-→ Grantmaking & Resource Allocation
-→ AI Safety Power Map / Study Key Decision Makers
-→ non-cosmic layered dependency map
-```
-
-The current `src/universe/data.ts` already contains the Grantmaking area and uses a semantic `contentType` separate from cosmic `kind`; preserve that separation.
-
-The three static reading-resource planets added in Universe v0 were useful plumbing tests but should **not become a precedent for a permanent reading queue**. For this v0.1 patch, remove/retire those static article planets from the Grantmaking system unless a clear landmark rationale emerges; retain Grantmaking OS and the dynamic Current Source behavior.
-
----
-
-## 10. Implementation boundaries
-
-For the first prototype:
-
-- use a **side branch + PR**; do not work directly on the auto-deploying default branch;
-- use a static/public-safe curated snapshot in the repository;
-- do not expose private Notion data;
-- do not create a generalized Notion sync;
-- do not build a universal graph framework or generalized skin engine;
-- do not build accounts/backend/multiplayer;
-- do not implement stance overlays yet;
-- faces are optional for the first engineering pass;
-- preserve accessibility, keyboard navigation, reduced-motion behavior, non-WebGL fallback philosophy and existing Universe quality constraints;
-- do not rewrite the existing cosmic renderer merely to add this child map.
-
-The child map can be DOM/SVG/Canvas/another appropriate 2D implementation; choose the smallest approach that makes the authored network legible and accessible.
-
----
-
-## 11. Definition of done for v0.1 prototype
-
-The first prototype is ready for evaluation when:
-
-1. a public-safe AI Safety Power Map can be reached from the existing AI Safety/Grantmaking path;
-2. one shared node/edge model powers at least **Core** and **Full**, plus one of People / Compute+Energy / Government+Governance;
-3. Core is materially clearer than Full;
-4. institutions can expose internal people/governance without duplicating data;
-5. core/major typed dependencies are visible and inspectable;
-6. clicking a node shows concise rationale/evidence and its main power levers;
-7. existing Universe behavior remains intact;
-8. the static article planets in Grantmaking are cleaned up in favor of durable/project/current objects;
-9. tests/checks cover lens switching, semantic expansion, keyboard access and existing fallbacks;
-10. the work is delivered as a PR for review rather than auto-deployed.
-
-Then use it for real reasoning before adding more features.
+The first visualization should remain deliberately authored and legible on desktop/mobile; do not use a generic force-directed layout merely because the data is a graph.
