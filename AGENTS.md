@@ -27,6 +27,32 @@ Do not copy entire Notion strategy notes into this repository. Keep GitHub conci
 
 When a material product/technical decision changes implementation context, update the relevant GitHub doc in the same work session rather than waiting for the user to repeatedly request documentation. Do not turn GitHub into a transcript archive.
 
+## Decision ownership: strategy vs coding
+
+The normal workflow deliberately separates **product/research reasoning** from **implementation reasoning**.
+
+- Product direction, research synthesis, ontology, prioritization, experiment design, and other strategic choices should normally be worked out in the strategic/research layer first and recorded in Notion or an approved GitHub brief/issue.
+- Coding agents such as Claude Code should primarily **implement an already-decided experiment**: inspect the repository, choose local technical approaches, write/refactor code, add tests, run checks, capture screenshots, prepare PRs, and update implementation documentation.
+- A coding agent may make **local engineering decisions** when several implementations satisfy the same product requirement. It should explain important tradeoffs in the PR.
+- A coding agent should **surface ambiguity or contradiction rather than silently inventing product strategy**. If a meaningful product choice is not specified by the issue/spec, stop that part of the implementation and flag the decision for the strategic layer/user.
+- Reading Notion or product docs is for **context and constraint**, not an invitation to re-decide the product from scratch.
+
+A useful default pipeline is:
+
+```text
+research / product thinking
+        ↓
+Notion decision / experiment
+        ↓
+concise GitHub issue + implementation brief
+        ↓
+Claude Code implementation + tests + screenshots + PR
+        ↓
+product / visual review
+        ↓
+merge or another scoped implementation pass
+```
+
 ## ESHKERE → project boundaries
 
 Current conceptual hierarchy:
