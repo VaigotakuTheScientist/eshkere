@@ -19,6 +19,7 @@ If a task depends on product/organizational intent and a Notion connector is ava
 
 - `ESHKERE` — top-level organization / OS page
 - `ESHKERE Universe — Product Notes & Brainstorm` — Universe product source of truth
+- `Universe v0 — AI Safety World Experiment` — current Universe experiment
 - `Grantmaking OS` — grantmaking operating system / project source of truth
 
 Do not copy entire Notion strategy notes into this repository. Keep GitHub concise and implementation-relevant.
@@ -54,6 +55,21 @@ Therefore:
 - Prefer reusable data/configuration boundaries over one-off hard-coded assumptions when the cost is small.
 
 For current map behavior and implementation decisions, **`docs/universe-map-spec.md` is authoritative**. Read it before materially changing the Universe map.
+
+For the current product experiment, also read **`docs/universe-v0-experiment.md`**. Its goal is to test whether one real AI Safety world becomes genuinely useful enough for repeat work/study use.
+
+### Universe is not the cosmic skin
+
+The current space/cosmic implementation is a **representation layer**, not the permanent ontology of the product.
+
+Future users may prefer radically different skins or world grammars (for example library, nature, horror, city/campus, detective board, game map). Do not build a generalized skin engine yet, but where cheap, separate:
+
+- neutral knowledge model / hierarchy / relations
+- navigation state
+- presentation-specific cosmic morphology/positions/labels/animation
+- destinations/actions
+
+Prefer neutral semantic types internally when astronomy is only presentation. Do not make future non-cosmic representations require a total rewrite merely because current data structures were named after galaxies/planets.
 
 The long-term AI-native direction, if pursued, should generally prefer:
 
