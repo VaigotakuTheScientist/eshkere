@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {
+  CONTENT_TYPE_BY_KIND,
   currentSourceComet,
   galaxies,
   homeWorld,
@@ -235,6 +236,7 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
         // Enough to clear the head's own glow.
         labelPad: 18,
         kind: 'comet',
+        contentType: CONTENT_TYPE_BY_KIND.comet,
         regionId: 'health',
         href: currentSourceComet.href,
       }

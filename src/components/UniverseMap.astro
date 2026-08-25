@@ -114,6 +114,7 @@ const gameGalaxies = regions.filter((region) => region.id !== 'health');
                       ) : (
                         <span>{planet.label}</span>
                       )}
+                      {planet.href && <> — {planet.blurb}</>}
                       {!planet.href && <span class="universe-index__pending"> — no destination yet</span>}
                     </li>
                   ))}

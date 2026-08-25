@@ -1,4 +1,4 @@
-import type { NodeRecord } from './data';
+import { CONTENT_TYPE_LABEL, type NodeRecord } from './data';
 import { createStage, supportsWebGL, type Mode, type Stage } from './stage';
 
 /**
@@ -281,8 +281,9 @@ export function createUniverse(): UniverseApi | null {
       return;
     }
     refs.detail.hidden = false;
-    refs.detailKind.textContent =
-      node.kind === 'comet' ? 'Current source' : node.kind === 'home' ? 'Home' : node.kind;
+    // What the thing is, not what the sky calls it. "Resource" and "Project"
+    // survive a change of skin; "planet" is this renderer's word.
+    refs.detailKind.textContent = CONTENT_TYPE_LABEL[node.contentType];
     refs.detailTitle.textContent = node.label;
     refs.detailBlurb.textContent = node.blurb;
     if (node.href) {

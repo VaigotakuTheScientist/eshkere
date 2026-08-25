@@ -513,6 +513,208 @@ for (const viewport of viewports) {
   await context.close();
 }
 
+// ---------------------------------- the first useful path: AI Safety grants
+{
+  /**
+   * Universe v0's one real end-to-end path. `Universe → AI Safety →
+   * Grantmaking & Resource Allocation` has to hold the tool at its centre
+   * plus the curated public writing around it, each with a real destination
+   * and a readable name, and going back must not lose the visitor's place.
+   */
+  const CURATED = {
+    'ais-grantmaking-os': { type: 'Project', host: 'vadymsulzhenko.notion.site' },
+    'ais-grantmaker-bottleneck': { type: 'Resource', host: 'forum.effectivealtruism.org' },
+    'ais-questions-before-a-grant': { type: 'Resource', host: 'coefficientgiving.org' },
+    'ais-being-a-grantmaker': { type: 'Resource', host: 'thirdthing.ai' },
+  };
+
+  const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+
+  await page.click('[data-universe-region="ai-safety"]');
+  await page.waitForFunction(
+    () => document.querySelector('[data-universe-level]')?.textContent === 'Galaxy',
+    null,
+    { timeout: 40000 }
+  );
+  await page.waitForTimeout(2000);
+  await page.evaluate(() => document.querySelector('.u-label[data-node-id="ais-grantmaking"]')?.click());
+  await page.waitForFunction(
+    () => document.querySelector('[data-universe-level]')?.textContent === 'System',
+    null,
+    { timeout: 40000 }
+  );
+  await page.waitForTimeout(2400);
+  note(
+    (await page.evaluate(() =>
+      [...document.querySelectorAll('.u-crumb')].map((el) => el.textContent).join(' / ')
+    )) === 'Universe / AI Safety / Grantmaking & Resource Allocation',
+    'Universe → AI Safety → Grantmaking is three levels deep'
+  );
+
+  // Every curated object is named, and named readably: a shortened title is
+  // still the accessible name in full.
+  const shown = await page.evaluate(() =>
+    [...document.querySelectorAll('.u-label--planet:not([hidden])')].map((el) => ({
+      id: el.dataset.nodeId,
+      href: el.getAttribute('href'),
+      target: el.getAttribute('target'),
+      accessibleName: el.getAttribute('aria-label') ?? el.textContent.trim(),
+      drawn: [...el.querySelectorAll('.u-label__text')]
+        .filter((span) => getComputedStyle(span).display !== 'none')
+        .map((span) => span.textContent.trim())
+        .join(''),
+      width: Math.round(el.getBoundingClientRect().width),
+    }))
+  );
+  const byId = Object.fromEntries(shown.map((entry) => [entry.id, entry]));
+  const missing = Object.keys(CURATED).filter((id) => !byId[id]);
+  note(missing.length === 0, `the system names all four curated objects (${shown.length}/4)`);
+
+  const wrongHost = Object.entries(CURATED).filter(
+    ([id, want]) => !byId[id] || !(byId[id].href ?? '').includes(want.host)
+  );
+  note(wrongHost.length === 0, `each one links to the real thing (${wrongHost.length} wrong)`);
+  note(
+    shown.every((entry) => entry.target === '_blank'),
+    'and opens it in a new tab'
+  );
+  note(
+    shown.every((entry) => entry.width < 320),
+    `no title sprawls across the system (widest ${Math.max(...shown.map((e) => e.width))}px)`
+  );
+  note(
+    byId['ais-grantmaker-bottleneck']?.drawn === 'The grantmaker bottleneck' &&
+      byId['ais-grantmaker-bottleneck']?.accessibleName ===
+        'AI safety is extremely bottlenecked on grantmakers',
+    'a shortened title is short on the map and whole to a screen reader'
+  );
+
+  // Selecting one gives its blurb, its destination, and what it is — in
+  // product words, not the renderer's.
+  const markerPoints = (nodeId) =>
+    page.evaluate((id) => {
+      const label = document.querySelector(`.u-label[data-node-id="${id}"]`).getBoundingClientRect();
+      const covered = [...document.querySelectorAll('.u-label:not([hidden])')].map((el) =>
+        el.getBoundingClientRect()
+      );
+      const clear = (x, y) =>
+        !covered.some((r) => x >= r.left - 2 && x <= r.right + 2 && y >= r.top - 2 && y <= r.bottom + 2);
+      const cx = label.x + label.width / 2;
+      const cy = label.y + label.height / 2;
+      const out = [];
+      for (let r = 8; r <= 80; r += 4) {
+        for (let a = 0; a < 360; a += 10) {
+          const x = Math.round(cx + Math.cos((a * Math.PI) / 180) * r);
+          const y = Math.round(cy + Math.sin((a * Math.PI) / 180) * r);
+          if (x > 4 && y > 4 && x < window.innerWidth - 4 && y < window.innerHeight - 4 && clear(x, y)) {
+            out.push([x, y]);
+          }
+        }
+      }
+      return out;
+    }, nodeId);
+
+  const cards = [];
+  for (const id of Object.keys(CURATED)) {
+    let hit = null;
+    for (const [x, y] of await markerPoints(id)) {
+      await page.mouse.move(x, y);
+      const cursor = await page.evaluate(
+        () => document.querySelector('[data-universe-canvas]').style.cursor
+      );
+      if (cursor === 'pointer') {
+        hit = [x, y];
+        break;
+      }
+    }
+    if (!hit) {
+      cards.push({ id, kind: 'unreachable' });
+      continue;
+    }
+    await page.mouse.click(hit[0], hit[1]);
+    await page.waitForTimeout(400);
+    cards.push({
+      id,
+      ...(await page.evaluate(() => ({
+        kind: document.querySelector('[data-universe-detail-kind]').textContent,
+        title: document.querySelector('[data-universe-detail-title]').textContent,
+        blurb: document.querySelector('[data-universe-detail-blurb]').textContent.trim(),
+        link: document.querySelector('[data-universe-detail-link]').getAttribute('href'),
+        linkHidden: document.querySelector('[data-universe-detail-link]').hidden,
+      }))),
+    });
+  }
+  const badCard = cards.filter(
+    (card) =>
+      card.kind !== CURATED[card.id].type ||
+      card.linkHidden ||
+      !(card.link ?? '').includes(CURATED[card.id].host) ||
+      (card.blurb ?? '').length < 30
+  );
+  note(
+    badCard.length === 0,
+    `selecting one gives its blurb and destination (${cards
+      .map((c) => `${c.id.replace('ais-', '')}:${c.kind}`)
+      .join(', ')})`
+  );
+  note(
+    cards.every((card) => card.kind === 'Project' || card.kind === 'Resource'),
+    'described in product words, not the renderer\'s'
+  );
+
+  // Back out without losing the place.
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(1600);
+  note(
+    (await page.evaluate(() => document.querySelector('[data-universe-level]').textContent)) ===
+      'Galaxy',
+    'Escape steps back to the galaxy'
+  );
+  note(
+    (await page.evaluate(() =>
+      [...document.querySelectorAll('.u-crumb')].map((el) => el.textContent).join(' / ')
+    )) === 'Universe / AI Safety',
+    'and the breadcrumb follows'
+  );
+  await page.click('.u-crumb:first-child');
+  await page.waitForFunction(
+    () => document.querySelector('[data-universe-level]')?.textContent === 'Universe',
+    null,
+    { timeout: 30000 }
+  );
+  note(true, 'and Universe returns to the overview');
+  await page.screenshot({ path: `${SHOT_DIR}/universe-grantmaking.png` });
+  await context.close();
+}
+
+// -------------------------------- the same path without a renderer
+{
+  const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  const listed = await page.evaluate(() => {
+    const heading = [...document.querySelectorAll('.universe-index strong')].find((el) =>
+      el.textContent.includes('Grantmaking & Resource Allocation')
+    );
+    const items = [...(heading?.closest('li')?.querySelectorAll('ul li') ?? [])];
+    return items.map((li) => ({
+      text: li.textContent.trim(),
+      href: li.querySelector('a')?.getAttribute('href') ?? null,
+    }));
+  });
+  note(
+    listed.length === 4 && listed.every((entry) => entry.href),
+    `the text index carries all four with destinations (${listed.length})`
+  );
+  note(
+    listed.every((entry) => entry.text.includes(' — ') && entry.text.length > 60),
+    'and says what each one is'
+  );
+  await context.close();
+}
+
 // ------------------------------------------- Grantmaking OS destinations
 {
   /**

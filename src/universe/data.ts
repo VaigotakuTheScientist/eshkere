@@ -20,9 +20,55 @@ export type Vec3 = [number, number, number];
 /** How a galaxy is drawn. Each region has a morphology, not just a colour. */
 export type Morphology = 'core' | 'lattice' | 'vortex' | 'spiral' | 'cloud';
 
+/**
+ * What a node *is*, as opposed to how it is drawn.
+ *
+ * A `NodeRecord`'s `kind` is this skin's vocabulary — galaxy, star system,
+ * planet, comet — and it belongs to the renderer. This is the product
+ * meaning, and it is the half that survives a change of representation: a
+ * library skin would draw a `resource` as a book and a `domain` as a wing
+ * without having to work out what a "planet" was supposed to mean.
+ *
+ * Deliberately small. It covers what the map actually holds today; it is not
+ * an ontology, and it should grow only when a real node needs a word that is
+ * not here.
+ */
+export type ContentType =
+  | 'domain'
+  | 'subdomain'
+  /** Named in the taxonomy, with no destination of its own yet. */
+  | 'topic'
+  /** Something being built or run. */
+  | 'project'
+  /** Something to read. */
+  | 'resource'
+  /** Whatever the Current Source pipeline is pointing at right now. */
+  | 'current-source'
+  /** The page you came from. */
+  | 'place';
+
+/** How each type is named in the interface. */
+export const CONTENT_TYPE_LABEL: Record<ContentType, string> = {
+  domain: 'Domain',
+  subdomain: 'Area',
+  topic: 'Topic',
+  project: 'Project',
+  resource: 'Resource',
+  'current-source': 'Current source',
+  place: 'Home',
+};
+
 export interface Destination {
   id: string;
   label: string;
+  /**
+   * A compact form for the map, where a full article title would sit across
+   * half the region. The full label is still the accessible name, and is
+   * drawn on hover and focus.
+   */
+  shortLabel?: string;
+  /** What this is. Defaults to `topic` — named, but with nowhere to go yet. */
+  type?: ContentType;
   /**
    * Where clicking this planet goes. `null` means the destination exists in
    * the taxonomy but has no page yet — the map says so rather than
@@ -162,15 +208,50 @@ const aiSafety: Region = {
       label: 'Grantmaking & Resource Allocation',
       offset: [152, 62, -22],
       blurb: 'Moving money and attention to the work that needs it.',
+      // The first area of the map populated with things actually worth
+      // opening: the tool at the centre of it, and the small set of public
+      // writing that explains the work around it. Curated, not exhaustive —
+      // a shelf, not a search result.
       planets: [
         {
           id: 'ais-grantmaking-os',
           label: 'Grantmaking OS',
+          type: 'project',
           // The catalogue entry, not the shortcut: this one is the published
           // template for everybody, owner included.
           href: GRANTMAKING_OS_TEMPLATE,
           offset: [62, -34, 20],
           blurb: 'The working system behind how grants get considered.',
+        },
+        {
+          id: 'ais-grantmaker-bottleneck',
+          label: 'AI safety is extremely bottlenecked on grantmakers',
+          shortLabel: 'The grantmaker bottleneck',
+          type: 'resource',
+          href: 'https://forum.effectivealtruism.org/posts/B6d8Wzk4gNzHsXvdi/ai-safety-is-extremely-bottlenecked-on-grantmakers',
+          offset: [-96, 30, -12],
+          blurb:
+            'The case that the scarce resource in AI safety funding is not money but people able to decide where it goes.',
+        },
+        {
+          id: 'ais-questions-before-a-grant',
+          label: 'Questions We Ask Ourselves Before Making a Grant',
+          shortLabel: 'Questions before a grant',
+          type: 'resource',
+          href: 'https://coefficientgiving.org/research/questions-we-ask-ourselves-before-making-a-grant/',
+          offset: [8, 84, 26],
+          blurb:
+            'A working checklist for interrogating a grant before it is made — the method, written down.',
+        },
+        {
+          id: 'ais-being-a-grantmaker',
+          label: "What it's like to be an AI safety grantmaker",
+          shortLabel: 'Being a grantmaker',
+          type: 'resource',
+          href: 'https://thirdthing.ai/p/what-its-like-to-be-an-ai-safety',
+          offset: [-40, -78, -6],
+          blurb:
+            'What the job actually involves day to day, and why the field needs more people doing it.',
         },
       ],
     },
@@ -486,11 +567,27 @@ export interface NodeRecord {
   labelPad?: number;
   /** Draw a leader line from the label back to the node. */
   tether?: boolean;
+  /** How this skin draws the node. Presentation, not meaning. */
   kind: 'region' | 'system' | 'planet' | 'home' | 'comet' | 'mark';
+  /** What the node is. Meaning, not presentation. */
+  contentType: ContentType;
   /** Region this node belongs to, for dimming and breadcrumbs. */
   regionId: string;
   href?: string | null;
 }
+
+/**
+ * What each cosmic kind means when nothing more specific is authored, so a
+ * node only has to declare a type where the default would be wrong.
+ */
+export const CONTENT_TYPE_BY_KIND: Record<NodeRecord['kind'], ContentType> = {
+  region: 'domain',
+  system: 'subdomain',
+  planet: 'topic',
+  home: 'place',
+  mark: 'project',
+  comet: 'current-source',
+};
 
 /**
  * Every addressable node, flattened once at module load. The renderer, the
@@ -512,6 +609,7 @@ export const nodeIndex: NodeRecord[] = (() => {
           ? [0, region.radius * 1.2, 0]
           : [0, -region.radius * (region.labelDrop ?? 0.86), 0],
       kind: 'region',
+      contentType: CONTENT_TYPE_BY_KIND.region,
       regionId: region.id,
     });
     for (const system of region.systems) {
@@ -538,12 +636,17 @@ export const nodeIndex: NodeRecord[] = (() => {
         ],
         origin: region.position,
         kind: 'system',
+        contentType: CONTENT_TYPE_BY_KIND.system,
         regionId: region.id,
       });
       for (const planet of system.planets ?? []) {
         list.push({
           id: planet.id,
           label: planet.label,
+          shortLabel: planet.shortLabel,
+          // A title that had to be shortened for the map is still worth
+          // reading in full, so reaching for it shows the whole thing.
+          expands: !!planet.shortLabel,
           blurb: planet.blurb,
           position: [
             systemPosition[0] + planet.offset[0],
@@ -555,6 +658,7 @@ export const nodeIndex: NodeRecord[] = (() => {
           // with.
           origin: systemPosition,
           kind: 'planet',
+          contentType: planet.type ?? CONTENT_TYPE_BY_KIND.planet,
           regionId: region.id,
           href: planet.href,
         });
@@ -579,6 +683,7 @@ export const nodeIndex: NodeRecord[] = (() => {
     labelPad: 24,
     tether: true,
     kind: 'home',
+    contentType: CONTENT_TYPE_BY_KIND.home,
     regionId: 'health',
   });
   // Position is rewritten every frame from where the planet is actually
@@ -590,6 +695,7 @@ export const nodeIndex: NodeRecord[] = (() => {
     position: [...homeWorld.position] as Vec3,
     origin: [...homeWorld.position] as Vec3,
     kind: 'mark',
+    contentType: CONTENT_TYPE_BY_KIND.mark,
     regionId: 'health',
     href: homeMark.href,
   });
