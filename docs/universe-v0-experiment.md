@@ -1,11 +1,10 @@
-# Universe v0 — real AI Safety world experiment
+# Universe v0 — personal AI Safety world experiment
 
 Status: **current product experiment / implementation brief**.
 
 This document extends, rather than replaces, `docs/universe-map-spec.md`.
 The existing map spec remains authoritative for the current cinematic map,
-interaction, performance, accessibility and fallback behavior. This document
-changes the **next product question** from visual spectacle to real utility.
+interaction, performance, accessibility and fallback behavior.
 
 If Notion is available, the richer strategic source of truth is the page
 `Universe v0 — AI Safety World Experiment` under `ESHKERE Universe — Product Notes & Brainstorm`.
@@ -14,138 +13,129 @@ If Notion is available, the richer strategic source of truth is the page
 
 ## 1. Product question
 
-The existing Universe proved that the ESHKERE homepage can reveal a cinematic,
-beautiful explorable map. The next question is:
+The current Universe already demonstrates that the ESHKERE homepage can reveal a cinematic, beautiful explorable world.
 
-> Can Universe represent real knowledge/work well enough that the user
-> voluntarily returns to it for studying, thinking and navigation — not merely
-> because it looks cool?
+The next question is broader than “can we add real links?”:
 
-Do not answer this by adding broad platform infrastructure. Answer it with one
-small, real, end-to-end world.
+> Can Universe become a personalized cognitive layer that makes real work more motivating to enter and important structures easier to understand?
 
-## 2. First test world
+The first focus is deliberately **one user's real experience**. Generalization to other users comes after we learn which parts are durable and which are personal.
 
-Use **AI Safety** as the first useful world.
+---
 
-Start with the narrowest path that already has real underlying work:
+## 2. Current role split
 
-```text
-Universe
-└── AI Safety
-    └── Grantmaking & Resource Allocation
-        ├── Grantmaking OS
-        ├── selected public-safe resources
-        └── other curated real objects when useful
-```
+For the present user, **Grantmaking OS is the operational/work engine**. It contains the real databases, sources, interventions, people, tasks and decision process.
 
-Support at least 2–3 meaningful semantic levels and preserve orientation when
-moving up/down the hierarchy.
+Universe should not duplicate that system.
 
-This is the smallest real MoM (Map of Maps) test.
+Universe currently has two strongest jobs:
 
-## 3. Real data, not decorative placeholders
+1. **Explore / Vibe** — a pleasant, personal interface for entering/focusing on the work.
+2. **Map / Think** — representations that make a landscape, system, dependency or mental model easier to hold in mind and reason about.
 
-At least some nodes must correspond to things the user actually uses.
+Treat the rough practical split as a hypothesis, not a metric: most day-to-day work may remain in Grantmaking OS, while Universe earns its place by making entry and thinking unusually good.
 
-Good candidates include:
+---
 
-- Grantmaking OS
-- selected public-safe Sources / currently reading material
-- selected People & Organizations
-- selected projects/interventions
-- Current Source
-- selected public-safe AI Safety notes/resources
+## 3. Reading is ephemeral unless it becomes a landmark
 
-Do not populate the map exhaustively. Curate for usefulness.
+Issue #1 proved useful technical plumbing: real destinations, semantic `contentType`, long/short labels, navigation depth and fallback parity.
 
-### Privacy boundary
+It did **not** prove that a static reading queue belongs in Universe.
 
-The public ESHKERE site must not expose private Notion content.
+Current reading changes over time and is already represented by the dynamic **Current Source** primitive. Do not keep adding article planets merely because an article exists in the Sources database.
 
-Allowed approaches include:
+A resource should become a permanent map object only if it is a durable landmark in the user's mental model.
 
-1. curated public-safe data committed to the repository;
-2. a strict build-time allowlist that exports only explicitly approved fields/items;
-3. a private/local prototype when richer private data is required.
+---
 
-Do not create a broad generic Notion sync.
+## 4. Universe is a cognitive layer, not a second database
 
-## 4. Universe is not the cosmic skin
+Prefer selective representation over exhaustive mirroring.
+
+Good Universe objects/views are things where spatial or visual structure adds value:
+
+- domains and subdomains
+- causal structures
+- actor/power networks
+- dependencies and bottlenecks
+- timelines
+- strategic landscapes
+- learning maps / skill trees
+- active focus / Current Source
+
+Poor candidates are things already better represented as ordinary lists/tables unless there is a real thinking benefit.
+
+---
+
+## 5. Universe is not the cosmic skin
 
 Treat **Universe** as the underlying personalized knowledge/world system.
 The current astronomy metaphor is one representation layer.
 
-Possible future skins/representations may include:
+Possible future representations may include:
 
 - cosmic / space
 - library
 - nature / ecosystems
 - horror / haunted spaces
 - city / campus
+- network / relationship map
+- matrix
+- timeline
 - detective board
 - game map
-- other AI-generated/adapted environments
 
 Working principle:
 
-> **one knowledge model, many skins/world representations**
+> **one knowledge model, many representations; representation follows the thinking task**
 
-Do **not** build a generalized skin engine in v0. The goal now is architectural
-separation, not multiple themes.
+Do not build a generalized skin engine yet. Establish only the semantic/presentation separation that real experiments need.
 
-Avoid making semantic concepts depend on astronomical names/types where a
-neutral model would be equally cheap.
+### MoM implication
 
-Prefer:
+**MoM means map → map, not galaxy → smaller galaxy.**
 
-```text
-knowledge model
-      ↓
-navigation/state
-      ↓
-cosmic representation  ← current renderer
-```
+The highest AI Safety layer may remain cosmic. Entering a specific problem may switch completely to another grammar if that makes the problem easier to understand.
 
-rather than storing the knowledge model as "galaxy/star-system/planet" objects
-when those terms are only presentation.
+---
 
-A future representation layer could instead map the same node hierarchy to
-wings/shelves/books, forests/rivers/trees, rooms/corridors/artifacts, etc.
+## 6. Leading v0.1 candidate: AI Safety power / actor map
 
-## 5. Required experience
+The current strongest next thinking-map candidate is the Grantmaking OS intervention `Study Key Decision Makers`.
 
-The test user should be able to:
+Goal: map who can materially influence frontier-AI and AI-safety-relevant outcomes, through which levers and dependencies.
 
-1. enter AI Safety from Universe;
-2. move into at least one meaningful subdomain;
-3. see real objects relevant to current work/study;
-4. select a real object and take a useful action (open, inspect, navigate);
-5. move back out without losing orientation;
-6. leave Universe open without distraction or runaway performance cost.
+This should likely become the first strong non-cosmic child map inside AI Safety.
 
-The experience should feel like **using a place**, not browsing a decorative
-sitemap.
+Before implementation, read:
 
-## 6. Technical boundary to establish now
+- `docs/ai-safety-power-map.md`
+- the Notion page `Study Key Decision Makers` if available
+
+Research/model first; renderer second.
+
+---
+
+## 7. Technical boundary
 
 Where reasonably cheap, separate:
 
-- **knowledge model** — stable IDs, hierarchy, relations, metadata, destinations
-- **representation** — cosmic positions, morphology, visual type, labels, animation
+- **knowledge model** — stable IDs, hierarchy, relations, metadata, semantic types
+- **representation** — cosmic/network/matrix/etc positions, morphology, visual type, labels, animation
 - **navigation state** — current path/level/selection
 - **destination/action** — URL, page, external resource, future internal action
 
-This is not a refactor-for-refactor's-sake requirement. Do it only to the extent
-needed to make the first useful AI Safety path coherent and to avoid obvious
-future lock-in.
+The `contentType` change from Issue #1 is the first minimal step in this direction.
 
-The map should remain authored/art-directed. Do not replace the current renderer
-with a force-directed generic knowledge graph.
+Do not perform a broad refactor solely to satisfy an imagined future skin architecture.
 
-## 7. Explicit non-goals
+---
 
-Do not build in v0:
+## 8. Explicit non-goals
+
+Do not build merely because the long-term product may eventually need it:
 
 - user accounts
 - generalized authentication
@@ -153,59 +143,43 @@ Do not build in v0:
 - multiplayer/collaboration
 - arbitrary LLM-generated production UI
 - full Notion/Obsidian synchronization
+- exhaustive mirroring of Grantmaking OS
 - a universal ontology
-- mobile apps
 - multiple polished skins
 - a recommendation engine
 - autonomous background agents
 - a full learning/gamification system
 
-Preserve reasonable paths to these possibilities, but do not pay their current
-complexity cost.
+---
 
-## 8. Preserve existing quality constraints
+## 9. Preserve existing quality constraints
 
-All existing constraints in `docs/universe-map-spec.md` remain in force unless a
-later explicit decision changes them. In particular:
+All existing constraints in `docs/universe-map-spec.md` remain in force unless an explicit later decision changes them.
+
+In particular:
 
 - preserve the current hero at rest;
 - preserve cinematic entry/navigation behavior;
 - preserve `prefers-reduced-motion` behavior;
 - preserve non-WebGL/low-power fallback;
-- preserve the Current Source privacy boundary;
+- preserve Current Source behavior/privacy boundary;
 - avoid exposing private Notion data;
 - keep the map responsive and performant;
 - do not rewrite snapshot branches.
 
-Ambient/AFK character work is secondary to this experiment. Add it only if it
-is isolated and extremely cheap; do not let it delay real-data utility.
+For nontrivial experiments, use a side branch + PR because the current default branch auto-deploys.
 
-## 9. Definition of done
+---
 
-v0 is ready for evaluation when:
+## 10. Evaluation principle
 
-- one real path works end-to-end:
-  `Universe → AI Safety → Grantmaking & Resource Allocation → real objects`;
-- a small set of real, public-safe objects is represented;
-- MoM works across 2–3 semantic levels;
-- real destinations/actions are useful;
-- existing accessibility/performance/fallback behavior still works;
-- the test user can use it in several actual work/study sessions.
+Judge Universe by whether it produces real user value:
 
-## 10. Evaluation
+- Does the user voluntarily enter through it?
+- Does it improve motivation or focus?
+- Does a map make an important structure easier to think about?
+- Does it reveal relationships/bottlenecks that a list does not?
+- Which representation naturally fits the problem?
+- What information feels alive/current versus cluttered/static?
 
-After real sessions, capture answers in Notion rather than hard-coding product
-conclusions here:
-
-- Did the user open Universe voluntarily?
-- What did they use it to reach/do?
-- What was better/worse than direct Notion navigation?
-- Did the map improve memory or understanding of relationships?
-- Which nodes felt meaningful vs decorative?
-- What was distracting/annoying?
-- What did the user wish Universe knew about them?
-- What personalization request appeared naturally?
-- What one feature would most increase repeat use?
-
-The next build should be chosen from observed use, not from the longest list of
-future possibilities.
+The next build should follow observed use and an actual thinking problem, not the longest list of possible features.
