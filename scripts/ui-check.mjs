@@ -583,6 +583,16 @@ for (const viewport of viewports) {
 {
   const PM = BASE + '/universe/power-map';
 
+  /** The individuals the snapshot currently models. */
+  const PEOPLE = [
+    'sam-altman',
+    'dario-amodei',
+    'demis-hassabis',
+    'mark-zuckerberg',
+    'elon-musk',
+    'jensen-huang',
+  ];
+
   // --- one model, many lenses
   {
     const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 1000 } });
@@ -617,20 +627,46 @@ for (const viewport of viewports) {
       `Core keeps the structurally critical lower-tier nodes (${structural.join(', ')})`
     );
 
+    await page.click('[data-pm-lens="institutions"]');
+    await page.waitForTimeout(500);
+    const institutions = await read();
+    note(
+      institutions.nodes.length > core.nodes.length,
+      `Institutions is the broader structural view (${institutions.nodes.length} vs ${core.nodes.length} actors)`
+    );
+    note(
+      core.nodes.every((id) => institutions.nodes.includes(id)),
+      'and Core is a strict subset of it — one model, not two datasets'
+    );
+    note(
+      ['alibaba', 'bytedance', 'deepseek', 'uk-aisi'].every((id) => institutions.nodes.includes(id)),
+      'carrying the periphery Core drops'
+    );
+    note(
+      !institutions.nodes.some((id) => PEOPLE.includes(id)),
+      'with every institution left closed — it is about who depends on whom, not who inside decides'
+    );
+
+    // Full has to mean full. It used to render the same closed institutions
+    // and quietly omit a third of the actors it claimed to show.
     await page.click('[data-pm-lens="full"]');
     await page.waitForTimeout(500);
     const full = await read();
     note(
-      full.nodes.length > core.nodes.length,
-      `Full is broader than Core (${full.nodes.length} vs ${core.nodes.length} actors)`
+      full.nodes.length === 32,
+      `Full shows every decision centre in the snapshot (${full.nodes.length} of 32)`
     );
     note(
-      core.nodes.every((id) => full.nodes.includes(id)),
-      'and Core is a strict subset of it — one model, not two datasets'
+      full.nodes.length > institutions.nodes.length &&
+        institutions.nodes.every((id) => full.nodes.includes(id)),
+      `and Institutions is a strict subset of it (${institutions.nodes.length} of ${full.nodes.length})`
     );
     note(
-      ['alibaba', 'bytedance', 'deepseek', 'uk-aisi'].every((id) => full.nodes.includes(id)),
-      'Full carries the periphery Core drops'
+      PEOPLE.every((id) => full.nodes.includes(id)) &&
+        ['bis', 'doe-oe', 'openai-foundation-board', 'anthropic-ltbt'].every((id) =>
+          full.nodes.includes(id)
+        ),
+      'including the internals: people, agencies and governance bodies'
     );
 
     for (const [id, expect] of [
@@ -646,6 +682,58 @@ for (const viewport of viewports) {
         `the ${id} lens is its own view of the same model (${lens.nodes.length} actors)`
       );
     }
+    // The People lens promises every modelled institution opened at once, and
+    // four of the six individuals live under Google DeepMind, Meta, SpaceXAI
+    // and NVIDIA rather than under the two labs anyone thinks to list.
+    await page.click('[data-pm-lens="people"]');
+    await page.waitForTimeout(500);
+    const people = await read();
+    const absent = PEOPLE.filter((id) => !people.nodes.includes(id));
+    note(
+      absent.length === 0,
+      `People shows all six modelled individuals (${PEOPLE.length - absent.length}/6${
+        absent.length ? `, missing ${absent.join(', ')}` : ''
+      })`
+    );
+    note(
+      ['openai-foundation-board', 'anthropic-ltbt'].every((id) => people.nodes.includes(id)),
+      'and the governance bodies that hold authority beside them'
+    );
+    note(
+      ['google-deepmind', 'meta', 'spacexai', 'nvidia'].every((id) => people.nodes.includes(id)),
+      'each still shown inside the institution it belongs to'
+    );
+
+    // Opening every institution puts eight actors in one row, which is where
+    // an authored layout either staggers them or lets the boxes collide.
+    const collisions = [];
+    for (const id of ['core', 'institutions', 'full', 'people', 'compute-energy', 'government']) {
+      await page.click(`[data-pm-lens="${id}"]`);
+      await page.waitForTimeout(450);
+      const hits = await page.evaluate(() => {
+        const boxes = [...document.querySelectorAll('[data-pm-node]')].map((el) => ({
+          id: el.dataset.pmNode,
+          rect: el.getBoundingClientRect(),
+        }));
+        const out = [];
+        for (let i = 0; i < boxes.length; i += 1) {
+          for (let j = i + 1; j < boxes.length; j += 1) {
+            const a = boxes[i].rect;
+            const b = boxes[j].rect;
+            if (a.left < b.right - 1 && a.right > b.left + 1 && a.top < b.bottom - 1 && a.bottom > b.top + 1) {
+              out.push(`${boxes[i].id}/${boxes[j].id}`);
+            }
+          }
+        }
+        return out;
+      });
+      if (hits.length) collisions.push(`${id}: ${hits.join(', ')}`);
+    }
+    note(
+      collisions.length === 0,
+      `no lens lets its actors collide (${collisions.join(' | ') || 'all six clear'})`
+    );
+
     note(errors.length === 0, `no lens raises an error (${errors.join('; ').slice(0, 80)})`);
     await context.close();
   }
@@ -741,6 +829,67 @@ for (const viewport of viewports) {
     );
     note(card.lit > 0, `and its dependencies lit on the map (${card.lit})`);
 
+    // A line on this map is a claim. An actor's homepage evidences that the
+    // actor exists; it says nothing about the dependency, so every edge
+    // carries its own public evidence.
+    const evidence = await page.evaluate(() =>
+      [...document.querySelectorAll('.pm__detail-edges > li')].map((li) => ({
+        to: li.querySelector('.pm__detail-edge-to')?.textContent?.trim() ?? '',
+        confidence: li.querySelector('.pm__detail-edge-evidence span')?.textContent?.trim() ?? '',
+        links: [...li.querySelectorAll('.pm__detail-edge-evidence a')].map((a) => ({
+          href: a.getAttribute('href'),
+          target: a.getAttribute('target'),
+          rel: a.getAttribute('rel'),
+          note: a.getAttribute('title'),
+        })),
+      }))
+    );
+    note(
+      evidence.length > 0 && evidence.every((entry) => entry.links.length > 0),
+      `every dependency exposes its own evidence (${evidence.length}/${evidence.length})`
+    );
+    note(
+      evidence.every((entry) =>
+        entry.links.every(
+          (link) =>
+            /^https:\/\//.test(link.href ?? '') &&
+            link.target === '_blank' &&
+            (link.rel ?? '').includes('noopener')
+        )
+      ),
+      'each one a real outward link, opened safely'
+    );
+    note(
+      evidence.every((entry) => /confidence$/.test(entry.confidence)),
+      'stated with the confidence behind it'
+    );
+    // The export-control claim is a regulation, not a corporate homepage.
+    const bis = evidence.find((entry) => entry.to.includes('BIS'));
+    note(
+      !!bis?.links.some((link) => (link.href ?? '').includes('ecfr.gov')),
+      `and the regulatory edges cite the regulation (${bis?.links.length ?? 0} links on BIS → NVIDIA)`
+    );
+    note(
+      evidence.every((entry) => entry.links.every((link) => (link.note ?? '').length > 20)),
+      'each saying what it actually establishes'
+    );
+
+    // Relationship coverage is incomplete, and says so rather than being
+    // padded out with inferred edges.
+    await page.click('[data-pm-lens="full"]');
+    await page.waitForTimeout(500);
+    await page.click('[data-pm-node="deepseek"] .pm__node-name');
+    await page.waitForTimeout(350);
+    note(
+      ((await page.evaluate(() => document.querySelector('.pm__detail-gap')?.textContent)) ?? '')
+        .includes('deliberately incomplete'),
+      'an actor with no curated dependencies says so'
+    );
+    await page.click('[data-pm-lens="core"]');
+    await page.waitForTimeout(400);
+    await page.click('[data-pm-node="nvidia"] .pm__node-name');
+    await page.waitForTimeout(350);
+
     // Jumping between actors from the panel.
     await page.evaluate(() => {
       const jump = [...document.querySelectorAll('.pm__detail-edges button')].find((el) =>
@@ -770,14 +919,19 @@ for (const viewport of viewports) {
       }),
       'every actor is a real button in the tab order'
     );
+    // Whatever the lens order is, the arrow keys walk it.
+    const order = await page.evaluate(() =>
+      [...document.querySelectorAll('[data-pm-lens]')].map((el) => el.textContent.trim())
+    );
     await page.focus('[data-pm-lens="core"]');
     await page.keyboard.press('ArrowRight');
     await page.waitForTimeout(400);
+    const moved = await page.evaluate(() =>
+      document.querySelector('[data-pm-lens][aria-checked="true"]')?.textContent.trim()
+    );
     note(
-      (await page.evaluate(() =>
-        document.querySelector('[data-pm-lens][aria-checked="true"]')?.textContent.trim()
-      )) === 'Full',
-      'arrow keys move through the lenses, as a radiogroup should'
+      moved === order[1],
+      `arrow keys move through the lenses, as a radiogroup should (${order[0]} → ${moved})`
     );
     await page.click('[data-pm-lens="core"]');
     await page.waitForTimeout(300);
@@ -808,12 +962,19 @@ for (const viewport of viewports) {
       links: document.querySelectorAll('.pm__index-sources a').length,
       stageHidden: document.querySelector('[data-pm-stage]')?.hasAttribute('hidden'),
       mentionsNvidia: document.body.textContent.includes('NVIDIA'),
+      edgeEvidence: [...document.querySelectorAll('.pm__index-arena')]
+        .filter((section) => section.querySelector('h3')?.textContent === 'Typed dependencies')
+        .flatMap((section) => [...section.querySelectorAll('li .pm__index-sources a')]).length,
     }));
     note(
       text.actors > 40 && text.mentionsNvidia,
       `without a script the snapshot is still the map (${text.actors} entries)`
     );
     note(text.links > 20, `with its sources intact (${text.links})`);
+    note(
+      text.edgeEvidence >= 23,
+      `and every dependency's evidence with it (${text.edgeEvidence})`
+    );
     note(text.stageHidden === true, 'and the empty network stage stays out of the way');
     await noScript.close();
     await context.close();

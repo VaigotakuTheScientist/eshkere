@@ -26,6 +26,14 @@ import {
 
 const byArena = (arena: Arena) => actors.filter((actor) => actor.arena === arena);
 const named = (id: string) => actorById.get(id)?.shortLabel ?? actorById.get(id)?.label ?? id;
+
+/**
+ * Actors the curated relationship set actually reaches. The rest are named
+ * honestly as gaps: the snapshot's edge coverage is incomplete, and inventing
+ * dependencies to tidy the picture would be the one unforgivable thing a map
+ * like this could do.
+ */
+const connected = new Set(relationships.flatMap((edge) => [edge.from, edge.to]));
 ---
 
 <BaseLayout
@@ -112,6 +120,12 @@ const named = (id: string) => actorById.get(id)?.shortLabel ?? actorById.get(id)
                       <p class="pm__index-levers">
                         Power levers: {actor.powerLevers.join('; ')}.
                       </p>
+                      {!connected.has(actor.id) && (
+                        <p class="pm__index-gap">
+                          No curated dependencies yet — relationship coverage in this snapshot is
+                          deliberately incomplete rather than inferred.
+                        </p>
+                      )}
                       {actor.sources.length > 0 && (
                         <p class="pm__index-sources">
                           Public sources:{' '}
@@ -146,6 +160,20 @@ const named = (id: string) => actorById.get(id)?.shortLabel ?? actorById.get(id)
                     — {edge.type} · {edge.strength} · {edge.confidence} confidence
                   </span>
                   <p>{edge.rationale}</p>
+                  {edge.sources.length > 0 && (
+                    <p class="pm__index-sources">
+                      Evidence:{' '}
+                      {edge.sources.map((source, index) => (
+                        <>
+                          {index > 0 && ', '}
+                          <a href={source.url} target="_blank" rel="noopener noreferrer">
+                            {source.label}
+                          </a>
+                          {source.note && <> — {source.note}</>}
+                        </>
+                      ))}
+                    </p>
+                  )}
                 </li>
               ))
             }
@@ -197,7 +225,12 @@ const named = (id: string) => actorById.get(id)?.shortLabel ?? actorById.get(id)
     let selected: string | null = null;
 
     /** Row height in the drawn network, in pixels. */
-    const ROW = 118;
+    const ROW = 132;
+    /** How far a crowded row's actors step off its line. */
+    const LANE = 26;
+
+    const yOf = (entry: { row: number; lane: number }) =>
+      entry.row * ROW + ROW / 2 + entry.lane * LANE;
 
     function render() {
       const selection = resolve(lens, expanded);
@@ -240,8 +273,9 @@ const named = (id: string) => actorById.get(id)?.shortLabel ?? actorById.get(id)
       box.className = `pm__node pm__node--${actor.type} pm__node--${actor.tier}`;
       box.dataset.pmNode = actor.id;
       box.dataset.pmRow = String(entry.row);
+      box.dataset.pmLane = String(entry.lane);
       box.style.setProperty('--pm-x', `${entry.t * 100}%`);
-      box.style.setProperty('--pm-y', `${entry.row * ROW + ROW / 2}px`);
+      box.style.setProperty('--pm-y', `${yOf(entry)}px`);
 
       const name = document.createElement('button');
       name.type = 'button';
@@ -297,9 +331,9 @@ const named = (id: string) => actorById.get(id)?.shortLabel ?? actorById.get(id)
         const to = placement.byId.get(display.to);
         if (!from || !to) continue;
         const x1 = from.t * width;
-        const y1 = from.row * ROW + ROW / 2;
+        const y1 = yOf(from);
         const x2 = to.t * width;
-        const y2 = to.row * ROW + ROW / 2;
+        const y2 = yOf(to);
 
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         if (from.row === to.row) {
@@ -393,16 +427,35 @@ const named = (id: string) => actorById.get(id)?.shortLabel ?? actorById.get(id)
             .map((edge) => {
               const other = counterpart(edge, actor.id);
               const direction = edge.from === actor.id ? '→' : '←';
-              return `<li><button type="button" data-pm-goto="${other?.id ?? ''}">
-                <span class="pm__detail-edge-type">${esc(edge.type)}</span>
-                <span class="pm__detail-edge-to">${direction} ${esc(
-                  other?.shortLabel ?? other?.label ?? edge.to
-                )}</span>
-                <span class="pm__detail-edge-why">${esc(edge.rationale)}</span>
-              </button></li>`;
+              return `<li>
+                <button type="button" data-pm-goto="${other?.id ?? ''}">
+                  <span class="pm__detail-edge-type">${esc(edge.type)}</span>
+                  <span class="pm__detail-edge-to">${direction} ${esc(
+                    other?.shortLabel ?? other?.label ?? edge.to
+                  )}</span>
+                  <span class="pm__detail-edge-why">${esc(edge.rationale)}</span>
+                </button>
+                <p class="pm__detail-edge-evidence" data-pm-edge-evidence="${esc(edge.id)}">
+                  <span>${esc(edge.confidence)} confidence</span>
+                  ${edge.sources
+                    .map(
+                      (source) =>
+                        `<a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer"${
+                          source.note ? ` title="${esc(source.note)}"` : ''
+                        }>${esc(source.label)} ↗</a>`
+                    )
+                    .join('')}
+                </p>
+              </li>`;
             })
             .join('')}
         </ul>
+        ${
+          own.length === 0
+            ? `<p class="pm__detail-gap">No curated dependencies for this actor yet — relationship
+               coverage in the snapshot is deliberately incomplete rather than inferred.</p>`
+            : ''
+        }
         ${
           actor.sources.length > 0
             ? `<h3>Public sources</h3>
@@ -645,6 +698,12 @@ const named = (id: string) => actorById.get(id)?.shortLabel ?? actorById.get(id)
     transition: border-color var(--speed-quick) var(--ease-out);
   }
 
+  /* A staggered row is a crowded row, so its boxes give up some width too. */
+  .pm__nodes:has(.pm__node) .pm__node[data-pm-lane='-1'],
+  .pm__nodes:has(.pm__node) .pm__node[data-pm-lane='1'] {
+    max-width: 8.5rem;
+  }
+
   .pm__node:hover,
   .pm__node:focus-within {
     border-color: var(--line-strong);
@@ -817,6 +876,33 @@ const named = (id: string) => actorById.get(id)?.shortLabel ?? actorById.get(id)
     color: var(--cyan);
   }
 
+  /* Evidence for a single dependency, sitting under the dependency itself so
+     a line on the map can be inspected as the claim it is. */
+  .pm__detail .pm__detail-edge-evidence {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.1rem 0.6rem;
+    margin: 0 0 0.5rem;
+    font-size: var(--text-xs);
+  }
+
+  .pm__detail .pm__detail-edge-evidence span {
+    color: var(--ink-faint);
+    font-family: var(--font-pixel);
+    font-size: 0.5rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .pm__detail .pm__detail-edge-evidence a {
+    color: var(--cyan);
+  }
+
+  .pm__detail .pm__detail-gap {
+    color: var(--ink-faint);
+    font-size: var(--text-xs);
+  }
+
   .pm__detail .pm__detail-expand button {
     margin-top: 1rem;
     padding: 0.45rem 0.8rem;
@@ -864,7 +950,8 @@ const named = (id: string) => actorById.get(id)?.shortLabel ?? actorById.get(id)
 
   .pm__index-meta,
   .pm__index-levers,
-  .pm__index-sources {
+  .pm__index-sources,
+  .pm__index-gap {
     color: var(--ink-faint);
     font-size: var(--text-xs);
   }

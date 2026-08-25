@@ -8,7 +8,13 @@
 
 import { actorById, actors, relationships, type Actor, type Relationship } from './model';
 
-export type LensId = 'core' | 'full' | 'people' | 'compute-energy' | 'government';
+export type LensId =
+  | 'core'
+  | 'institutions'
+  | 'full'
+  | 'people'
+  | 'compute-energy'
+  | 'government';
 
 export interface Lens {
   id: LensId;
@@ -22,15 +28,16 @@ export interface Lens {
    */
   admits(actor: Actor): boolean;
   /**
-   * Institutions this lens opens by default. People and governance bodies are
-   * hidden until an institution is expanded, so a lens about people has to
-   * ask for them.
+   * Which internals this lens wants revealed. Every admitted institution
+   * holding a matching child is opened when the lens is chosen.
+   *
+   * A predicate rather than a list of ids on purpose: a lens about people
+   * should surface the people that are modelled, not the people someone
+   * remembered to enumerate. Model a seventh individual and the People lens
+   * shows them without this file changing.
    */
-  expandedByDefault?: string[];
+  opens?(child: Actor): boolean;
 }
-
-/** The institutions whose internals the prototype can reveal. */
-export const EXPANDABLE_IDS = ['openai', 'anthropic', 'us-federal'] as const;
 
 export const lenses: Lens[] = [
   {
@@ -44,10 +51,24 @@ export const lenses: Lens[] = [
     admits: (actor) => actor.tier === 'tier-1' || !!actor.corePath,
   },
   {
+    id: 'institutions',
+    label: 'Institutions',
+    purpose:
+      'The structural view: organizations, states, governance bodies and infrastructure, each left closed. Who depends on whom, before asking who inside them decides.',
+    // People are what this lens is deliberately not about. Governance bodies
+    // are admitted but stay folded, because nothing opens them here.
+    admits: (actor) => actor.type !== 'person',
+  },
+  {
     id: 'full',
     label: 'Full',
-    purpose: 'Every curated decision centre and typed dependency in the snapshot.',
+    purpose:
+      'Everything in the snapshot at once: every decision centre, including the people and governance bodies inside institutions.',
     admits: () => true,
+    // Genuinely everything. Without this the lens rendered the same closed
+    // institutions as the structural view and quietly hid a third of the
+    // actors it claimed to show.
+    opens: () => true,
   },
   {
     id: 'people',
@@ -59,7 +80,9 @@ export const lenses: Lens[] = [
       actor.type === 'governance-body' ||
       actor.arena === 'developers' ||
       actor.id === 'nvidia',
-    expandedByDefault: ['openai', 'anthropic'],
+    // Every institution that holds a modelled individual or governance body,
+    // which is what "opened at once" has to mean for the purpose to be true.
+    opens: (child) => child.type === 'person' || child.type === 'governance-body',
   },
   {
     id: 'compute-energy',
@@ -81,7 +104,7 @@ export const lenses: Lens[] = [
       actor.arena === 'state' ||
       actor.arena === 'developers' ||
       actor.type === 'governance-body',
-    expandedByDefault: ['openai', 'anthropic', 'us-federal'],
+    opens: (child) => child.type === 'governance-body' || child.type === 'government-body',
   },
 ];
 
@@ -162,9 +185,20 @@ export function resolve(lensId: LensId, expanded: ReadonlySet<string>): Selectio
   return { actors: actors.filter((actor) => visible.has(actor.id)), edges };
 }
 
-/** Which institutions a lens opens the moment it is chosen. */
+/**
+ * Which institutions a lens opens the moment it is chosen — derived from the
+ * model, so it cannot drift out of step with what is actually in it.
+ */
 export function initialExpansion(lensId: LensId): Set<string> {
-  return new Set(lensById.get(lensId)?.expandedByDefault ?? []);
+  const lens = lensById.get(lensId);
+  const open = new Set<string>();
+  if (!lens?.opens) return open;
+  for (const actor of actors) {
+    if (!actor.parent || !lens.opens(actor)) continue;
+    const parent = actorById.get(actor.parent);
+    if (parent && lens.admits(parent) && lens.admits(actor)) open.add(parent.id);
+  }
+  return open;
 }
 
 /** Every edge touching an actor, for its detail panel. */

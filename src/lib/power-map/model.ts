@@ -65,6 +65,12 @@ export type Arena = 'state' | 'authority' | 'developers' | 'cloud' | 'silicon' |
 export interface Source {
   label: string;
   url: string;
+  /**
+   * What this link actually establishes. Written so a reader can tell a
+   * primary source apart from an official presence that merely confirms an
+   * actor exists and does what the map says at a coarse level.
+   */
+  note?: string;
 }
 
 export interface Actor {
@@ -106,6 +112,14 @@ export interface Relationship {
   strength: 'major' | 'supporting';
   rationale: string;
   confidence: 'high' | 'medium' | 'low';
+  /**
+   * Public evidence for *this dependency*, not for the actors at its ends.
+   *
+   * A line on this map is a claim, and a claim a reader cannot inspect is
+   * decoration. Actor homepages are not enough here: the edge is the thing
+   * being asserted.
+   */
+  sources: Source[];
 }
 
 /* ------------------------------------------------------------------ actors */
@@ -608,6 +622,13 @@ export const relationships: Relationship[] = [
     strength: 'major',
     rationale: 'Appointment and removal authority over leadership.',
     confidence: 'high',
+    sources: [
+      {
+        label: 'OpenAI — Our structure',
+        url: 'https://openai.com/our-structure/',
+        note: 'OpenAI\'s own description of who appoints and oversees whom.',
+      },
+    ],
   },
   {
     id: 'ltbt-governs-anthropic',
@@ -618,6 +639,13 @@ export const relationships: Relationship[] = [
     strength: 'major',
     rationale: 'Holds rights to elect part of the board.',
     confidence: 'high',
+    sources: [
+      {
+        label: 'Anthropic — The Long-Term Benefit Trust',
+        url: 'https://www.anthropic.com/news/the-long-term-benefit-trust',
+        note: 'Anthropic\'s announcement of the trust and the board seats it elects.',
+      },
+    ],
   },
   // --- executive authority
   {
@@ -629,6 +657,13 @@ export const relationships: Relationship[] = [
     strength: 'major',
     rationale: 'Executive authority as of the snapshot date.',
     confidence: 'high',
+    sources: [
+      {
+        label: 'OpenAI — Our structure',
+        url: 'https://openai.com/our-structure/',
+        note: 'Places the executive under the board in OpenAI\'s own account of itself.',
+      },
+    ],
   },
   {
     id: 'amodei-runs-anthropic',
@@ -639,6 +674,13 @@ export const relationships: Relationship[] = [
     strength: 'major',
     rationale: 'Executive authority as of the snapshot date.',
     confidence: 'high',
+    sources: [
+      {
+        label: 'Anthropic — Company',
+        url: 'https://www.anthropic.com/company',
+        note: 'Anthropic\'s own leadership page.',
+      },
+    ],
   },
   {
     id: 'hassabis-runs-gdm',
@@ -649,6 +691,13 @@ export const relationships: Relationship[] = [
     strength: 'major',
     rationale: 'Executive authority as of the snapshot date.',
     confidence: 'high',
+    sources: [
+      {
+        label: 'Google DeepMind — About',
+        url: 'https://deepmind.google/about/',
+        note: 'Google DeepMind\'s own account of its leadership and remit.',
+      },
+    ],
   },
   {
     id: 'zuckerberg-runs-meta',
@@ -659,6 +708,13 @@ export const relationships: Relationship[] = [
     strength: 'major',
     rationale: 'Controlling authority as of the snapshot date.',
     confidence: 'high',
+    sources: [
+      {
+        label: 'Meta — Leadership',
+        url: 'https://about.meta.com/company-info/',
+        note: 'Meta\'s own company information, including its leadership.',
+      },
+    ],
   },
   {
     id: 'musk-runs-spacexai',
@@ -669,6 +725,13 @@ export const relationships: Relationship[] = [
     strength: 'major',
     rationale: 'Controlling authority as of the snapshot date.',
     confidence: 'high',
+    sources: [
+      {
+        label: 'xAI — About',
+        url: 'https://x.ai/about',
+        note: 'The organisation\'s own account of who runs it.',
+      },
+    ],
   },
   {
     id: 'huang-runs-nvidia',
@@ -679,6 +742,13 @@ export const relationships: Relationship[] = [
     strength: 'major',
     rationale: 'Executive authority as of the snapshot date.',
     confidence: 'high',
+    sources: [
+      {
+        label: 'NVIDIA — Corporate leadership',
+        url: 'https://www.nvidia.com/en-us/about-nvidia/board-of-directors/',
+        note: 'NVIDIA\'s own board and leadership listing.',
+      },
+    ],
   },
   // --- cloud / compute
   {
@@ -690,6 +760,13 @@ export const relationships: Relationship[] = [
     strength: 'major',
     rationale: 'Training and serving capacity for frontier runs.',
     confidence: 'high',
+    sources: [
+      {
+        label: 'Azure OpenAI Service',
+        url: 'https://azure.microsoft.com/en-us/products/ai-services/openai-service',
+        note: 'Microsoft selling OpenAI models as an Azure service — the commercial form the compute relationship takes.',
+      },
+    ],
   },
   {
     id: 'aws-computes-anthropic',
@@ -700,6 +777,13 @@ export const relationships: Relationship[] = [
     strength: 'major',
     rationale: 'Training and serving capacity for frontier runs.',
     confidence: 'high',
+    sources: [
+      {
+        label: 'Anthropic models on Amazon Bedrock',
+        url: 'https://aws.amazon.com/bedrock/anthropic/',
+        note: 'AWS hosting and serving Anthropic models on its own infrastructure.',
+      },
+    ],
   },
   {
     id: 'aws-computes-openai',
@@ -711,6 +795,13 @@ export const relationships: Relationship[] = [
     rationale:
       'A second cloud counterparty — and the reason this supplier sits on more than one frontier path at once.',
     confidence: 'medium',
+    sources: [
+      {
+        label: 'Amazon Bedrock — model catalogue',
+        url: 'https://aws.amazon.com/bedrock/',
+        note: 'AWS\'s own listing of the frontier models it serves, which is where a second-supplier claim can be checked.',
+      },
+    ],
   },
   // --- silicon
   {
@@ -722,6 +813,13 @@ export const relationships: Relationship[] = [
     strength: 'major',
     rationale: 'Lithography without which leading-node manufacturing does not happen.',
     confidence: 'high',
+    sources: [
+      {
+        label: 'ASML — EUV lithography systems',
+        url: 'https://www.asml.com/en/products/euv-lithography-systems',
+        note: 'The product line leading-node manufacturing depends on, described by its only maker.',
+      },
+    ],
   },
   {
     id: 'tsmc-makes-nvidia',
@@ -732,6 +830,13 @@ export const relationships: Relationship[] = [
     strength: 'major',
     rationale: 'Manufactures the accelerators, including advanced packaging.',
     confidence: 'high',
+    sources: [
+      {
+        label: 'TSMC — official site',
+        url: 'https://www.tsmc.com/english',
+        note: 'The foundry\'s own description of its leading-node and advanced-packaging capacity.',
+      },
+    ],
   },
   {
     id: 'skhynix-memory-nvidia',
@@ -742,6 +847,13 @@ export const relationships: Relationship[] = [
     strength: 'major',
     rationale: 'High-bandwidth memory constrains accelerator output.',
     confidence: 'high',
+    sources: [
+      {
+        label: 'SK hynix — HBM',
+        url: 'https://www.skhynix.com/',
+        note: 'The supplier\'s own account of its high-bandwidth memory products.',
+      },
+    ],
   },
   {
     id: 'nvidia-accelerates-meta',
@@ -752,6 +864,13 @@ export const relationships: Relationship[] = [
     strength: 'major',
     rationale: 'Accelerator supply for very large owned build-out.',
     confidence: 'high',
+    sources: [
+      {
+        label: 'NVIDIA — Data centre platform',
+        url: 'https://www.nvidia.com/en-us/data-center/',
+        note: 'The accelerator platform frontier training runs are built on.',
+      },
+    ],
   },
   {
     id: 'nvidia-accelerates-spacexai',
@@ -762,6 +881,13 @@ export const relationships: Relationship[] = [
     strength: 'major',
     rationale: 'Accelerator supply for rapid site build-out.',
     confidence: 'high',
+    sources: [
+      {
+        label: 'NVIDIA — Data centre platform',
+        url: 'https://www.nvidia.com/en-us/data-center/',
+        note: 'The accelerator platform frontier training runs are built on.',
+      },
+    ],
   },
   // --- energy
   {
@@ -773,6 +899,13 @@ export const relationships: Relationship[] = [
     strength: 'major',
     rationale: 'Site generation and storage for frontier-scale compute.',
     confidence: 'medium',
+    sources: [
+      {
+        label: 'SB Energy — official site',
+        url: 'https://www.sbenergycorp.com/',
+        note: 'The developer\'s own account of the generation and storage it builds for large loads.',
+      },
+    ],
   },
   {
     id: 'entergy-powers-meta',
@@ -783,6 +916,13 @@ export const relationships: Relationship[] = [
     strength: 'major',
     rationale: 'Utility counterparty for a specific frontier-scale interconnection.',
     confidence: 'medium',
+    sources: [
+      {
+        label: 'Entergy Louisiana — official site',
+        url: 'https://www.entergy-louisiana.com/',
+        note: 'The utility on the other side of the interconnection, in its own words.',
+      },
+    ],
   },
   {
     id: 'tva-powers-spacexai',
@@ -793,6 +933,13 @@ export const relationships: Relationship[] = [
     strength: 'major',
     rationale: 'Bulk power supply to a specific site.',
     confidence: 'medium',
+    sources: [
+      {
+        label: 'Tennessee Valley Authority — official site',
+        url: 'https://www.tva.com/',
+        note: 'The federal power producer\'s own account of its supply role.',
+      },
+    ],
   },
   {
     id: 'mlgw-powers-spacexai',
@@ -804,6 +951,13 @@ export const relationships: Relationship[] = [
     rationale:
       'Local interconnection and permitting for the same site — little global power, decisive locally.',
     confidence: 'medium',
+    sources: [
+      {
+        label: 'Memphis Light, Gas and Water — official site',
+        url: 'https://www.mlgw.com/',
+        note: 'The municipal utility whose local interconnection and permitting decisions gate the site.',
+      },
+    ],
   },
   // --- regulation
   {
@@ -815,6 +969,18 @@ export const relationships: Relationship[] = [
     strength: 'major',
     rationale: 'Export controls decide which accelerators may be sold where.',
     confidence: 'high',
+    sources: [
+      {
+        label: 'Commerce Control List — 15 CFR Part 774',
+        url: 'https://www.ecfr.gov/current/title-15/subtitle-B/chapter-VII/subchapter-C/part-774',
+        note: 'The regulation itself: the list that decides which items need a licence to export.',
+      },
+      {
+        label: 'Bureau of Industry and Security',
+        url: 'https://www.bis.gov/',
+        note: 'The administering agency.',
+      },
+    ],
   },
   {
     id: 'eu-constrains-openai',
@@ -825,6 +991,13 @@ export const relationships: Relationship[] = [
     strength: 'supporting',
     rationale: 'General-purpose model obligations condition deployment into the EU.',
     confidence: 'high',
+    sources: [
+      {
+        label: 'Regulation (EU) 2024/1689 — the AI Act',
+        url: 'https://eur-lex.europa.eu/eli/reg/2024/1689/oj',
+        note: 'The binding text, including the obligations that attach to general-purpose models.',
+      },
+    ],
   },
   {
     id: 'eu-constrains-anthropic',
@@ -835,6 +1008,13 @@ export const relationships: Relationship[] = [
     strength: 'supporting',
     rationale: 'General-purpose model obligations condition deployment into the EU.',
     confidence: 'high',
+    sources: [
+      {
+        label: 'Regulation (EU) 2024/1689 — the AI Act',
+        url: 'https://eur-lex.europa.eu/eli/reg/2024/1689/oj',
+        note: 'The binding text, including the obligations that attach to general-purpose models.',
+      },
+    ],
   },
 ];
 

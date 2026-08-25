@@ -91,6 +91,15 @@ export interface PlacedActor {
   row: number;
   /** 0…1 across the row. */
   t: number;
+  /**
+   * Vertical nudge within the row, −1…1.
+   *
+   * A row holding eight actors cannot put them all on one line without the
+   * boxes colliding — which is what the People lens does the moment it opens
+   * every institution. Crowded rows alternate their actors above and below
+   * the line instead of shrinking the type until nothing is readable.
+   */
+  lane: number;
 }
 
 export interface Placement {
@@ -107,6 +116,9 @@ export interface Placement {
  * pinning to absolute columns is what lets Core and Full both look composed:
  * a fixed grid would leave Core full of holes where Full's extra actors were.
  */
+/** Above this many actors, a row alternates them above and below its line. */
+const CROWDED = 5;
+
 export function place(actors: Actor[]): Placement {
   const inArena = new Map<Arena, Actor[]>();
   for (const actor of actors) {
@@ -124,8 +136,14 @@ export function place(actors: Actor[]): Placement {
       const rb = RANK.get(b.id) ?? Number.MAX_SAFE_INTEGER;
       return ra - rb;
     });
+    const crowded = list.length > CROWDED;
     list.forEach((actor, index) => {
-      placed.push({ actor, row, t: (index + 0.5) / list.length });
+      placed.push({
+        actor,
+        row,
+        t: (index + 0.5) / list.length,
+        lane: crowded ? (index % 2 === 0 ? -1 : 1) : 0,
+      });
     });
   });
 

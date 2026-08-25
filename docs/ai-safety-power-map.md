@@ -372,8 +372,36 @@ Reachable from `Universe → AI Safety → Grantmaking & Resource Allocation`.
 The cosmic renderer is untouched: the child map is an ordinary page, which is
 what MoM as map → map actually looks like when the grammars differ.
 
+Lenses, and what each is actually for:
+
+| Lens | Actors | What it answers |
+|---|---|---|
+| Core | 18 | the smallest useful system view — Tier 1 plus the chokepoints nothing routes around |
+| Institutions | 22 | the structural view: who depends on whom, every institution left closed |
+| Full | 32 | everything in the snapshot, internals included |
+| People | 17 | where authority sits personally — every institution holding a modelled individual opened |
+| Compute + Energy | 18 | lithography → fab → accelerators → cloud → grid |
+| Government + Governance | 16 | states, agencies and the governance bodies inside the labs |
+
 Decisions worth carrying forward:
 
+- **Which institutions a lens opens is derived, not listed.** A lens declares
+  the kind of child it wants revealed (`opens`) and every admitted parent
+  holding one is opened. Listing ids by hand meant the People lens promised
+  "every modelled institution opened at once" while showing two of the six
+  individuals, because four of them live under Google DeepMind, Meta,
+  SpaceXAI and NVIDIA rather than under the two labs anyone thinks to list.
+- **Institutions and Full are different questions.** Collapsed-everything is a
+  structural view worth having on its own; it is not the "everything" view,
+  and calling it Full hid a third of the snapshot behind a label that said
+  otherwise.
+- **Every relationship carries its own evidence.** A line on this map is a
+  claim, and an actor's homepage evidences the actor rather than the
+  dependency. Regulatory edges cite the regulation (the AI Act text, the
+  Commerce Control List); supply and cloud edges cite the product or service
+  the relationship takes the form of. Each source carries a note saying what
+  it establishes, so a primary source is distinguishable from an official
+  presence that only confirms an actor is what the map says it is.
 - **Core is a node selection, not an edge filter.** Filtering Core's edges by
   strength was tried and reverted — it hid OpenAI's second cloud supplier,
   which is exactly the shared-chokepoint fact the map exists to surface.
@@ -394,9 +422,17 @@ Decisions worth carrying forward:
 Not built, deliberately: stance overlays, network diagnostics, imagery,
 typed-relationship filter chips, scenario lenses.
 
-Public evidence in the snapshot is limited to official public presences. They
-support what the map claims at the level it claims it and no finer; richer
-per-claim evidence stays in Notion until it can be published safely.
+Evidence coverage is honest about its own limits. Where a primary public
+source exists and is stable it is cited directly; where the only defensible
+public reference is the counterparty's own product or corporate page, that is
+what is linked and the note says so. Deep-linked press releases were
+deliberately not guessed at. The per-claim citations in the Notion research
+model should replace the weaker of these when they can be published.
+
+Relationship coverage is also incomplete, and says so in the interface rather
+than being padded out: an actor the curated edge set does not reach is marked
+as having no curated dependencies yet. Do not invent edges to tidy the
+picture.
 
 ---
 
