@@ -516,18 +516,11 @@ for (const viewport of viewports) {
 // ---------------------------------- the first useful path: AI Safety grants
 {
   /**
-   * Universe v0's one real end-to-end path. `Universe → AI Safety →
-   * Grantmaking & Resource Allocation` has to hold the tool at its centre
-   * plus the curated public writing around it, each with a real destination
-   * and a readable name, and going back must not lose the visitor's place.
+   * `Universe → AI Safety → Grantmaking & Resource Allocation` holds the
+   * system that runs the work and the map that makes its hardest question
+   * thinkable. It used to also hold three articles; a reading queue is
+   * ephemeral and already has the Current Source primitive, so they are gone.
    */
-  const CURATED = {
-    'ais-grantmaking-os': { type: 'Project', host: 'vadymsulzhenko.notion.site' },
-    'ais-grantmaker-bottleneck': { type: 'Resource', host: 'forum.effectivealtruism.org' },
-    'ais-questions-before-a-grant': { type: 'Resource', host: 'coefficientgiving.org' },
-    'ais-being-a-grantmaker': { type: 'Resource', host: 'thirdthing.ai' },
-  };
-
   const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });
   const page = await context.newPage();
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
@@ -553,166 +546,493 @@ for (const viewport of viewports) {
     'Universe → AI Safety → Grantmaking is three levels deep'
   );
 
-  // Every curated object is named, and named readably: a shortened title is
-  // still the accessible name in full.
   const shown = await page.evaluate(() =>
     [...document.querySelectorAll('.u-label--planet:not([hidden])')].map((el) => ({
       id: el.dataset.nodeId,
       href: el.getAttribute('href'),
       target: el.getAttribute('target'),
-      accessibleName: el.getAttribute('aria-label') ?? el.textContent.trim(),
-      drawn: [...el.querySelectorAll('.u-label__text')]
-        .filter((span) => getComputedStyle(span).display !== 'none')
-        .map((span) => span.textContent.trim())
-        .join(''),
-      width: Math.round(el.getBoundingClientRect().width),
     }))
   );
-  const byId = Object.fromEntries(shown.map((entry) => [entry.id, entry]));
-  const missing = Object.keys(CURATED).filter((id) => !byId[id]);
-  note(missing.length === 0, `the system names all four curated objects (${shown.length}/4)`);
-
-  const wrongHost = Object.entries(CURATED).filter(
-    ([id, want]) => !byId[id] || !(byId[id].href ?? '').includes(want.host)
-  );
-  note(wrongHost.length === 0, `each one links to the real thing (${wrongHost.length} wrong)`);
+  const ids = shown.map((entry) => entry.id).sort();
   note(
-    shown.every((entry) => entry.target === '_blank'),
-    'and opens it in a new tab'
+    ids.join(', ') === 'ais-grantmaking-os, ais-power-map',
+    `the system holds the tool and the map, and nothing else (${ids.join(', ')})`
   );
   note(
-    shown.every((entry) => entry.width < 320),
-    `no title sprawls across the system (widest ${Math.max(...shown.map((e) => e.width))}px)`
+    !ids.some((id) => /bottleneck|questions-before|being-a-grantmaker/.test(id)),
+    'the reading experiment is retired'
   );
   note(
-    byId['ais-grantmaker-bottleneck']?.drawn === 'The grantmaker bottleneck' &&
-      byId['ais-grantmaker-bottleneck']?.accessibleName ===
-        'AI safety is extremely bottlenecked on grantmakers',
-    'a shortened title is short on the map and whole to a screen reader'
+    shown.find((entry) => entry.id === 'ais-grantmaking-os')?.href?.includes('grantmaking-os-template') === true,
+    'Grantmaking OS still points at the published template'
   );
 
-  // Selecting one gives its blurb, its destination, and what it is — in
-  // product words, not the renderer's.
-  const markerPoints = (nodeId) =>
-    page.evaluate((id) => {
-      const label = document.querySelector(`.u-label[data-node-id="${id}"]`).getBoundingClientRect();
-      const covered = [...document.querySelectorAll('.u-label:not([hidden])')].map((el) =>
-        el.getBoundingClientRect()
-      );
-      const clear = (x, y) =>
-        !covered.some((r) => x >= r.left - 2 && x <= r.right + 2 && y >= r.top - 2 && y <= r.bottom + 2);
-      const cx = label.x + label.width / 2;
-      const cy = label.y + label.height / 2;
-      const out = [];
-      for (let r = 8; r <= 80; r += 4) {
-        for (let a = 0; a < 360; a += 10) {
-          const x = Math.round(cx + Math.cos((a * Math.PI) / 180) * r);
-          const y = Math.round(cy + Math.sin((a * Math.PI) / 180) * r);
-          if (x > 4 && y > 4 && x < window.innerWidth - 4 && y < window.innerHeight - 4 && clear(x, y)) {
-            out.push([x, y]);
-          }
-        }
-      }
-      return out;
-    }, nodeId);
-
-  const cards = [];
-  for (const id of Object.keys(CURATED)) {
-    let hit = null;
-    for (const [x, y] of await markerPoints(id)) {
-      await page.mouse.move(x, y);
-      const cursor = await page.evaluate(
-        () => document.querySelector('[data-universe-canvas]').style.cursor
-      );
-      if (cursor === 'pointer') {
-        hit = [x, y];
-        break;
-      }
-    }
-    if (!hit) {
-      cards.push({ id, kind: 'unreachable' });
-      continue;
-    }
-    await page.mouse.click(hit[0], hit[1]);
-    await page.waitForTimeout(400);
-    cards.push({
-      id,
-      ...(await page.evaluate(() => ({
-        kind: document.querySelector('[data-universe-detail-kind]').textContent,
-        title: document.querySelector('[data-universe-detail-title]').textContent,
-        blurb: document.querySelector('[data-universe-detail-blurb]').textContent.trim(),
-        link: document.querySelector('[data-universe-detail-link]').getAttribute('href'),
-        linkHidden: document.querySelector('[data-universe-detail-link]').hidden,
-      }))),
-    });
-  }
-  const badCard = cards.filter(
-    (card) =>
-      card.kind !== CURATED[card.id].type ||
-      card.linkHidden ||
-      !(card.link ?? '').includes(CURATED[card.id].host) ||
-      (card.blurb ?? '').length < 30
-  );
+  // Entering the child map leaves the cosmic grammar behind entirely.
+  await page.click('.u-label[data-node-id="ais-power-map"]');
+  await page.waitForURL(/power-map/, { timeout: 30000 });
+  await page.waitForTimeout(900);
+  note(true, 'and the Power Map opens as its own map');
   note(
-    badCard.length === 0,
-    `selecting one gives its blurb and destination (${cards
-      .map((c) => `${c.id.replace('ais-', '')}:${c.kind}`)
-      .join(', ')})`
+    (await page.evaluate(() => document.querySelectorAll('[data-pm-node]').length)) > 10,
+    'with the network drawn'
   );
-  note(
-    cards.every((card) => card.kind === 'Project' || card.kind === 'Resource'),
-    'described in product words, not the renderer\'s'
-  );
-
-  // Back out without losing the place.
-  await page.keyboard.press('Escape');
-  await page.waitForTimeout(1600);
-  note(
-    (await page.evaluate(() => document.querySelector('[data-universe-level]').textContent)) ===
-      'Galaxy',
-    'Escape steps back to the galaxy'
-  );
-  note(
-    (await page.evaluate(() =>
-      [...document.querySelectorAll('.u-crumb')].map((el) => el.textContent).join(' / ')
-    )) === 'Universe / AI Safety',
-    'and the breadcrumb follows'
-  );
-  await page.click('.u-crumb:first-child');
-  await page.waitForFunction(
-    () => document.querySelector('[data-universe-level]')?.textContent === 'Universe',
-    null,
-    { timeout: 30000 }
-  );
-  note(true, 'and Universe returns to the overview');
-  await page.screenshot({ path: `${SHOT_DIR}/universe-grantmaking.png` });
   await context.close();
 }
 
-// -------------------------------- the same path without a renderer
+// ------------------------------------------------- the AI Safety Power Map
 {
-  const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 900 } });
-  const page = await context.newPage();
-  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
-  const listed = await page.evaluate(() => {
-    const heading = [...document.querySelectorAll('.universe-index strong')].find((el) =>
-      el.textContent.includes('Grantmaking & Resource Allocation')
+  const PM = BASE + '/universe/power-map';
+
+  /** The individuals the snapshot currently models. */
+  const PEOPLE = [
+    'sam-altman',
+    'dario-amodei',
+    'demis-hassabis',
+    'mark-zuckerberg',
+    'elon-musk',
+    'jensen-huang',
+  ];
+
+  // --- one model, many lenses
+  {
+    const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 1000 } });
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.goto(PM, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(800);
+
+    const read = () =>
+      page.evaluate(() => ({
+        nodes: [...document.querySelectorAll('[data-pm-node]')].map((el) => el.dataset.pmNode),
+        edges: document.querySelectorAll('[data-pm-edge]').length,
+        bands: [...document.querySelectorAll('.pm__band span')].map((el) => el.textContent),
+        lens: document
+          .querySelector('[data-pm-lens][aria-checked="true"]')
+          ?.textContent.trim(),
+      }));
+
+    const core = await read();
+    note(core.lens === 'Core', `Core is the default lens (${core.lens})`);
+    note(
+      core.bands.join(' | ').includes('State / regulation / governance') &&
+        core.bands.join(' | ').includes('Energy / grid / physical site'),
+      `the arenas are layered, state to energy (${core.bands.length} rows)`
     );
-    const items = [...(heading?.closest('li')?.querySelectorAll('ul li') ?? [])];
-    return items.map((li) => ({
-      text: li.textContent.trim(),
-      href: li.querySelector('a')?.getAttribute('href') ?? null,
+    // Core is not the Tier 1 filter: these are the lower-tier nodes a tier
+    // filter would drop and the system cannot be understood without.
+    const structural = ['asml', 'tsmc', 'sk-hynix', 'mlgw', 'entergy-louisiana'];
+    note(
+      structural.every((id) => core.nodes.includes(id)),
+      `Core keeps the structurally critical lower-tier nodes (${structural.join(', ')})`
+    );
+
+    await page.click('[data-pm-lens="institutions"]');
+    await page.waitForTimeout(500);
+    const institutions = await read();
+    note(
+      institutions.nodes.length > core.nodes.length,
+      `Institutions is the broader structural view (${institutions.nodes.length} vs ${core.nodes.length} actors)`
+    );
+    note(
+      core.nodes.every((id) => institutions.nodes.includes(id)),
+      'and Core is a strict subset of it — one model, not two datasets'
+    );
+    note(
+      ['alibaba', 'bytedance', 'deepseek', 'uk-aisi'].every((id) => institutions.nodes.includes(id)),
+      'carrying the periphery Core drops'
+    );
+    note(
+      !institutions.nodes.some((id) => PEOPLE.includes(id)),
+      'with every institution left closed — it is about who depends on whom, not who inside decides'
+    );
+
+    // Full has to mean full. It used to render the same closed institutions
+    // and quietly omit a third of the actors it claimed to show.
+    await page.click('[data-pm-lens="full"]');
+    await page.waitForTimeout(500);
+    const full = await read();
+    note(
+      full.nodes.length === 32,
+      `Full shows every decision centre in the snapshot (${full.nodes.length} of 32)`
+    );
+    note(
+      full.nodes.length > institutions.nodes.length &&
+        institutions.nodes.every((id) => full.nodes.includes(id)),
+      `and Institutions is a strict subset of it (${institutions.nodes.length} of ${full.nodes.length})`
+    );
+    note(
+      PEOPLE.every((id) => full.nodes.includes(id)) &&
+        ['bis', 'doe-oe', 'openai-foundation-board', 'anthropic-ltbt'].every((id) =>
+          full.nodes.includes(id)
+        ),
+      'including the internals: people, agencies and governance bodies'
+    );
+
+    for (const [id, expect] of [
+      ['people', 'sam-altman'],
+      ['compute-energy', 'asml'],
+      ['government', 'eu-ai-office'],
+    ]) {
+      await page.click(`[data-pm-lens="${id}"]`);
+      await page.waitForTimeout(450);
+      const lens = await read();
+      note(
+        lens.nodes.includes(expect) && lens.nodes.length < full.nodes.length,
+        `the ${id} lens is its own view of the same model (${lens.nodes.length} actors)`
+      );
+    }
+    // The People lens promises every modelled institution opened at once, and
+    // four of the six individuals live under Google DeepMind, Meta, SpaceXAI
+    // and NVIDIA rather than under the two labs anyone thinks to list.
+    await page.click('[data-pm-lens="people"]');
+    await page.waitForTimeout(500);
+    const people = await read();
+    const absent = PEOPLE.filter((id) => !people.nodes.includes(id));
+    note(
+      absent.length === 0,
+      `People shows all six modelled individuals (${PEOPLE.length - absent.length}/6${
+        absent.length ? `, missing ${absent.join(', ')}` : ''
+      })`
+    );
+    note(
+      ['openai-foundation-board', 'anthropic-ltbt'].every((id) => people.nodes.includes(id)),
+      'and the governance bodies that hold authority beside them'
+    );
+    note(
+      ['google-deepmind', 'meta', 'spacexai', 'nvidia'].every((id) => people.nodes.includes(id)),
+      'each still shown inside the institution it belongs to'
+    );
+
+    // Opening every institution puts eight actors in one row, which is where
+    // an authored layout either staggers them or lets the boxes collide.
+    const collisions = [];
+    for (const id of ['core', 'institutions', 'full', 'people', 'compute-energy', 'government']) {
+      await page.click(`[data-pm-lens="${id}"]`);
+      await page.waitForTimeout(450);
+      const hits = await page.evaluate(() => {
+        const boxes = [...document.querySelectorAll('[data-pm-node]')].map((el) => ({
+          id: el.dataset.pmNode,
+          rect: el.getBoundingClientRect(),
+        }));
+        const out = [];
+        for (let i = 0; i < boxes.length; i += 1) {
+          for (let j = i + 1; j < boxes.length; j += 1) {
+            const a = boxes[i].rect;
+            const b = boxes[j].rect;
+            if (a.left < b.right - 1 && a.right > b.left + 1 && a.top < b.bottom - 1 && a.bottom > b.top + 1) {
+              out.push(`${boxes[i].id}/${boxes[j].id}`);
+            }
+          }
+        }
+        return out;
+      });
+      if (hits.length) collisions.push(`${id}: ${hits.join(', ')}`);
+    }
+    note(
+      collisions.length === 0,
+      `no lens lets its actors collide (${collisions.join(' | ') || 'all six clear'})`
+    );
+
+    note(errors.length === 0, `no lens raises an error (${errors.join('; ').slice(0, 80)})`);
+    await context.close();
+  }
+
+  // --- semantic expansion, and what it does to the edges
+  {
+    const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 1000 } });
+    const page = await context.newPage();
+    await page.goto(PM, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(800);
+    const ids = () =>
+      page.evaluate(() => [...document.querySelectorAll('[data-pm-node]')].map((el) => el.dataset.pmNode));
+
+    note(
+      !(await ids()).includes('sam-altman'),
+      'institutions are collapsed to begin with'
+    );
+    // A collapsed institution wears its children's dependencies: the dashed
+    // edge from the United States is really BIS constraining NVIDIA.
+    note(
+      (await page.evaluate(() => document.querySelectorAll('.pm__edge--rolled').length)) > 0,
+      'and a collapsed institution still carries its children’s dependencies'
+    );
+
+    for (const [id, children] of [
+      ['openai', ['sam-altman', 'openai-foundation-board']],
+      ['anthropic', ['dario-amodei', 'anthropic-ltbt']],
+    ]) {
+      await page.click(`[data-pm-node="${id}"] [data-pm-expand]`);
+      await page.waitForTimeout(450);
+      const after = await ids();
+      note(
+        children.every((child) => after.includes(child)) && after.includes(id),
+        `expanding ${id} reveals its people and governance (${children.join(', ')})`
+      );
+      note(
+        (await page.getAttribute(`[data-pm-node="${id}"] [data-pm-expand]`, 'aria-expanded')) === 'true',
+        'and says so to assistive technology'
+      );
+      await page.click(`[data-pm-node="${id}"] [data-pm-expand]`);
+      await page.waitForTimeout(400);
+      note(
+        !(await ids()).some((node) => children.includes(node)),
+        'and collapsing folds them back into it'
+      );
+    }
+    await context.close();
+  }
+
+  // --- a node explains itself
+  {
+    const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 1000 } });
+    const page = await context.newPage();
+    await page.goto(PM, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(800);
+    await page.click('[data-pm-node="nvidia"] .pm__node-name');
+    await page.waitForTimeout(400);
+
+    const card = await page.evaluate(() => ({
+      kind: document.querySelector('.pm__detail-kind')?.textContent?.trim(),
+      title: document.querySelector('.pm__detail-title')?.textContent?.trim(),
+      rationale: document.querySelector('.pm__detail-rationale')?.textContent?.trim() ?? '',
+      levers: [...document.querySelectorAll('.pm__detail-levers li')].map((el) => el.textContent),
+      deps: [...document.querySelectorAll('.pm__detail-edges button')].map((el) =>
+        el.textContent.replace(/\s+/g, ' ').trim()
+      ),
+      sources: [...document.querySelectorAll('.pm__detail-sources a')].map((el) => ({
+        href: el.getAttribute('href'),
+        target: el.getAttribute('target'),
+      })),
+      lit: document.querySelectorAll('.pm__edge.is-lit').length,
     }));
-  });
-  note(
-    listed.length === 4 && listed.every((entry) => entry.href),
-    `the text index carries all four with destinations (${listed.length})`
-  );
-  note(
-    listed.every((entry) => entry.text.includes(' — ') && entry.text.length > 60),
-    'and says what each one is'
-  );
-  await context.close();
+    note(card.title === 'NVIDIA', `selecting a node names it (${card.title})`);
+    note(
+      card.kind === 'organization · tier 1',
+      `with its type and provisional tier (${card.kind})`
+    );
+    note(card.rationale.length > 60, 'a rationale for why it is on the map');
+    note(card.levers.length >= 2, `its power levers (${card.levers.length})`);
+    note(
+      card.deps.length >= 5 && card.deps.some((entry) => entry.includes('memory supply')),
+      `and its typed dependencies (${card.deps.length})`
+    );
+    // The panel names the real endpoint even while the map draws a rolled-up
+    // one, which is what keeps the simplification from becoming a belief.
+    note(
+      card.deps.some((entry) => entry.includes('BIS')),
+      'naming the real counterparty, not the box it is folded into'
+    );
+    note(
+      card.sources.length > 0 && card.sources.every((source) => source.target === '_blank'),
+      `with public sources (${card.sources.length})`
+    );
+    note(card.lit > 0, `and its dependencies lit on the map (${card.lit})`);
+
+    // A line on this map is a claim. An actor's homepage evidences that the
+    // actor exists; it says nothing about the dependency, so every edge
+    // carries its own public evidence.
+    const evidence = await page.evaluate(() =>
+      [...document.querySelectorAll('.pm__detail-edges > li')].map((li) => ({
+        to: li.querySelector('.pm__detail-edge-to')?.textContent?.trim() ?? '',
+        confidence: li.querySelector('.pm__detail-edge-evidence span')?.textContent?.trim() ?? '',
+        links: [...li.querySelectorAll('.pm__detail-edge-evidence a')].map((a) => ({
+          href: a.getAttribute('href'),
+          target: a.getAttribute('target'),
+          rel: a.getAttribute('rel'),
+          note: a.getAttribute('title'),
+        })),
+      }))
+    );
+    note(
+      evidence.length > 0 && evidence.every((entry) => entry.links.length > 0),
+      `every dependency exposes its own evidence (${evidence.length}/${evidence.length})`
+    );
+    note(
+      evidence.every((entry) =>
+        entry.links.every(
+          (link) =>
+            /^https:\/\//.test(link.href ?? '') &&
+            link.target === '_blank' &&
+            (link.rel ?? '').includes('noopener')
+        )
+      ),
+      'each one a real outward link, opened safely'
+    );
+    note(
+      evidence.every((entry) => /confidence$/.test(entry.confidence)),
+      'stated with the confidence behind it'
+    );
+    // The export-control claim is a regulation, not a corporate homepage.
+    const bis = evidence.find((entry) => entry.to.includes('BIS'));
+    note(
+      !!bis?.links.some((link) => (link.href ?? '').includes('ecfr.gov')),
+      `and the regulatory edges cite the regulation (${bis?.links.length ?? 0} links on BIS → NVIDIA)`
+    );
+    note(
+      evidence.every((entry) => entry.links.every((link) => (link.note ?? '').length > 20)),
+      'each saying what it actually establishes'
+    );
+
+    // Relationship coverage is incomplete, and says so rather than being
+    // padded out with inferred edges.
+    await page.click('[data-pm-lens="full"]');
+    await page.waitForTimeout(500);
+    await page.click('[data-pm-node="deepseek"] .pm__node-name');
+    await page.waitForTimeout(350);
+    note(
+      ((await page.evaluate(() => document.querySelector('.pm__detail-gap')?.textContent)) ?? '')
+        .includes('deliberately incomplete'),
+      'an actor with no curated dependencies says so'
+    );
+    await page.click('[data-pm-lens="core"]');
+    await page.waitForTimeout(400);
+    await page.click('[data-pm-node="nvidia"] .pm__node-name');
+    await page.waitForTimeout(350);
+
+    // Jumping between actors from the panel.
+    await page.evaluate(() => {
+      const jump = [...document.querySelectorAll('.pm__detail-edges button')].find((el) =>
+        el.textContent.includes('TSMC')
+      );
+      jump?.click();
+    });
+    await page.waitForTimeout(350);
+    note(
+      (await page.evaluate(() => document.querySelector('.pm__detail-title')?.textContent)) === 'TSMC',
+      'and a dependency can be followed to the actor on the other end'
+    );
+    await context.close();
+  }
+
+  // --- keyboard, and the map without a script
+  {
+    const context = await browser.newContext({ ...CTX, viewport: { width: 1440, height: 1000 } });
+    const page = await context.newPage();
+    await page.goto(PM, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(800);
+
+    note(
+      await page.evaluate(() => {
+        const node = document.querySelector('[data-pm-node] .pm__node-name');
+        return node?.tagName === 'BUTTON' && node.tabIndex >= 0;
+      }),
+      'every actor is a real button in the tab order'
+    );
+    // Whatever the lens order is, the arrow keys walk it.
+    const order = await page.evaluate(() =>
+      [...document.querySelectorAll('[data-pm-lens]')].map((el) => el.textContent.trim())
+    );
+    await page.focus('[data-pm-lens="core"]');
+    await page.keyboard.press('ArrowRight');
+    await page.waitForTimeout(400);
+    const moved = await page.evaluate(() =>
+      document.querySelector('[data-pm-lens][aria-checked="true"]')?.textContent.trim()
+    );
+    note(
+      moved === order[1],
+      `arrow keys move through the lenses, as a radiogroup should (${order[0]} → ${moved})`
+    );
+    await page.click('[data-pm-lens="core"]');
+    await page.waitForTimeout(300);
+    await page.focus('[data-pm-node="anthropic"] [data-pm-expand]');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(400);
+    note(
+      (await page.evaluate(() =>
+        [...document.querySelectorAll('[data-pm-node]')].some((el) => el.dataset.pmNode === 'dario-amodei')
+      )),
+      'and an institution can be opened without a pointer'
+    );
+    await page.click('[data-pm-node="openai"] .pm__node-name');
+    await page.waitForTimeout(250);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(250);
+    note(
+      await page.evaluate(() => document.querySelector('.pm__detail-body')?.hidden),
+      'Escape puts the panel away'
+    );
+
+    // The whole snapshot is server-rendered text, so it survives without JS.
+    const noScript = await browser.newContext({ ...CTX, javaScriptEnabled: false });
+    const plain = await noScript.newPage();
+    await plain.goto(PM, { waitUntil: 'domcontentloaded' });
+    const text = await plain.evaluate(() => ({
+      actors: document.querySelectorAll('.pm__index-arena li').length,
+      links: document.querySelectorAll('.pm__index-sources a').length,
+      stageHidden: document.querySelector('[data-pm-stage]')?.hasAttribute('hidden'),
+      mentionsNvidia: document.body.textContent.includes('NVIDIA'),
+      edgeEvidence: [...document.querySelectorAll('.pm__index-arena')]
+        .filter((section) => section.querySelector('h3')?.textContent === 'Typed dependencies')
+        .flatMap((section) => [...section.querySelectorAll('li .pm__index-sources a')]).length,
+      // Every edge citation, as a path. A bare homepage evidences that an
+      // organisation exists; it cannot evidence that this organisation
+      // depends on that one.
+      edgeHomepages: [...document.querySelectorAll('.pm__index-arena')]
+        .filter((section) => section.querySelector('h3')?.textContent === 'Typed dependencies')
+        .flatMap((section) => [...section.querySelectorAll('li .pm__index-sources a')])
+        .map((a) => a.getAttribute('href') ?? '')
+        .filter((href) => {
+          try {
+            const { pathname, search } = new URL(href);
+            return pathname === '/' && !search;
+          } catch {
+            return true;
+          }
+        }),
+    }));
+    note(
+      text.actors > 40 && text.mentionsNvidia,
+      `without a script the snapshot is still the map (${text.actors} entries)`
+    );
+    note(text.links > 20, `with its sources intact (${text.links})`);
+    note(
+      text.edgeEvidence >= 23,
+      `and every dependency's evidence with it (${text.edgeEvidence})`
+    );
+    note(
+      text.edgeHomepages.length === 0,
+      `none of it a bare homepage standing in for the claim (${text.edgeHomepages.join(', ') || 'clean'})`
+    );
+    note(text.stageHidden === true, 'and the empty network stage stays out of the way');
+    await noScript.close();
+    await context.close();
+  }
+
+  // --- a phone gets a different map, not a smaller one
+  {
+    const context = await browser.newContext({
+      ...CTX,
+      viewport: { width: 390, height: 844 },
+      isMobile: true,
+      hasTouch: true,
+    });
+    const page = await context.newPage();
+    await page.goto(PM, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(800);
+    const phone = await page.evaluate(() => ({
+      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      edges: getComputedStyle(document.querySelector('.pm__edges')).display,
+      order: [...document.querySelectorAll('.pm__band, [data-pm-node]')]
+        .slice(0, 4)
+        .map((el) => (el.classList.contains('pm__band') ? 'band' : 'node')),
+      width: Math.round(document.querySelector('[data-pm-node]').getBoundingClientRect().width),
+    }));
+    note(phone.overflow <= 1, `the phone has no horizontal overflow (${phone.overflow}px)`);
+    note(phone.edges === 'none', 'the network becomes stacked bands rather than a shrunken graph');
+    note(
+      phone.order[0] === 'band' && phone.order[1] === 'node',
+      'each arena is followed by what is in it'
+    );
+    note(phone.width > 200, `and the actors are full-width chips (${phone.width}px)`);
+    await page.click('[data-pm-node="openai"] .pm__node-name');
+    await page.waitForTimeout(350);
+    note(
+      (await page.evaluate(() => document.querySelector('.pm__detail-title')?.textContent)) === 'OpenAI',
+      'selection still explains itself there'
+    );
+    await context.close();
+  }
 }
 
 // ------------------------------------------- Grantmaking OS destinations

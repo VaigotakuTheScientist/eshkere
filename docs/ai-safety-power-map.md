@@ -356,6 +356,107 @@ For the first pass, a sensible image seed is the six currently modeled individua
 
 ---
 
+## 12a. v0.1 prototype — what was built
+
+Implemented on a side branch and delivered as a PR; the default branch
+auto-deploys and this is an experiment.
+
+```text
+src/lib/power-map/model.ts     one node/edge snapshot + evidence — no layout in it
+src/lib/power-map/lenses.ts    lenses as selections over that one model
+src/lib/power-map/layout.ts    arenas as rows, authored left-to-right order
+src/pages/universe/power-map.astro   the layered network, and the map as text
+```
+
+Reachable from `Universe → AI Safety → Grantmaking & Resource Allocation`.
+The cosmic renderer is untouched: the child map is an ordinary page, which is
+what MoM as map → map actually looks like when the grammars differ.
+
+Lenses, and what each is actually for:
+
+| Lens | Actors | What it answers |
+|---|---|---|
+| Core | 18 | the smallest useful system view — Tier 1 plus the chokepoints nothing routes around |
+| Institutions | 22 | the structural view: who depends on whom, every institution left closed |
+| Full | 32 | everything in the snapshot, internals included |
+| People | 17 | where authority sits personally — every institution holding a modelled individual opened |
+| Compute + Energy | 18 | lithography → fab → accelerators → cloud → grid |
+| Government + Governance | 16 | states, agencies and the governance bodies inside the labs |
+
+Decisions worth carrying forward:
+
+- **Which institutions a lens opens is derived, not listed.** A lens declares
+  the kind of child it wants revealed (`opens`) and every admitted parent
+  holding one is opened. Listing ids by hand meant the People lens promised
+  "every modelled institution opened at once" while showing two of the six
+  individuals, because four of them live under Google DeepMind, Meta,
+  SpaceXAI and NVIDIA rather than under the two labs anyone thinks to list.
+- **Institutions and Full are different questions.** Collapsed-everything is a
+  structural view worth having on its own; it is not the "everything" view,
+  and calling it Full hid a third of the snapshot behind a label that said
+  otherwise.
+- **Every relationship carries its own evidence.** A line on this map is a
+  claim, and an actor's homepage evidences the actor rather than the
+  dependency. Regulatory edges cite the regulation (the AI Act text, the
+  Commerce Control List); supply and cloud edges cite the product or service
+  the relationship takes the form of. Each source carries a note saying what
+  it establishes, so a primary source is distinguishable from an official
+  presence that only confirms an actor is what the map says it is.
+- **Core is a node selection, not an edge filter.** Filtering Core's edges by
+  strength was tried and reverted — it hid OpenAI's second cloud supplier,
+  which is exactly the shared-chokepoint fact the map exists to surface.
+- **Collapsed institutions inherit their children's edges at display time.**
+  With the United States collapsed, BIS's export-control edge to NVIDIA is
+  drawn from the United States and dashed. The relationship records are never
+  rewritten and the detail panel always names the real counterparty, so the
+  view-level simplification cannot become a belief.
+- **Rows are spread, not pinned to a fixed grid.** Actors are placed in an
+  authored order and spread evenly across the visible row, so a lens always
+  renders identically without Core inheriting Full's gaps.
+- **The server renders the whole snapshot as text.** That text is the map
+  without a script, and it is the same data the network is drawn from.
+- **A phone gets a different map.** Below 48rem the network becomes stacked
+  arena bands of full-width chips with no edge lines; dependencies are read in
+  the detail panel instead of traced.
+
+Not built, deliberately: stance overlays, network diagnostics, imagery,
+typed-relationship filter chips, scenario lenses.
+
+Evidence coverage is honest about its own limits. The standard every
+relationship is held to is that its source establishes *that specific edge*
+at roughly the granularity the edge claims — not merely that the two actors
+exist, and not merely that the product category is real. Every one of the
+twenty-three relationships now cites a document naming its counterparty:
+supply and cloud edges cite the supplier's or customer's own announcement of
+the arrangement (Microsoft on remaining OpenAI's primary cloud partner, NVIDIA
+on Meta's Blackwell and Rubin deployment, ASML on the EUV systems it shipped
+to TSMC, TVA's board resolution approving firm power for the xAI site);
+regulatory edges cite the instrument (the AI Act text, the Commerce Control
+List, the January 2026 Federal Register rule naming H200-class accelerators);
+governance edges cite the filing or charter that establishes authority rather
+than a leadership page (Meta's own 10-K on Zuckerberg's majority voting
+control, OpenAI's structure page on the Foundation governing the group).
+
+Where no such source could be found, the claim was narrowed rather than
+dressed up. The two EU AI Act edges are stated at `medium` confidence because
+the regulation binds providers of general-purpose models as a class rather
+than naming a provider. Musk → SpaceXAI is stated at `medium` as founder and
+chief executive rather than as ownership control, because the company is
+private and no filing establishes the voting structure. Each source carries a
+note saying what it actually establishes, so a primary source is
+distinguishable from an official presence, and a test asserts that no edge
+citation is a bare homepage. Actor-level sources are still official presences
+by design — an actor's homepage is adequate evidence that the actor is what
+the map says it is. The per-claim citations in the Notion research model
+should replace the remaining weaker links when they can be published.
+
+Relationship coverage is also incomplete, and says so in the interface rather
+than being padded out: an actor the curated edge set does not reach is marked
+as having no curated dependencies yet. Do not invent edges to tidy the
+picture.
+
+---
+
 ## 12. First visualization direction
 
 The research gate is passed for a first prototype.

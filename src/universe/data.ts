@@ -1,5 +1,6 @@
 import currentSource from '../data/current-source.generated.json';
 import { GRANTMAKING_OS_TEMPLATE, grantmakingOsHref } from '../lib/grantmaking-os';
+import { url } from '../lib/url';
 
 /**
  * The authored Eshkere universe.
@@ -42,6 +43,8 @@ export type ContentType =
   | 'project'
   /** Something to read. */
   | 'resource'
+  /** Another map. Map of Maps means map → map, not galaxy → smaller galaxy. */
+  | 'map'
   /** Whatever the Current Source pipeline is pointing at right now. */
   | 'current-source'
   /** The page you came from. */
@@ -54,6 +57,7 @@ export const CONTENT_TYPE_LABEL: Record<ContentType, string> = {
   topic: 'Topic',
   project: 'Project',
   resource: 'Resource',
+  map: 'Map',
   'current-source': 'Current source',
   place: 'Home',
 };
@@ -208,10 +212,12 @@ const aiSafety: Region = {
       label: 'Grantmaking & Resource Allocation',
       offset: [152, 62, -22],
       blurb: 'Moving money and attention to the work that needs it.',
-      // The first area of the map populated with things actually worth
-      // opening: the tool at the centre of it, and the small set of public
-      // writing that explains the work around it. Curated, not exhaustive —
-      // a shelf, not a search result.
+      // What earns a permanent place here is a landmark in the mental model.
+      // Issue #1 parked three articles on this system to prove the plumbing;
+      // they were a reading queue, which is ephemeral and already has the
+      // Current Source primitive. They are retired. What stays is the system
+      // that runs the work, and the map that makes its hardest question
+      // thinkable.
       planets: [
         {
           id: 'ais-grantmaking-os',
@@ -224,34 +230,16 @@ const aiSafety: Region = {
           blurb: 'The working system behind how grants get considered.',
         },
         {
-          id: 'ais-grantmaker-bottleneck',
-          label: 'AI safety is extremely bottlenecked on grantmakers',
-          shortLabel: 'The grantmaker bottleneck',
-          type: 'resource',
-          href: 'https://forum.effectivealtruism.org/posts/B6d8Wzk4gNzHsXvdi/ai-safety-is-extremely-bottlenecked-on-grantmakers',
-          offset: [-96, 30, -12],
+          id: 'ais-power-map',
+          label: 'AI Safety Power Map',
+          type: 'map',
+          // A map inside a map, and deliberately not a cosmic one: a
+          // dependency question is better answered by a layered network than
+          // by another field of stars.
+          href: url('/universe/power-map'),
+          offset: [-78, 44, -14],
           blurb:
-            'The case that the scarce resource in AI safety funding is not money but people able to decide where it goes.',
-        },
-        {
-          id: 'ais-questions-before-a-grant',
-          label: 'Questions We Ask Ourselves Before Making a Grant',
-          shortLabel: 'Questions before a grant',
-          type: 'resource',
-          href: 'https://coefficientgiving.org/research/questions-we-ask-ourselves-before-making-a-grant/',
-          offset: [8, 84, 26],
-          blurb:
-            'A working checklist for interrogating a grant before it is made — the method, written down.',
-        },
-        {
-          id: 'ais-being-a-grantmaker',
-          label: "What it's like to be an AI safety grantmaker",
-          shortLabel: 'Being a grantmaker',
-          type: 'resource',
-          href: 'https://thirdthing.ai/p/what-its-like-to-be-an-ai-safety',
-          offset: [-40, -78, -6],
-          blurb:
-            'What the job actually involves day to day, and why the field needs more people doing it.',
+            'Who can enable, constrain, condition or delay a frontier decision — and which of them sit on more than one path at once.',
         },
       ],
     },

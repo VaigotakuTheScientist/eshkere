@@ -1,0 +1,1039 @@
+---
+/**
+ * AI Safety Power Map — the first non-cosmic child map inside Universe.
+ *
+ * Map of Maps means map → map, not galaxy → smaller galaxy. The AI Safety
+ * galaxy stays cosmic; this question is a dependency question, so it gets a
+ * layered dependency network instead. Nothing in the Three.js renderer is
+ * touched, and nothing here knows the cosmic map exists.
+ *
+ * The server renders the whole snapshot as a plain list. That list is the map
+ * without a script — real, readable and in the tab order — and it is what the
+ * network is drawn *from*, so the two cannot describe different graphs.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageHero from '../../components/PageHero.astro';
+import { url } from '../../lib/url';
+import { ARENAS } from '../../lib/power-map/layout';
+import { lenses } from '../../lib/power-map/lenses';
+import {
+  actorById,
+  actors,
+  relationships,
+  SNAPSHOT_DATE,
+  type Arena,
+} from '../../lib/power-map/model';
+
+const byArena = (arena: Arena) => actors.filter((actor) => actor.arena === arena);
+const named = (id: string) => actorById.get(id)?.shortLabel ?? actorById.get(id)?.label ?? id;
+
+/**
+ * Actors the curated relationship set actually reaches. The rest are named
+ * honestly as gaps: the snapshot's edge coverage is incomplete, and inventing
+ * dependencies to tidy the picture would be the one unforgivable thing a map
+ * like this could do.
+ */
+const connected = new Set(relationships.flatMap((edge) => [edge.from, edge.to]));
+---
+
+<BaseLayout
+  title="AI Safety Power Map"
+  description="A layered dependency map of the actors who can materially enable, constrain, condition or delay frontier AI decisions — one curated public-safe snapshot, seen through several lenses."
+>
+  <PageHero
+    eyebrow="Universe · AI Safety"
+    title="AI Safety Power Map"
+    lead="Who could materially enable, constrain, condition or delay a frontier lab's next major decision — and which of them sit on more than one path at once."
+  />
+
+  <section class="section pm" data-power-map>
+    <div class="container">
+      <div class="pm__intro">
+        <p class="pm__lead">
+          One curated snapshot of decision centres and typed dependencies, drawn as an authored
+          layered network. Authority pushes down onto the developers; everything below them is a
+          supply chain pushing up.
+        </p>
+        <p class="pm__caveat">
+          Research snapshot of {SNAPSHOT_DATE}. Roles are stated as of that date, not as timeless
+          facts, and tiers are provisional working judgements rather than measurements.
+        </p>
+      </div>
+
+      <div class="pm__controls" data-pm-controls hidden>
+        <div class="pm__lenses" role="radiogroup" aria-label="Lens">
+          {
+            lenses.map((lens, index) => (
+              <button
+                class="pm__lens"
+                type="button"
+                role="radio"
+                aria-checked={index === 0 ? 'true' : 'false'}
+                data-pm-lens={lens.id}
+              >
+                {lens.label}
+              </button>
+            ))
+          }
+        </div>
+        <p class="pm__purpose" data-pm-purpose aria-live="polite"></p>
+      </div>
+
+      <div class="pm__body">
+        <div class="pm__stage" data-pm-stage hidden>
+          <svg class="pm__edges" data-pm-edges aria-hidden="true" preserveAspectRatio="none"></svg>
+          <div class="pm__nodes" data-pm-nodes></div>
+        </div>
+
+        <aside class="pm__detail panel" data-pm-detail hidden aria-live="polite">
+          <p class="pm__detail-empty" data-pm-detail-empty>
+            Select an actor to see why it is on the map, what it can actually do, and what it
+            depends on.
+          </p>
+          <div class="pm__detail-body" data-pm-detail-body hidden></div>
+        </aside>
+      </div>
+
+      <!--
+        The map as text. Always built, always accurate, and the only version
+        that exists when the renderer cannot run. The script hides it once the
+        network is on screen, and it stays reachable behind a disclosure so
+        the whole snapshot can still be read straight through.
+      -->
+      <div class="pm__index" data-pm-index>
+        <h2 class="pm__index-heading">The snapshot in full</h2>
+        {
+          ARENAS.map((arena) =>
+            byArena(arena.id).length > 0 ? (
+              <section class="pm__index-arena">
+                <h3>{arena.label}</h3>
+                <ul>
+                  {byArena(arena.id).map((actor) => (
+                    <li>
+                      <strong>{actor.label}</strong>
+                      <span class="pm__index-meta">
+                        {' '}
+                        — {actor.type.replace('-', ' ')} · {actor.tier.replace('-', ' ')}
+                        {actor.parent && <> · inside {named(actor.parent)}</>}
+                      </span>
+                      <p>{actor.rationale}</p>
+                      <p class="pm__index-levers">
+                        Power levers: {actor.powerLevers.join('; ')}.
+                      </p>
+                      {!connected.has(actor.id) && (
+                        <p class="pm__index-gap">
+                          No curated dependencies yet — relationship coverage in this snapshot is
+                          deliberately incomplete rather than inferred.
+                        </p>
+                      )}
+                      {actor.sources.length > 0 && (
+                        <p class="pm__index-sources">
+                          Public sources:{' '}
+                          {actor.sources.map((source, index) => (
+                            <>
+                              {index > 0 && ', '}
+                              <a href={source.url} target="_blank" rel="noopener noreferrer">
+                                {source.label}
+                              </a>
+                            </>
+                          ))}
+                        </p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null
+          )
+        }
+        <section class="pm__index-arena">
+          <h3>Typed dependencies</h3>
+          <ul>
+            {
+              relationships.map((edge) => (
+                <li>
+                  <strong>
+                    {named(edge.from)} → {named(edge.to)}
+                  </strong>
+                  <span class="pm__index-meta">
+                    {' '}
+                    — {edge.type} · {edge.strength} · {edge.confidence} confidence
+                  </span>
+                  <p>{edge.rationale}</p>
+                  {edge.sources.length > 0 && (
+                    <p class="pm__index-sources">
+                      Evidence:{' '}
+                      {edge.sources.map((source, index) => (
+                        <>
+                          {index > 0 && ', '}
+                          <a href={source.url} target="_blank" rel="noopener noreferrer">
+                            {source.label}
+                          </a>
+                          {source.note && <> — {source.note}</>}
+                        </>
+                      ))}
+                    </p>
+                  )}
+                </li>
+              ))
+            }
+          </ul>
+        </section>
+      </div>
+
+      <p class="pm__back">
+        <a class="arrow-link" href={url('/portfolio/grantmaking-os')}>Grantmaking OS</a>
+      </p>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { place } from '../../lib/power-map/layout';
+  import {
+    DEFAULT_LENS,
+    initialExpansion,
+    lensById,
+    resolve,
+    counterpart,
+    type LensId,
+  } from '../../lib/power-map/lenses';
+  import { actorById, childrenOf, relationships, type Actor } from '../../lib/power-map/model';
+
+  const root = document.querySelector<HTMLElement>('[data-power-map]');
+
+  if (root) {
+    const controls = root.querySelector<HTMLElement>('[data-pm-controls]')!;
+    const stage = root.querySelector<HTMLElement>('[data-pm-stage]')!;
+    const edges = root.querySelector<SVGSVGElement>('[data-pm-edges]')!;
+    const nodes = root.querySelector<HTMLElement>('[data-pm-nodes]')!;
+    const detail = root.querySelector<HTMLElement>('[data-pm-detail]')!;
+    const detailEmpty = root.querySelector<HTMLElement>('[data-pm-detail-empty]')!;
+    const detailBody = root.querySelector<HTMLElement>('[data-pm-detail-body]')!;
+    const purpose = root.querySelector<HTMLElement>('[data-pm-purpose]')!;
+    const index = root.querySelector<HTMLElement>('[data-pm-index]')!;
+
+    // The text version was the whole page until this point. Now it becomes the
+    // appendix, and the network takes over.
+    controls.hidden = false;
+    stage.hidden = false;
+    detail.hidden = false;
+    index.classList.add('pm__index--secondary');
+
+    let lens: LensId = DEFAULT_LENS;
+    let expanded = initialExpansion(lens);
+    let selected: string | null = null;
+
+    /** Row height in the drawn network, in pixels. */
+    const ROW = 132;
+    /** How far a crowded row's actors step off its line. */
+    const LANE = 26;
+
+    const yOf = (entry: { row: number; lane: number }) =>
+      entry.row * ROW + ROW / 2 + entry.lane * LANE;
+
+    function render() {
+      const selection = resolve(lens, expanded);
+      const placement = place(selection.actors);
+
+      stage.style.setProperty('--pm-rows', String(placement.rows.length));
+      stage.style.height = `${placement.rows.length * ROW}px`;
+
+      // Bands and their actors are appended together, so the reading order —
+      // and therefore the tab order, and the phone layout — is arena, then
+      // what is in it. Absolute positioning ignores DOM order on desktop.
+      nodes.replaceChildren();
+      placement.rows.forEach((arena, row) => {
+        const band = document.createElement('p');
+        band.className = 'pm__band';
+        band.style.top = `${row * ROW}px`;
+        band.innerHTML = `<span>${arena.label}</span><em>${arena.note}</em>`;
+        nodes.append(band);
+        for (const entry of placement.placed.filter((candidate) => candidate.row === row)) {
+          nodes.append(nodeElement(entry));
+        }
+      });
+
+      drawEdges(selection.edges, placement);
+      if (selected && !placement.byId.has(selected)) selected = null;
+      renderDetail();
+      highlight();
+    }
+
+    /**
+     * A node is two controls in one box: its name selects it, and its `+`
+     * expands it. They are separate buttons because they do separate things —
+     * one changes what the panel is about, the other changes what the map
+     * contains — and because clicking a selected node to deselect it must not
+     * be the only way to reach its expander.
+     */
+    function nodeElement(entry: ReturnType<typeof place>['placed'][number]) {
+      const actor = entry.actor;
+      const box = document.createElement('div');
+      box.className = `pm__node pm__node--${actor.type} pm__node--${actor.tier}`;
+      box.dataset.pmNode = actor.id;
+      box.dataset.pmRow = String(entry.row);
+      box.dataset.pmLane = String(entry.lane);
+      box.style.setProperty('--pm-x', `${entry.t * 100}%`);
+      box.style.setProperty('--pm-y', `${yOf(entry)}px`);
+
+      const name = document.createElement('button');
+      name.type = 'button';
+      name.className = 'pm__node-name';
+      name.textContent = actor.shortLabel ?? actor.label;
+      name.setAttribute('aria-pressed', String(selected === actor.id));
+      if (actor.shortLabel) name.setAttribute('aria-label', actor.label);
+      name.addEventListener('click', () => select(actor.id));
+      box.append(name);
+
+      const children = childrenOf.get(actor.id);
+      if (children) {
+        const open = expanded.has(actor.id);
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'pm__node-open';
+        toggle.dataset.pmExpand = actor.id;
+        toggle.textContent = open ? '−' : '+';
+        toggle.setAttribute('aria-expanded', String(open));
+        toggle.setAttribute(
+          'aria-label',
+          `${open ? 'Collapse' : 'Expand'} ${actor.label} — ${children.length} internal ${
+            children.length === 1 ? 'node' : 'nodes'
+          }`
+        );
+        toggle.addEventListener('click', () => toggleExpansion(actor.id));
+        box.append(toggle);
+      }
+
+      return box;
+    }
+
+    function toggleExpansion(id: string) {
+      if (expanded.has(id)) expanded.delete(id);
+      else expanded.add(id);
+      render();
+      nodes.querySelector<HTMLElement>(`[data-pm-node="${id}"] [data-pm-expand]`)?.focus();
+    }
+
+    function drawEdges(
+      visible: ReturnType<typeof resolve>['edges'],
+      placement: ReturnType<typeof place>
+    ) {
+      const width = stage.clientWidth || 1;
+      const height = placement.rows.length * ROW;
+      edges.setAttribute('viewBox', `0 0 ${width} ${height}`);
+      edges.setAttribute('width', String(width));
+      edges.setAttribute('height', String(height));
+      edges.replaceChildren();
+
+      for (const display of visible) {
+        const from = placement.byId.get(display.from);
+        const to = placement.byId.get(display.to);
+        if (!from || !to) continue;
+        const x1 = from.t * width;
+        const y1 = yOf(from);
+        const x2 = to.t * width;
+        const y2 = yOf(to);
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        if (from.row === to.row) {
+          // Two actors in the same arena — ASML into TSMC into NVIDIA. A
+          // straight line here would run through the boxes between them, so
+          // the supply chain bows out below its own row instead.
+          const bow = Math.min(ROW * 0.38, Math.abs(x2 - x1) * 0.28);
+          path.setAttribute(
+            'd',
+            `M ${x1} ${y1} C ${x1} ${y1 + bow}, ${x2} ${y2 + bow}, ${x2} ${y2}`
+          );
+        } else {
+          // A control point on each end pulled to the midpoint keeps a long
+          // edge legible without letting it wander across the whole map.
+          path.setAttribute(
+            'd',
+            `M ${x1} ${y1} C ${x1} ${(y1 + y2) / 2}, ${x2} ${(y1 + y2) / 2}, ${x2} ${y2}`
+          );
+        }
+        path.setAttribute(
+          'class',
+          `pm__edge pm__edge--${display.edge.strength}${display.inherited ? ' pm__edge--rolled' : ''}`
+        );
+        path.dataset.pmEdge = display.edge.id;
+        path.dataset.pmFrom = display.from;
+        path.dataset.pmTo = display.to;
+        edges.append(path);
+      }
+    }
+
+    /** Light the selected actor's own dependencies, and dim the rest. */
+    function highlight() {
+      stage.classList.toggle('is-focused', selected !== null);
+      for (const path of edges.querySelectorAll<SVGPathElement>('[data-pm-edge]')) {
+        const touches = path.dataset.pmFrom === selected || path.dataset.pmTo === selected;
+        path.classList.toggle('is-lit', touches);
+      }
+      const lit = new Set<string>();
+      for (const path of edges.querySelectorAll<SVGPathElement>('[data-pm-edge].is-lit')) {
+        lit.add(path.dataset.pmFrom!);
+        lit.add(path.dataset.pmTo!);
+      }
+      for (const box of nodes.querySelectorAll<HTMLElement>('[data-pm-node]')) {
+        const id = box.dataset.pmNode!;
+        const linked = id === selected || lit.has(id);
+        box.classList.toggle('is-linked', selected !== null && linked);
+        box.classList.toggle('is-selected', id === selected);
+        box
+          .querySelector('.pm__node-name')
+          ?.setAttribute('aria-pressed', String(id === selected));
+      }
+    }
+
+    function select(id: string | null) {
+      selected = selected === id ? null : id;
+      renderDetail();
+      highlight();
+    }
+
+    function renderDetail() {
+      const actor = selected ? actorById.get(selected) : undefined;
+      detailEmpty.hidden = !!actor;
+      detailBody.hidden = !actor;
+      if (!actor) {
+        detailBody.replaceChildren();
+        return;
+      }
+
+      const parent = actor.parent ? actorById.get(actor.parent) : undefined;
+      const own = relationships.filter(
+        (edge) => edge.from === actor.id || edge.to === actor.id
+      );
+      const opens = childrenOf.get(actor.id);
+
+      const esc = (value: string) =>
+        value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+      detailBody.innerHTML = `
+        <p class="pm__detail-kind">${esc(actor.type.replace('-', ' '))} · ${esc(
+          actor.tier.replace('-', ' ')
+        )}${parent ? ` · inside ${esc(parent.shortLabel ?? parent.label)}` : ''}</p>
+        <h2 class="pm__detail-title">${esc(actor.label)}</h2>
+        <p class="pm__detail-rationale">${esc(actor.rationale)}</p>
+        <h3>Power levers</h3>
+        <ul class="pm__detail-levers">
+          ${actor.powerLevers.map((lever) => `<li>${esc(lever)}</li>`).join('')}
+        </ul>
+        <h3>Dependencies <span>(${own.length})</span></h3>
+        <ul class="pm__detail-edges">
+          ${own
+            .map((edge) => {
+              const other = counterpart(edge, actor.id);
+              const direction = edge.from === actor.id ? '→' : '←';
+              return `<li>
+                <button type="button" data-pm-goto="${other?.id ?? ''}">
+                  <span class="pm__detail-edge-type">${esc(edge.type)}</span>
+                  <span class="pm__detail-edge-to">${direction} ${esc(
+                    other?.shortLabel ?? other?.label ?? edge.to
+                  )}</span>
+                  <span class="pm__detail-edge-why">${esc(edge.rationale)}</span>
+                </button>
+                <p class="pm__detail-edge-evidence" data-pm-edge-evidence="${esc(edge.id)}">
+                  <span>${esc(edge.confidence)} confidence</span>
+                  ${edge.sources
+                    .map(
+                      (source) =>
+                        `<a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer"${
+                          source.note ? ` title="${esc(source.note)}"` : ''
+                        }>${esc(source.label)} ↗</a>`
+                    )
+                    .join('')}
+                </p>
+              </li>`;
+            })
+            .join('')}
+        </ul>
+        ${
+          own.length === 0
+            ? `<p class="pm__detail-gap">No curated dependencies for this actor yet — relationship
+               coverage in the snapshot is deliberately incomplete rather than inferred.</p>`
+            : ''
+        }
+        ${
+          actor.sources.length > 0
+            ? `<h3>Public sources</h3>
+               <p class="pm__detail-sources">${actor.sources
+                 .map(
+                   (source) =>
+                     `<a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">${esc(
+                       source.label
+                     )} ↗</a>`
+                 )
+                 .join(' · ')}</p>`
+            : ''
+        }
+        ${
+          opens
+            ? `<p class="pm__detail-expand"><button type="button" data-pm-toggle="${actor.id}">
+                 ${expanded.has(actor.id) ? 'Collapse' : 'Expand'} ${esc(
+                   actor.shortLabel ?? actor.label
+                 )} — ${opens.length} internal ${opens.length === 1 ? 'node' : 'nodes'}
+               </button></p>`
+            : ''
+        }
+      `;
+
+      detailBody
+        .querySelector<HTMLButtonElement>('[data-pm-toggle]')
+        ?.addEventListener('click', () => toggleExpansion(actor.id));
+
+      for (const jump of detailBody.querySelectorAll<HTMLButtonElement>('[data-pm-goto]')) {
+        jump.addEventListener('click', () => {
+          const id = jump.dataset.pmGoto;
+          if (id) select(id);
+        });
+      }
+    }
+
+    // --- lens switching
+    for (const button of controls.querySelectorAll<HTMLButtonElement>('[data-pm-lens]')) {
+      button.addEventListener('click', () => {
+        lens = button.dataset.pmLens as LensId;
+        expanded = initialExpansion(lens);
+        selected = null;
+        for (const other of controls.querySelectorAll<HTMLElement>('[data-pm-lens]')) {
+          other.setAttribute('aria-checked', String(other === button));
+        }
+        purpose.textContent = lensById.get(lens)?.purpose ?? '';
+        render();
+      });
+      // Arrow keys move through a radiogroup, as they should.
+      button.addEventListener('keydown', (event) => {
+        const order = [...controls.querySelectorAll<HTMLButtonElement>('[data-pm-lens]')];
+        const step = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 0;
+        if (!step) return;
+        event.preventDefault();
+        const next = order[(order.indexOf(button) + step + order.length) % order.length]!;
+        next.focus();
+        next.click();
+      });
+    }
+
+    root.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && selected) {
+        event.preventDefault();
+        select(null);
+      }
+    });
+
+    let queued = false;
+    window.addEventListener(
+      'resize',
+      () => {
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(() => {
+          queued = false;
+          render();
+        });
+      },
+      { passive: true }
+    );
+
+    purpose.textContent = lensById.get(lens)?.purpose ?? '';
+    render();
+  }
+</script>
+
+<style is:global>
+  /*
+    Global on purpose. Every node, band and edge in this map is created by the
+    renderer, and scoped styles only reach elements that were in the template.
+    Everything here is namespaced under .pm__ instead.
+  */
+  .pm__intro {
+    max-width: var(--container-narrow);
+  }
+
+  .pm__lead {
+    font-size: var(--text-lg);
+    color: var(--ink-soft);
+  }
+
+  .pm__caveat {
+    margin-top: 0.6rem;
+    font-size: var(--text-xs);
+    color: var(--ink-faint);
+  }
+
+  /* ----------------------------------------------------------- controls */
+  .pm__controls {
+    margin-top: 2.5rem;
+  }
+
+  .pm__lenses {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .pm__lens {
+    padding: 0.4rem 0.9rem;
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: var(--ink-faint);
+    font: inherit;
+    font-size: var(--text-xs);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color var(--speed-quick) var(--ease-out);
+  }
+
+  .pm__lens:hover,
+  .pm__lens:focus-visible {
+    color: var(--ink);
+  }
+
+  .pm__lens[aria-checked='true'] {
+    border-color: var(--line-strong);
+    background: rgba(157, 107, 255, 0.16);
+    color: var(--ink);
+  }
+
+  .pm__purpose {
+    margin-top: 0.8rem;
+    min-height: 2.4em;
+    max-width: 54ch;
+    font-size: var(--text-sm);
+    color: var(--ink-faint);
+  }
+
+  /* -------------------------------------------------------------- stage */
+  .pm__body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 21rem;
+    gap: 2rem;
+    align-items: start;
+    margin-top: 1.5rem;
+  }
+
+  .pm__stage {
+    position: relative;
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius);
+    background: linear-gradient(180deg, rgba(157, 107, 255, 0.06), rgba(5, 5, 8, 0));
+    overflow: hidden;
+  }
+
+  .pm__edges {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  .pm__edge {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.16);
+    stroke-width: 1;
+    transition: stroke var(--speed-quick) var(--ease-out);
+  }
+
+  .pm__edge--major {
+    stroke: rgba(157, 107, 255, 0.42);
+    stroke-width: 1.4;
+  }
+
+  /* An edge that actually belongs to something folded inside one of its
+     endpoints. Dashed, because it is a view-level simplification. */
+  .pm__edge--rolled {
+    stroke-dasharray: 3 4;
+  }
+
+  .pm__stage.is-focused .pm__edge {
+    stroke: rgba(255, 255, 255, 0.06);
+  }
+
+  .pm__stage.is-focused .pm__edge.is-lit {
+    stroke: var(--cyan);
+    stroke-width: 1.8;
+  }
+
+  .pm__nodes {
+    position: relative;
+    height: 100%;
+  }
+
+  .pm__band {
+    position: absolute;
+    inset-inline: 0;
+    display: flex;
+    justify-content: space-between;
+    padding: 0.45rem 0.9rem 0;
+    border-top: 1px solid var(--line-soft);
+    color: var(--ink-faint);
+    font-family: var(--font-pixel);
+    font-size: 0.52rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    pointer-events: none;
+  }
+
+  .pm__band em {
+    font-style: normal;
+    opacity: 0.6;
+  }
+
+  .pm__node {
+    position: absolute;
+    left: var(--pm-x);
+    top: var(--pm-y);
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: stretch;
+    max-width: 11rem;
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius-sm);
+    background: var(--indigo-panel);
+    transition: border-color var(--speed-quick) var(--ease-out);
+  }
+
+  /* A staggered row is a crowded row, so its boxes give up some width too. */
+  .pm__nodes:has(.pm__node) .pm__node[data-pm-lane='-1'],
+  .pm__nodes:has(.pm__node) .pm__node[data-pm-lane='1'] {
+    max-width: 8.5rem;
+  }
+
+  .pm__node:hover,
+  .pm__node:focus-within {
+    border-color: var(--line-strong);
+  }
+
+  .pm__node.is-selected {
+    border-color: var(--cyan);
+    box-shadow: var(--glow-cyan);
+  }
+
+  .pm__node-name {
+    padding: 0.4rem 0.7rem;
+    border: 0;
+    background: transparent;
+    color: var(--ink-soft);
+    font: inherit;
+    font-size: var(--text-xs);
+    line-height: 1.25;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .pm__node:hover .pm__node-name,
+  .pm__node.is-selected .pm__node-name,
+  .pm__node-name:focus-visible {
+    color: var(--ink);
+  }
+
+  .pm__stage.is-focused .pm__node {
+    opacity: 0.42;
+  }
+
+  .pm__stage.is-focused .pm__node.is-linked {
+    opacity: 1;
+  }
+
+  /* Type is carried by a rule, not by colour alone. */
+  .pm__node--person {
+    border-radius: var(--radius-pill);
+  }
+
+  .pm__node--person,
+  .pm__node--governance-body {
+    border-left: 2px solid var(--lime);
+  }
+
+  .pm__node--state,
+  .pm__node--government-body {
+    border-left: 2px solid var(--peach);
+  }
+
+  .pm__node--infrastructure {
+    border-left: 2px solid var(--cyan);
+  }
+
+  .pm__node--tier-1 {
+    background: var(--indigo-raised);
+  }
+
+  .pm__node-open {
+    padding: 0 0.5rem;
+    border: 0;
+    border-left: 1px solid var(--line-soft);
+    background: transparent;
+    color: var(--violet);
+    font-family: var(--font-pixel);
+    font-size: 0.7rem;
+    cursor: pointer;
+  }
+
+  .pm__node-open:hover,
+  .pm__node-open:focus-visible {
+    color: var(--ink);
+    background: rgba(157, 107, 255, 0.16);
+  }
+
+  /* ------------------------------------------------------------- detail */
+  .pm__detail {
+    position: sticky;
+    top: 6rem;
+    padding: 1.2rem 1.3rem;
+    font-size: var(--text-sm);
+  }
+
+  .pm__detail-empty {
+    color: var(--ink-faint);
+  }
+
+  .pm__detail .pm__detail-kind {
+    color: var(--cyan);
+    font-family: var(--font-pixel);
+    font-size: 0.55rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .pm__detail .pm__detail-title {
+    margin: 0.4rem 0 0.6rem;
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    line-height: 1.15;
+  }
+
+  .pm__detail .pm__detail-rationale {
+    color: var(--ink-soft);
+  }
+
+  .pm__detail h3 {
+    margin: 1.2rem 0 0.4rem;
+    color: var(--ink-faint);
+    font-family: var(--font-pixel);
+    font-size: 0.55rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .pm__detail h3 span {
+    opacity: 0.6;
+  }
+
+  .pm__detail .pm__detail-levers {
+    margin: 0;
+    padding-left: 1.1rem;
+    color: var(--ink-soft);
+  }
+
+  .pm__detail .pm__detail-edges {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .pm__detail .pm__detail-edges button {
+    display: grid;
+    gap: 0.1rem;
+    width: 100%;
+    padding: 0.45rem 0;
+    border: 0;
+    border-top: 1px solid var(--line-soft);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .pm__detail .pm__detail-edges button:hover .pm__detail-edge-to,
+  .pm__detail .pm__detail-edges button:focus-visible .pm__detail-edge-to {
+    color: var(--cyan);
+  }
+
+  .pm__detail .pm__detail-edge-type {
+    color: var(--violet);
+    font-family: var(--font-pixel);
+    font-size: 0.5rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .pm__detail .pm__detail-edge-to {
+    color: var(--ink);
+  }
+
+  .pm__detail .pm__detail-edge-why {
+    color: var(--ink-faint);
+    font-size: var(--text-xs);
+  }
+
+  .pm__detail .pm__detail-sources a {
+    color: var(--cyan);
+  }
+
+  /* Evidence for a single dependency, sitting under the dependency itself so
+     a line on the map can be inspected as the claim it is. */
+  .pm__detail .pm__detail-edge-evidence {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.1rem 0.6rem;
+    margin: 0 0 0.5rem;
+    font-size: var(--text-xs);
+  }
+
+  .pm__detail .pm__detail-edge-evidence span {
+    color: var(--ink-faint);
+    font-family: var(--font-pixel);
+    font-size: 0.5rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .pm__detail .pm__detail-edge-evidence a {
+    color: var(--cyan);
+  }
+
+  .pm__detail .pm__detail-gap {
+    color: var(--ink-faint);
+    font-size: var(--text-xs);
+  }
+
+  .pm__detail .pm__detail-expand button {
+    margin-top: 1rem;
+    padding: 0.45rem 0.8rem;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+    font-size: var(--text-xs);
+    cursor: pointer;
+  }
+
+  /* -------------------------------------------------------------- index */
+  .pm__index {
+    margin-top: 3rem;
+  }
+
+  .pm__index-heading {
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+  }
+
+  .pm__index-arena h3 {
+    margin-top: 1.6rem;
+    color: var(--cyan);
+    font-family: var(--font-pixel);
+    font-size: 0.6rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .pm__index-arena ul {
+    margin: 0.6rem 0 0;
+    padding-left: 1.1rem;
+    display: grid;
+    gap: 0.9rem;
+  }
+
+  .pm__index-arena p {
+    margin: 0.2rem 0 0;
+    max-width: 62ch;
+    font-size: var(--text-sm);
+    color: var(--ink-soft);
+  }
+
+  .pm__index-meta,
+  .pm__index-levers,
+  .pm__index-sources,
+  .pm__index-gap {
+    color: var(--ink-faint);
+    font-size: var(--text-xs);
+  }
+
+  .pm__index-sources a {
+    color: var(--cyan);
+  }
+
+  /* Once the network is drawn, the full text is an appendix rather than the
+     main event — still present, still in the tab order, just folded down. */
+  .pm__index--secondary {
+    margin-top: 4rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--line-soft);
+    opacity: 0.72;
+  }
+
+  .pm__back {
+    margin-top: 2.5rem;
+  }
+
+  /* ----------------------------------------------------------- narrower */
+  @media (max-width: 60rem) {
+    .pm__body {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .pm__detail {
+      position: static;
+    }
+  }
+
+  /*
+    On a phone the network stops being a network. Shrinking a layered graph
+    to 360px produces something unreadable rather than something small, so the
+    arenas become stacked bands of chips: the same actors, the same order, the
+    same detail panel — dependencies are read there instead of traced.
+  */
+  @media (max-width: 48rem) {
+    .pm__edges {
+      display: none;
+    }
+
+    .pm__stage {
+      height: auto !important;
+      padding: 0.5rem 0.9rem 1.2rem;
+    }
+
+    .pm__nodes {
+      display: grid;
+      gap: 0.5rem;
+      height: auto;
+    }
+
+    .pm__band {
+      position: static;
+      margin-top: 1.1rem;
+      padding-inline: 0;
+    }
+
+    .pm__node {
+      position: static;
+      transform: none;
+      max-width: none;
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .pm__node-name {
+      flex: 1;
+    }
+
+    .pm__stage.is-focused .pm__node {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pm__lens,
+    .pm__node,
+    .pm__edge {
+      transition: none;
+    }
+  }
+</style>
