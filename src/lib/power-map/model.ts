@@ -558,7 +558,7 @@ export const actors: Actor[] = [
     rationale:
       'Site-specific generation and storage for frontier-scale compute. Little global agenda power, considerable leverage over one build.',
     powerLevers: ['Generation and storage at a specific site'],
-    sources: [{ label: 'sbenergycorp.com', url: 'https://www.sbenergycorp.com/' }],
+    sources: [{ label: 'sbenergy.com', url: 'https://www.sbenergy.com/' }],
   },
   {
     id: 'entergy-louisiana',
@@ -626,7 +626,7 @@ export const relationships: Relationship[] = [
       {
         label: 'OpenAI — Our structure',
         url: 'https://openai.com/our-structure/',
-        note: 'OpenAI\'s own description of who appoints and oversees whom.',
+        note: 'OpenAI\'s own account of its structure, in which the Foundation governs the Group.',
       },
     ],
   },
@@ -661,7 +661,7 @@ export const relationships: Relationship[] = [
       {
         label: 'OpenAI — Our structure',
         url: 'https://openai.com/our-structure/',
-        note: 'Places the executive under the board in OpenAI\'s own account of itself.',
+        note: 'OpenAI\'s own account of where executive authority sits and what the Foundation retains over it.',
       },
     ],
   },
@@ -706,13 +706,15 @@ export const relationships: Relationship[] = [
     type: 'executive authority',
     levers: ['deployment', 'capital / ownership'],
     strength: 'major',
-    rationale: 'Controlling authority as of the snapshot date.',
+    rationale:
+      'Controlling authority as of the snapshot date, held through a dual-class structure rather than through the chief-executive role alone.',
     confidence: 'high',
     sources: [
       {
-        label: 'Meta — Leadership',
-        url: 'https://about.meta.com/company-info/',
-        note: 'Meta\'s own company information, including its leadership.',
+        label: 'Meta Platforms — Annual report on Form 10-K (filed 2026-01-29)',
+        url: 'https://www.sec.gov/Archives/edgar/data/1326801/000162828026003942/meta-20251231.htm',
+        note:
+          'Meta\'s own filing: Zuckerberg "is able to exercise voting rights with respect to a majority of the voting power of our outstanding capital stock and therefore has the ability to control the outcome of all matters submitted to our stockholders for approval". Establishes control, not merely the job title.',
       },
     ],
   },
@@ -723,13 +725,15 @@ export const relationships: Relationship[] = [
     type: 'executive authority',
     levers: ['capital / ownership', 'physical infrastructure'],
     strength: 'major',
-    rationale: 'Controlling authority as of the snapshot date.',
-    confidence: 'high',
+    rationale:
+      'Founder and chief executive as of the snapshot date. The company is private, so the ownership and voting structure behind that authority is not publicly inspectable and is not claimed here.',
+    confidence: 'medium',
     sources: [
       {
-        label: 'xAI — About',
-        url: 'https://x.ai/about',
-        note: 'The organisation\'s own account of who runs it.',
+        label: 'SpaceXAI — Company',
+        url: 'https://x.ai/company',
+        note:
+          'The organisation\'s own company page, naming its founder and chief executive. It establishes the executive role; unlike a listed company there is no filing establishing voting control, which is why this edge is stated at the narrower level.',
       },
     ],
   },
@@ -744,9 +748,9 @@ export const relationships: Relationship[] = [
     confidence: 'high',
     sources: [
       {
-        label: 'NVIDIA — Corporate leadership',
-        url: 'https://www.nvidia.com/en-us/about-nvidia/board-of-directors/',
-        note: 'NVIDIA\'s own board and leadership listing.',
+        label: 'NVIDIA — Jensen Huang, Founder, President and CEO',
+        url: 'https://nvidianews.nvidia.com/bios/jensen-huang',
+        note: 'NVIDIA\'s own executive biography.',
       },
     ],
   },
@@ -758,13 +762,14 @@ export const relationships: Relationship[] = [
     type: 'cloud / compute',
     levers: ['compute allocation'],
     strength: 'major',
-    rationale: 'Training and serving capacity for frontier runs.',
+    rationale:
+      'The primary cloud partner for frontier training and serving, which makes a commercial arrangement into a dependency on someone else\'s capacity plan.',
     confidence: 'high',
     sources: [
       {
-        label: 'Azure OpenAI Service',
-        url: 'https://azure.microsoft.com/en-us/products/ai-services/openai-service',
-        note: 'Microsoft selling OpenAI models as an Azure service — the commercial form the compute relationship takes.',
+        label: 'Microsoft — The next phase of the Microsoft/OpenAI partnership',
+        url: 'https://blogs.microsoft.com/blog/2026/04/27/the-next-phase-of-the-microsoft-openai-partnership/',
+        note: 'Microsoft\'s own statement that it remains OpenAI\'s primary cloud partner and that OpenAI products ship first on Azure.',
       },
     ],
   },
@@ -779,9 +784,9 @@ export const relationships: Relationship[] = [
     confidence: 'high',
     sources: [
       {
-        label: 'Anthropic models on Amazon Bedrock',
-        url: 'https://aws.amazon.com/bedrock/anthropic/',
-        note: 'AWS hosting and serving Anthropic models on its own infrastructure.',
+        label: 'AWS — Trainium customers',
+        url: 'https://aws.amazon.com/ai/machine-learning/trainium/customers/',
+        note: 'AWS\'s own customer page, carrying Anthropic on training and serving Claude on Trainium.',
       },
     ],
   },
@@ -793,13 +798,13 @@ export const relationships: Relationship[] = [
     levers: ['compute allocation'],
     strength: 'major',
     rationale:
-      'A second cloud counterparty — and the reason this supplier sits on more than one frontier path at once.',
-    confidence: 'medium',
+      'A second cloud counterparty on a multi-year infrastructure agreement — and the reason this supplier sits on more than one frontier path at once.',
+    confidence: 'high',
     sources: [
       {
-        label: 'Amazon Bedrock — model catalogue',
-        url: 'https://aws.amazon.com/bedrock/',
-        note: 'AWS\'s own listing of the frontier models it serves, which is where a second-supplier claim can be checked.',
+        label: 'OpenAI — Amazon partnership',
+        url: 'https://openai.com/index/amazon-partnership/',
+        note: 'OpenAI\'s own announcement of a multi-year Amazon infrastructure agreement, including Trainium capacity.',
       },
     ],
   },
@@ -815,9 +820,10 @@ export const relationships: Relationship[] = [
     confidence: 'high',
     sources: [
       {
-        label: 'ASML — EUV lithography systems',
-        url: 'https://www.asml.com/en/products/euv-lithography-systems',
-        note: 'The product line leading-node manufacturing depends on, described by its only maker.',
+        label: 'ASML — EUV technology training centre in Taiwan',
+        url: 'https://www.asml.com/news/press-releases/2020/asml-unveils-euv-technology-training-center-in-taiwan',
+        note:
+          'ASML\'s own release, naming the counterparty rather than the product line: "In 2010, we shipped the first prototype EUV lithography system to TSMC… In 2017, we shipped the first production-ready system, the TWINSCAN NXE:3400, to TSMC." Dated 2020, so it establishes the supply relationship rather than current volumes.',
       },
     ],
   },
@@ -832,9 +838,9 @@ export const relationships: Relationship[] = [
     confidence: 'high',
     sources: [
       {
-        label: 'TSMC — official site',
-        url: 'https://www.tsmc.com/english',
-        note: 'The foundry\'s own description of its leading-node and advanced-packaging capacity.',
+        label: 'NVIDIA — Blackwell platform arrives',
+        url: 'https://nvidianews.nvidia.com/news/nvidia-blackwell-platform-arrives-to-power-a-new-era-of-computing',
+        note: 'NVIDIA\'s own launch release, stating Blackwell GPUs are manufactured on a custom TSMC 4NP process.',
       },
     ],
   },
@@ -849,9 +855,9 @@ export const relationships: Relationship[] = [
     confidence: 'high',
     sources: [
       {
-        label: 'SK hynix — HBM',
-        url: 'https://www.skhynix.com/',
-        note: 'The supplier\'s own account of its high-bandwidth memory products.',
+        label: 'NVIDIA — SK hynix AI factory',
+        url: 'https://nvidianews.nvidia.com/news/sk-hynix-ai-factory',
+        note: 'NVIDIA and SK hynix\'s own multiyear memory partnership announcement.',
       },
     ],
   },
@@ -866,9 +872,9 @@ export const relationships: Relationship[] = [
     confidence: 'high',
     sources: [
       {
-        label: 'NVIDIA — Data centre platform',
-        url: 'https://www.nvidia.com/en-us/data-center/',
-        note: 'The accelerator platform frontier training runs are built on.',
+        label: 'NVIDIA — Meta builds AI infrastructure with NVIDIA',
+        url: 'https://nvidianews.nvidia.com/news/meta-builds-ai-infrastructure-with-nvidia',
+        note: 'NVIDIA\'s own release on the Meta partnership, covering deployment of millions of Blackwell and Rubin GPUs.',
       },
     ],
   },
@@ -883,9 +889,9 @@ export const relationships: Relationship[] = [
     confidence: 'high',
     sources: [
       {
-        label: 'NVIDIA — Data centre platform',
-        url: 'https://www.nvidia.com/en-us/data-center/',
-        note: 'The accelerator platform frontier training runs are built on.',
+        label: 'NVIDIA — Spectrum-X networking for Colossus',
+        url: 'https://nvidianews.nvidia.com/news/spectrum-x-ethernet-networking-xai-colossus',
+        note: 'NVIDIA\'s own release describing Colossus as a 100,000-GPU system used to train Grok.',
       },
     ],
   },
@@ -897,13 +903,14 @@ export const relationships: Relationship[] = [
     type: 'energy / grid',
     levers: ['physical infrastructure', 'veto / delay'],
     strength: 'major',
-    rationale: 'Site generation and storage for frontier-scale compute.',
-    confidence: 'medium',
+    rationale:
+      'Selected to build and operate generation for a specific 1.2 GW frontier-scale site.',
+    confidence: 'high',
     sources: [
       {
-        label: 'SB Energy — official site',
-        url: 'https://www.sbenergycorp.com/',
-        note: 'The developer\'s own account of the generation and storage it builds for large loads.',
+        label: 'OpenAI — Stargate / SB Energy partnership',
+        url: 'https://openai.com/index/stargate-sb-energy-partnership/',
+        note: 'OpenAI\'s own announcement selecting SB Energy to build and operate its 1.2 GW Milam County site.',
       },
     ],
   },
@@ -914,13 +921,14 @@ export const relationships: Relationship[] = [
     type: 'energy / grid',
     levers: ['physical infrastructure', 'veto / delay'],
     strength: 'major',
-    rationale: 'Utility counterparty for a specific frontier-scale interconnection.',
-    confidence: 'medium',
+    rationale:
+      'The utility counterparty for a specific named frontier-scale site.',
+    confidence: 'high',
     sources: [
       {
-        label: 'Entergy Louisiana — official site',
-        url: 'https://www.entergy-louisiana.com/',
-        note: 'The utility on the other side of the interconnection, in its own words.',
+        label: 'Entergy — Entergy Louisiana to power Meta\'s Richland Parish data centre',
+        url: 'https://www.entergy.com/news/entergy-louisiana-power-meta-s-data-center-in-richland-parish',
+        note: 'Entergy\'s own news release naming Meta and the specific site it will power.',
       },
     ],
   },
@@ -931,13 +939,14 @@ export const relationships: Relationship[] = [
     type: 'energy / grid',
     levers: ['physical infrastructure'],
     strength: 'major',
-    rationale: 'Bulk power supply to a specific site.',
-    confidence: 'medium',
+    rationale:
+      'Bulk power supply to a specific site, under a board-approved firm power arrangement.',
+    confidence: 'high',
     sources: [
       {
-        label: 'Tennessee Valley Authority — official site',
-        url: 'https://www.tva.com/',
-        note: 'The federal power producer\'s own account of its supply role.',
+        label: 'TVA — Board approved resolutions',
+        url: 'https://www.tva.com/about-tva/our-leadership/board-of-directors/approved-resolutions',
+        note: 'TVA\'s own record of the board resolution approving a firm power arrangement above 100 MW for the xAI site.',
       },
     ],
   },
@@ -950,12 +959,12 @@ export const relationships: Relationship[] = [
     strength: 'major',
     rationale:
       'Local interconnection and permitting for the same site — little global power, decisive locally.',
-    confidence: 'medium',
+    confidence: 'high',
     sources: [
       {
-        label: 'Memphis Light, Gas and Water — official site',
-        url: 'https://www.mlgw.com/',
-        note: 'The municipal utility whose local interconnection and permitting decisions gate the site.',
+        label: 'MLGW — xAI',
+        url: 'https://www.mlgw.com/xai',
+        note: 'The utility\'s own published page on service and grid capacity for the xAI site.',
       },
     ],
   },
@@ -971,14 +980,14 @@ export const relationships: Relationship[] = [
     confidence: 'high',
     sources: [
       {
-        label: 'Commerce Control List — 15 CFR Part 774',
-        url: 'https://www.ecfr.gov/current/title-15/subtitle-B/chapter-VII/subchapter-C/part-774',
-        note: 'The regulation itself: the list that decides which items need a licence to export.',
+        label: 'BIS — Revision to License Review Policy for Advanced Computing Commodities (2026)',
+        url: 'https://www.federalregister.gov/documents/2026/01/15/2026-00789/revision-to-license-review-policy-for-advanced-computing-commodities',
+        note: 'The rule itself, which sets licence policy by naming NVIDIA H200-class accelerators and equivalents.',
       },
       {
-        label: 'Bureau of Industry and Security',
-        url: 'https://www.bis.gov/',
-        note: 'The administering agency.',
+        label: 'Commerce Control List — 15 CFR Part 774',
+        url: 'https://www.ecfr.gov/current/title-15/subtitle-B/chapter-VII/subchapter-C/part-774',
+        note: 'The standing list the licence requirement is drawn from.',
       },
     ],
   },
@@ -990,12 +999,12 @@ export const relationships: Relationship[] = [
     levers: ['regulation / coercion', 'deployment'],
     strength: 'supporting',
     rationale: 'General-purpose model obligations condition deployment into the EU.',
-    confidence: 'high',
+    confidence: 'medium',
     sources: [
       {
         label: 'Regulation (EU) 2024/1689 — the AI Act',
         url: 'https://eur-lex.europa.eu/eli/reg/2024/1689/oj',
-        note: 'The binding text, including the obligations that attach to general-purpose models.',
+        note: 'The binding text. It establishes obligations on providers of general-purpose models as a class rather than naming this provider, so the edge is stated at that level.',
       },
     ],
   },
@@ -1007,12 +1016,12 @@ export const relationships: Relationship[] = [
     levers: ['regulation / coercion', 'deployment'],
     strength: 'supporting',
     rationale: 'General-purpose model obligations condition deployment into the EU.',
-    confidence: 'high',
+    confidence: 'medium',
     sources: [
       {
         label: 'Regulation (EU) 2024/1689 — the AI Act',
         url: 'https://eur-lex.europa.eu/eli/reg/2024/1689/oj',
-        note: 'The binding text, including the obligations that attach to general-purpose models.',
+        note: 'The binding text. It establishes obligations on providers of general-purpose models as a class rather than naming this provider, so the edge is stated at that level.',
       },
     ],
   },

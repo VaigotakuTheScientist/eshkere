@@ -422,12 +422,33 @@ Decisions worth carrying forward:
 Not built, deliberately: stance overlays, network diagnostics, imagery,
 typed-relationship filter chips, scenario lenses.
 
-Evidence coverage is honest about its own limits. Where a primary public
-source exists and is stable it is cited directly; where the only defensible
-public reference is the counterparty's own product or corporate page, that is
-what is linked and the note says so. Deep-linked press releases were
-deliberately not guessed at. The per-claim citations in the Notion research
-model should replace the weaker of these when they can be published.
+Evidence coverage is honest about its own limits. The standard every
+relationship is held to is that its source establishes *that specific edge*
+at roughly the granularity the edge claims — not merely that the two actors
+exist, and not merely that the product category is real. Every one of the
+twenty-three relationships now cites a document naming its counterparty:
+supply and cloud edges cite the supplier's or customer's own announcement of
+the arrangement (Microsoft on remaining OpenAI's primary cloud partner, NVIDIA
+on Meta's Blackwell and Rubin deployment, ASML on the EUV systems it shipped
+to TSMC, TVA's board resolution approving firm power for the xAI site);
+regulatory edges cite the instrument (the AI Act text, the Commerce Control
+List, the January 2026 Federal Register rule naming H200-class accelerators);
+governance edges cite the filing or charter that establishes authority rather
+than a leadership page (Meta's own 10-K on Zuckerberg's majority voting
+control, OpenAI's structure page on the Foundation governing the group).
+
+Where no such source could be found, the claim was narrowed rather than
+dressed up. The two EU AI Act edges are stated at `medium` confidence because
+the regulation binds providers of general-purpose models as a class rather
+than naming a provider. Musk → SpaceXAI is stated at `medium` as founder and
+chief executive rather than as ownership control, because the company is
+private and no filing establishes the voting structure. Each source carries a
+note saying what it actually establishes, so a primary source is
+distinguishable from an official presence, and a test asserts that no edge
+citation is a bare homepage. Actor-level sources are still official presences
+by design — an actor's homepage is adequate evidence that the actor is what
+the map says it is. The per-claim citations in the Notion research model
+should replace the remaining weaker links when they can be published.
 
 Relationship coverage is also incomplete, and says so in the interface rather
 than being padded out: an actor the curated edge set does not reach is marked

@@ -965,6 +965,21 @@ for (const viewport of viewports) {
       edgeEvidence: [...document.querySelectorAll('.pm__index-arena')]
         .filter((section) => section.querySelector('h3')?.textContent === 'Typed dependencies')
         .flatMap((section) => [...section.querySelectorAll('li .pm__index-sources a')]).length,
+      // Every edge citation, as a path. A bare homepage evidences that an
+      // organisation exists; it cannot evidence that this organisation
+      // depends on that one.
+      edgeHomepages: [...document.querySelectorAll('.pm__index-arena')]
+        .filter((section) => section.querySelector('h3')?.textContent === 'Typed dependencies')
+        .flatMap((section) => [...section.querySelectorAll('li .pm__index-sources a')])
+        .map((a) => a.getAttribute('href') ?? '')
+        .filter((href) => {
+          try {
+            const { pathname, search } = new URL(href);
+            return pathname === '/' && !search;
+          } catch {
+            return true;
+          }
+        }),
     }));
     note(
       text.actors > 40 && text.mentionsNvidia,
@@ -974,6 +989,10 @@ for (const viewport of viewports) {
     note(
       text.edgeEvidence >= 23,
       `and every dependency's evidence with it (${text.edgeEvidence})`
+    );
+    note(
+      text.edgeHomepages.length === 0,
+      `none of it a bare homepage standing in for the claim (${text.edgeHomepages.join(', ') || 'clean'})`
     );
     note(text.stageHidden === true, 'and the empty network stage stays out of the way');
     await noScript.close();
