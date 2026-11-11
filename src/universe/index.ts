@@ -300,12 +300,11 @@ export function createUniverse(): UniverseApi | null {
 
   /* ------------------------------------------------------- pointer input */
   /**
-   * Left-drag pans the overview; right-drag orbits the camera around the
-   * current focus. Click still activates a node, but a completed drag never
-   * counts as a click. Touch keeps the existing single-finger pan.
-   *
-   * There is deliberately no wheel or pinch handler here. Entry and exit
-   * remain cinematic, discrete transitions rather than scrubbable zoom.
+   * Left-drag pans at every semantic level, right-drag orbits around the
+   * current focus, and the wheel dollies in/out continuously. Click still
+   * activates a node; a completed drag never counts as a click.
+   * Entry and exit remain discrete cinematic transitions. Ctrl-wheel /
+   * trackpad pinch still belongs to the browser (not semantic map zoom).
    */
   let dragPointer: {
     id: number;
@@ -356,7 +355,7 @@ export function createUniverse(): UniverseApi | null {
           if (dragPointer.button === 'orbit') {
             stage.orbitBy(dx, dy);
           } else {
-            stage.panBy((dx / window.innerWidth) * 900, (dy / window.innerHeight) * 620);
+            stage.panBy((dx / window.innerWidth) * 520, (dy / window.innerHeight) * 360);
           }
           dragPointer.x = event.clientX;
           dragPointer.y = event.clientY;
@@ -398,6 +397,26 @@ export function createUniverse(): UniverseApi | null {
       if (open && stage?.mode === 'universe') event.preventDefault();
     },
     { signal }
+  );
+
+  // Wheel navigates through real 3D depth instead of changing semantic level.
+  // Listen on the scene overlay, including DOM labels, but leave HUD controls
+  // alone. Ctrl-wheel is often a trackpad pinch and must retain browser zoom.
+  refs.root.addEventListener(
+    'wheel',
+    (event) => {
+      if (!stage || !open || stage.mode !== 'universe') return;
+      if (event.ctrlKey || event.metaKey) return;
+      if (event.target instanceof Element &&
+        event.target.closest('.universe__hud, .universe__detail')) return;
+      const pixels = event.deltaY *
+        (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? window.innerHeight : 1);
+      if (!pixels) return;
+      event.preventDefault();
+      window.clearTimeout(regionTimer);
+      stage.dollyBy(pixels);
+    },
+    { passive: false, signal }
   );
 
   /* ------------------------------------------------------------ keyboard */
