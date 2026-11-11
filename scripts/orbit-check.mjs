@@ -79,6 +79,35 @@ async function drag(page, button, dx, dy, steps = 12) {
 }
 
 try {
+  if (!process.env.ORBIT_MOBILE_ONLY) {
+    const { page, context } = await setup({ reducedMotion: 'reduce' });
+    await label(page, 'ai-safety').evaluate(el => el.click());
+    await settled(page);
+    const saturate = async deltaY => {
+      await page.locator('[data-universe-canvas]').evaluate((canvas, deltaY) => {
+        for (let i = 0; i < 40; i++) canvas.dispatchEvent(new WheelEvent('wheel', {
+          deltaY, bubbles: true, cancelable: true,
+        }));
+      }, deltaY);
+      await settled(page);
+    };
+    await saturate(240);
+    assert.ok(Math.abs(length(offset(await state(page))) - 5600) < .01);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(200);
+    await settled(page);
+    assert.ok(length(offset(await state(page))) <= 5600.01, 'resize respects far dolly bound');
+    await saturate(-240);
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.waitForTimeout(200);
+    await settled(page);
+    const near = length(offset(await state(page)));
+    // A further inward gesture at the limit must never zoom outward.
+    await saturate(-240);
+    assert.ok(length(offset(await state(page))) <= near + .01, 'resize respects near dolly bound');
+    await context.close();
+    console.log('ok wheel limits survive portrait/landscape resize');
+  }
   for (const reducedMotion of (process.env.ORBIT_MOBILE_ONLY ? [] : ['no-preference', 'reduce'])) {
     const { page, context, errors } = await setup({ reducedMotion });
     const home = await state(page);

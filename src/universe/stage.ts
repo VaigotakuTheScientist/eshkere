@@ -382,6 +382,9 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
           compositionScale / Math.max(previousView.scale, 0.001)
         );
         offset.multiplyScalar(newDistance / Math.max(oldDistance, 0.001));
+        // Responsive fitting must obey the same bounds as wheel input;
+        // otherwise the next wheel event can jump in the opposite direction.
+        offset.setLength(clampDollyDistance(offset.length()));
         wanted.position.copy(wanted.target).add(offset);
         view.position.copy(wanted.position);
         view.target.copy(wanted.target);
@@ -889,6 +892,14 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
     wanted.position.copy(wanted.target).add(orbitOffset.setFromSpherical(orbitSpherical));
   }
 
+  function clampDollyDistance(distance: number) {
+    return THREE.MathUtils.clamp(
+      distance,
+      Math.max(MIN_DOLLY_DISTANCE * compositionScale, 8),
+      MAX_DOLLY_DISTANCE
+    );
+  }
+
   /** Continuous perspective dolly toward/away from the current focal point.
    * It works at every semantic level without silently changing breadcrumbs.
    * The wheel value is in CSS pixels (normalized by the input controller).
@@ -907,11 +918,7 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
     // Clamp a single wheel event, and protect against stepping through the
     // focal point or out beyond the far clipping plane.
     const factor = Math.exp(THREE.MathUtils.clamp(deltaY, -240, 240) * 0.00135);
-    const nextDistance = THREE.MathUtils.clamp(
-      distance * factor,
-      Math.max(MIN_DOLLY_DISTANCE * compositionScale, 8),
-      MAX_DOLLY_DISTANCE
-    );
+    const nextDistance = clampDollyDistance(distance * factor);
     wanted.position.copy(wanted.target).add(orbitOffset.multiplyScalar(nextDistance / distance));
   }
 
