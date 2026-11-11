@@ -23,3 +23,19 @@ Use **proportional verification**. Do not run the entire browser/UI regression s
 The Universe browser checks use Chromium with SwiftShader software WebGL. Avoid running multiple full UI suites concurrently on the same machine. A failure that appears only under concurrent software-renderer load should be rerun once in isolation before treating it as a product regression. Do not repeatedly rerun the whole suite after unrelated data/doc-only edits.
 
 Longer term, split `scripts/ui-check.mjs` into selectable scopes (for example `smoke`, `power-map`, `universe`, and `full`) or otherwise support targeted invocation. The current monolithic suite remains the final merge/deploy regression gate until that split exists.
+
+## Universe camera regression checks
+
+Run `npm run test:orbit` against a running `npm run dev` server (default
+`http://127.0.0.1:4321/eshkere`; override with `BASE_URL`). The focused Playwright
+suite checks RMB orbit at all three semantic levels, slower camera-relative LMB
+pan at all levels, continuous wheel dolly forward/backward without semantic
+navigation, preservation of pan and wheel depth on resize, canvas picking,
+drag/click separation, interrupted flights, responsive focus, Home/Escape,
+exit/re-entry, context-menu and browser pinch scope, pointer cancellation,
+reduced motion and real Chromium touch input. `ORBIT_MOBILE_ONLY=1` selects touch only.
+
+The test intercepts the dev stage module to expose read-only camera observations;
+no debug API is shipped. Run the existing `npm run test:ui` against the production
+preview separately for the full route/layout, cinematic, mobile, keyboard and
+no-WebGL regression gate. Keep these software-WebGL suites sequential.
