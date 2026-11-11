@@ -267,6 +267,12 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
   // Scratch objects for orbiting the camera without allocating per pointer move.
   const orbitOffset = new THREE.Vector3();
   const orbitSpherical = new THREE.Spherical();
+  // Exploration controls are deliberately gentler than the cinematic flights.
+  const ORBIT_TURN_X = Math.PI;
+  const ORBIT_TURN_Y = Math.PI * 0.5;
+  const CAMERA_RESPONSE = 2.6;
+  const MIN_DOLLY_DISTANCE = 18;
+  const MAX_DOLLY_DISTANCE = 5600;
   /**
    * Cross-fade weight for the hand-over from DOM to canvas. The dust and the
    * canvas rise together over the same ~140ms while nothing is moving yet,
@@ -323,7 +329,7 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
 
     const previousView = mode === 'universe' && !timedTransition
       ? { position: wanted.position.clone(), target: wanted.target.clone(),
-          authored: focusedView(), flying: !!flight }
+          authored: focusedView(), scale: compositionScale, flying: !!flight }
       : null;
 
     viewport.width = width;
@@ -365,11 +371,18 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
         // The destination moved with the responsive composition.
         flyTo(next);
       } else {
+        // Preserve both the manually panned focus and the wheel-dolly zoom
+        // ratio when switching landscape/portrait layouts.
         const offset = previousView.position.sub(previousView.target);
         const oldDistance = previousView.authored.position.distanceTo(previousView.authored.target);
-        offset.multiplyScalar(next.position.distanceTo(next.target) / oldDistance);
-        wanted.target.copy(next.target);
-        wanted.position.copy(next.target).add(offset);
+        const newDistance = next.position.distanceTo(next.target);
+        const panOffset = previousView.target.sub(previousView.authored.target);
+        wanted.target.copy(next.target).addScaledVector(
+          panOffset,
+          compositionScale / Math.max(previousView.scale, 0.001)
+        );
+        offset.multiplyScalar(newDistance / Math.max(oldDistance, 0.001));
+        wanted.position.copy(wanted.target).add(offset);
         view.position.copy(wanted.position);
         view.target.copy(wanted.target);
       }
@@ -829,22 +842,28 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
   }
 
   function panBy(dx: number, dy: number) {
-    if (mode !== 'universe' || level !== 1) return;
-    if (timedTransition) return;
+    if (mode !== 'universe' || timedTransition || (dx === 0 && dy === 0)) return;
     if (flight) {
       wanted.position.copy(view.position);
       wanted.target.copy(view.target);
-      pan.copy(view.target);
+      if (level === 1) pan.copy(view.target);
       flight = null;
     }
-    // Translate in the camera's screen plane, including after a quarter turn.
-    orbitOffset.copy(wanted.position).sub(wanted.target).normalize();
+    // Shift in the camera's screen plane, independent of current orbit angle.
+    // Scale with camera distance: the same drag feels comparable inside a
+    // tiny system and in the full overview, rather than leaping past stars.
+    orbitOffset.copy(wanted.position).sub(wanted.target);
+    const distance = Math.max(orbitOffset.length(), 1);
+    orbitOffset.divideScalar(distance);
     panRight.crossVectors(camera.up, orbitOffset).normalize();
     panUp.crossVectors(orbitOffset, panRight).normalize();
-    panShift.copy(panRight).multiplyScalar(-dx).addScaledVector(panUp, dy);
-    const limit = 420 * compositionScale;
-    panShift.add(pan).clampScalar(-limit, limit).sub(pan);
-    pan.add(panShift);
+    const scale = distance / UNIVERSE_DISTANCE;
+    panShift.copy(panRight).multiplyScalar(-dx * scale).addScaledVector(panUp, dy * scale);
+    if (level === 1) {
+      const limit = 420 * compositionScale;
+      panShift.add(pan).clampScalar(-limit, limit).sub(pan);
+      pan.add(panShift);
+    }
     wanted.position.add(panShift);
     wanted.target.add(panShift);
   }
@@ -861,13 +880,39 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
     }
     orbitOffset.copy(wanted.position).sub(wanted.target);
     orbitSpherical.setFromVector3(orbitOffset);
-    orbitSpherical.theta -= (dx / Math.max(viewport.width, 1)) * Math.PI * 2;
+    orbitSpherical.theta -= (dx / Math.max(viewport.width, 1)) * ORBIT_TURN_X;
     orbitSpherical.phi = THREE.MathUtils.clamp(
-      orbitSpherical.phi - (dy / Math.max(viewport.height, 1)) * Math.PI,
+      orbitSpherical.phi - (dy / Math.max(viewport.height, 1)) * ORBIT_TURN_Y,
       0.22,
       Math.PI - 0.22
     );
     wanted.position.copy(wanted.target).add(orbitOffset.setFromSpherical(orbitSpherical));
+  }
+
+  /** Continuous perspective dolly toward/away from the current focal point.
+   * It works at every semantic level without silently changing breadcrumbs.
+   * The wheel value is in CSS pixels (normalized by the input controller).
+   */
+  function dollyBy(deltaY: number) {
+    if (mode !== 'universe' || timedTransition || deltaY === 0) return;
+    if (flight) {
+      wanted.position.copy(view.position);
+      wanted.target.copy(view.target);
+      if (level === 1) pan.copy(view.target);
+      flight = null;
+    }
+    orbitOffset.copy(wanted.position).sub(wanted.target);
+    const distance = Math.max(orbitOffset.length(), 0.001);
+    // Exponential zoom gives roughly the same perceived speed at every scale.
+    // Clamp a single wheel event, and protect against stepping through the
+    // focal point or out beyond the far clipping plane.
+    const factor = Math.exp(THREE.MathUtils.clamp(deltaY, -240, 240) * 0.00135);
+    const nextDistance = THREE.MathUtils.clamp(
+      distance * factor,
+      Math.max(MIN_DOLLY_DISTANCE * compositionScale, 8),
+      MAX_DOLLY_DISTANCE
+    );
+    wanted.position.copy(wanted.target).add(orbitOffset.multiplyScalar(nextDistance / distance));
   }
 
   /* ------------------------------------------------------------ picking */
@@ -1030,14 +1075,14 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
       view.target.copy(wanted.target);
     } else if (mode === 'universe') {
       view.position.set(
-        damp(view.position.x, wanted.position.x, 3.4, dt),
-        damp(view.position.y, wanted.position.y, 3.4, dt),
-        damp(view.position.z, wanted.position.z, 3.4, dt)
+        damp(view.position.x, wanted.position.x, CAMERA_RESPONSE, dt),
+        damp(view.position.y, wanted.position.y, CAMERA_RESPONSE, dt),
+        damp(view.position.z, wanted.position.z, CAMERA_RESPONSE, dt)
       );
       view.target.set(
-        damp(view.target.x, wanted.target.x, 3.4, dt),
-        damp(view.target.y, wanted.target.y, 3.4, dt),
-        damp(view.target.z, wanted.target.z, 3.4, dt)
+        damp(view.target.x, wanted.target.x, CAMERA_RESPONSE, dt),
+        damp(view.target.y, wanted.target.y, CAMERA_RESPONSE, dt),
+        damp(view.target.z, wanted.target.z, CAMERA_RESPONSE, dt)
       );
     }
 
@@ -1240,6 +1285,7 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
     recentre,
     panBy,
     orbitBy,
+    dollyBy,
     pick,
     setHover,
     select(node: NodeRecord | null) {
