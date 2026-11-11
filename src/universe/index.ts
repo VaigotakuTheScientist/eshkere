@@ -300,22 +300,39 @@ export function createUniverse(): UniverseApi | null {
 
   /* ------------------------------------------------------- pointer input */
   /**
-   * Pointer only: drag to pan, hover to light a node, click to fly into it.
+   * Left-drag pans the overview; right-drag orbits the camera around the
+   * current focus. Click still activates a node, but a completed drag never
+   * counts as a click. Touch keeps the existing single-finger pan.
    *
-   * There is deliberately no wheel or pinch handler here. Scrubbing the
-   * hero → universe reveal with a trackpad made entering the map feel like
-   * operating a slider rather than crossing a threshold, and it left the
-   * visitor parked at arbitrary points inside a transition that only reads
-   * as cinematic when it plays. Entry and exit are now discrete: the
-   * switcher goes in, the HUD and Escape come back.
+   * There is deliberately no wheel or pinch handler here. Entry and exit
+   * remain cinematic, discrete transitions rather than scrubbable zoom.
    */
-  let panPointer: { id: number; x: number; y: number } | null = null;
+  let dragPointer: {
+    id: number;
+    button: 'pan' | 'orbit';
+    x: number;
+    y: number;
+    startX: number;
+    startY: number;
+    moved: boolean;
+  } | null = null;
 
   refs.canvas.addEventListener(
     'pointerdown',
     (event) => {
-      if (event.pointerType === 'touch' && panPointer) return;
-      panPointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
+      if (!stage || stage.mode !== 'universe' || dragPointer) return;
+      if (event.button !== 0 && event.button !== 2) return;
+      if (event.pointerType === 'touch' && event.button !== 0) return;
+      dragPointer = {
+        id: event.pointerId,
+        button: event.button === 2 ? 'orbit' : 'pan',
+        x: event.clientX,
+        y: event.clientY,
+        startX: event.clientX,
+        startY: event.clientY,
+        moved: false,
+      };
+      if (event.button === 2) event.preventDefault();
       refs.canvas.setPointerCapture(event.pointerId);
     },
     { signal }
@@ -325,14 +342,24 @@ export function createUniverse(): UniverseApi | null {
     'pointermove',
     (event) => {
       if (!stage) return;
-      if (panPointer && panPointer.id === event.pointerId && event.buttons) {
-        stage.panBy(
-          ((event.clientX - panPointer.x) / window.innerWidth) * 900,
-          ((event.clientY - panPointer.y) / window.innerHeight) * 620
-        );
-        panPointer.x = event.clientX;
-        panPointer.y = event.clientY;
-        return;
+      if (dragPointer && dragPointer.id === event.pointerId) {
+        const buttonMask = dragPointer.button === 'orbit' ? 2 : 1;
+        if (event.buttons & buttonMask) {
+          const dx = event.clientX - dragPointer.x;
+          const dy = event.clientY - dragPointer.y;
+          dragPointer.moved ||= Math.hypot(
+            event.clientX - dragPointer.startX,
+            event.clientY - dragPointer.startY
+          ) > 6;
+          if (dragPointer.button === 'orbit') {
+            stage.orbitBy(dx, dy);
+          } else {
+            stage.panBy((dx / window.innerWidth) * 900, (dy / window.innerHeight) * 620);
+          }
+          dragPointer.x = event.clientX;
+          dragPointer.y = event.clientY;
+          return;
+        }
       }
       if (stage.mode !== 'universe') return;
       queueHover(event.clientX, event.clientY);
@@ -343,13 +370,30 @@ export function createUniverse(): UniverseApi | null {
   refs.canvas.addEventListener(
     'pointerup',
     (event) => {
-      const moved =
-        panPointer && Math.hypot(event.clientX - panPointer.x, event.clientY - panPointer.y) > 6;
-      panPointer = null;
-      if (!stage || stage.mode !== 'universe' || moved) return;
+      if (!dragPointer || dragPointer.id !== event.pointerId) return;
+      const drag = dragPointer;
+      dragPointer = null;
+      const moved = drag.moved || Math.hypot(
+        event.clientX - drag.startX,
+        event.clientY - drag.startY
+      ) > 6;
+      if (!stage || stage.mode !== 'universe' || moved || drag.button !== 'pan') return;
       const hit = stage.pick(event.clientX, event.clientY);
       if (hit) stage.activate(hit);
       else stage.select(null);
+    },
+    { signal }
+  );
+
+  const cancelDrag = (event: PointerEvent) => {
+    if (dragPointer?.id === event.pointerId) dragPointer = null;
+  };
+  refs.canvas.addEventListener('pointercancel', cancelDrag, { signal });
+  refs.canvas.addEventListener('lostpointercapture', cancelDrag, { signal });
+  refs.canvas.addEventListener(
+    'contextmenu',
+    (event) => {
+      if (open && stage?.mode === 'universe') event.preventDefault();
     },
     { signal }
   );
