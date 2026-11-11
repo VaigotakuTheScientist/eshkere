@@ -28,10 +28,12 @@ Longer term, split `scripts/ui-check.mjs` into selectable scopes (for example `s
 
 Run `npm run test:orbit` against a running `npm run dev` server (default
 `http://127.0.0.1:4321/eshkere`; override with `BASE_URL`). The focused Playwright
-suite checks RMB orbit at all three semantic levels, camera-relative LMB pan,
-canvas picking, drag/click separation, interrupted flights, responsive focus,
-Home/Escape, exit/re-entry, context-menu scope, pointer cancellation, reduced
-motion and real Chromium touch input. `ORBIT_MOBILE_ONLY=1` selects touch only.
+suite checks RMB orbit at all three semantic levels, slower camera-relative LMB
+pan at all levels, continuous wheel dolly forward/backward without semantic
+navigation, preservation of pan and wheel depth on resize, canvas picking,
+drag/click separation, interrupted flights, responsive focus, Home/Escape,
+exit/re-entry, context-menu and browser pinch scope, pointer cancellation,
+reduced motion and real Chromium touch input. `ORBIT_MOBILE_ONLY=1` selects touch only.
 
 The test intercepts the dev stage module to expose read-only camera observations;
 no debug API is shipped. Run the existing `npm run test:ui` against the production
