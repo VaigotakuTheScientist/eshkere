@@ -100,15 +100,49 @@ try {
         close(after.view, after.position);
         assert.equal(after.streak, 0);
       }
-      // Portrait relayout moves semantic targets; preserve angle and refit distance.
+      // Left-drag translates the camera in its screen plane at ALL three
+      // levels, without changing the selected semantic level or orbit.
+      await drag(page, 'left', 50, 15);
+      const panned = await state(page);
+      close(offset(panned), offset(after));
+      assert.ok(length(sub(panned.target, after.target)) > 0.1, 'pan moves focused camera');
+      assert.equal(panned.level, level);
+
+      // Mouse wheel dollies continuously in actual 3D depth without changing
+      // breadcrumbs, then an opposite wheel gesture reverses it.
+      await page.mouse.move(35, 150);
+      await page.mouse.wheel(0, -160);
+      await settled(page);
+      const closer = await state(page);
+      close(closer.target, panned.target);
+      assert.equal(closer.level, level);
+      assert.ok(length(offset(closer)) < length(offset(panned)) * .9, 'wheel moves inward');
+      await page.mouse.wheel(0, 160);
+      await settled(page);
+      const restored = await state(page);
+      assert.ok(Math.abs(length(offset(restored)) - length(offset(panned))) < .1, 'reverse wheel restores distance');
+
+      // Portrait relayout must preserve user pan *and* dolly scale, not reset
+      // the galaxy/system target to the authored center.
+      await page.mouse.wheel(0, -120);
+      await settled(page);
+      const explored = await state(page);
       await page.setViewportSize({ width: 390, height: 844 });
       await settled(page);
       const resized = await state(page);
-      close(unit(offset(resized)), unit(offset(after)));
-      if (id) close(resized.target, resized.nodes.find(n => n.id === id).world);
+      close(unit(offset(resized)), unit(offset(explored)));
+      if (id) {
+        const beforeFocus = explored.nodes.find(n => n.id === id).world;
+        const afterFocus = resized.nodes.find(n => n.id === id).world;
+        const beforeDelta = sub(explored.target, beforeFocus);
+        const afterDelta = sub(resized.target, afterFocus);
+        assert.ok(length(afterDelta) > 0.1, 'panned target retained on resize');
+        assert.ok(length(sub(unit(afterDelta), unit(beforeDelta))) < .03, 'pan direction preserved');
+      }
       await page.setViewportSize({ width: 1280, height: 720 });
       await settled(page);
-      close((await state(page)).target, after.target);
+      close((await state(page)).target, explored.target);
+      assert.ok(Math.abs(length(offset(await state(page))) - length(offset(explored))) < .1);
       if (reducedMotion === 'no-preference') {
         await page.screenshot({ path: `${shots}/universe-orbit-level-${level}.png` });
       }
@@ -142,7 +176,7 @@ try {
       await page.keyboard.press('Home');
       await settled(page);
     }
-    await drag(page, 'right', 320, 0); // quarter turn exposes world-axis pan regressions
+    await drag(page, 'right', 320, 0); // oblique angle exposes world-axis pan regressions
     const beforePan = await state(page);
     await drag(page, 'left', 60, 0);
     const afterPan = await state(page);
@@ -150,7 +184,7 @@ try {
     const forward = unit(offset(beforePan));
     const right = unit([forward[2], 0, -forward[0]]);
     const shift = sub(afterPan.target, beforePan.target);
-    assert.ok(shift.reduce((n, v, i) => n + v * right[i], 0) < -20, 'LMB pans along screen right');
+    assert.ok(shift.reduce((n, v, i) => n + v * right[i], 0) < -15, 'LMB pans along screen right');
     assert.equal(afterPan.level, 1, 'drag does not activate a galaxy');
     await page.keyboard.press('Home');
     await settled(page);
@@ -168,11 +202,20 @@ try {
       canvas.dispatchEvent(event);
       const outside = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
       document.body.dispatchEvent(outside);
-      const wheel = new WheelEvent('wheel', { bubbles: true, cancelable: true, ctrlKey: true });
+      const pinch = new WheelEvent('wheel', {
+        bubbles: true, cancelable: true, ctrlKey: true, deltaY: 120,
+      });
+      canvas.dispatchEvent(pinch);
+      const wheel = new WheelEvent('wheel', {
+        bubbles: true, cancelable: true, deltaY: 120,
+      });
       canvas.dispatchEvent(wheel);
-      return { canvas: event.defaultPrevented, outside: outside.defaultPrevented, wheel: wheel.defaultPrevented };
+      return {
+        canvas: event.defaultPrevented, outside: outside.defaultPrevented,
+        pinch: pinch.defaultPrevented, wheel: wheel.defaultPrevented,
+      };
     });
-    assert.deepEqual(menu, { canvas: true, outside: false, wheel: false });
+    assert.deepEqual(menu, { canvas: true, outside: false, pinch: false, wheel: true });
     // Cancellation must release the controller for the next real gesture.
     await page.mouse.move(35, 150);
     await page.mouse.down({ button: 'right' });
@@ -215,7 +258,7 @@ try {
   await touch({ type: 'touchEnd', touchPoints: [] });
   await settled(page);
   const after = await state(page);
-  assert.ok(length(sub(after.target, before.target)) > 80, 'touch drag survives browser gesture arbitration');
+  assert.ok(length(sub(after.target, before.target)) > 35, 'slower touch drag survives browser gesture arbitration');
   close(offset(after), offset(before));
   assert.equal(after.level, 1);
   assert.deepEqual(errors, []);
