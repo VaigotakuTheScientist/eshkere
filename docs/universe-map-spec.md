@@ -155,6 +155,12 @@ Do not make a hidden gesture the only way to enter the universe.
 
 Do not permanently hijack normal browser zoom. If browser pinch behavior cannot be safely intercepted on a platform, fall back to the explicit on-page control rather than creating hostile browser behavior.
 
+### Map camera movement (added 2026-11-11)
+
+Once the Universe has finished opening, left-drag pans the overview and right-drag orbits the camera around its current focus (also in galaxy/system views). Orbit is exploratory, not part of the authored hero-to-Universe reveal or fly-in camera paths. Orbit tilt is clamped away from the exact poles; clicking a galaxy, selecting a system or using the recenter control returns to an authored camera view. A completed drag must not also activate the object under the cursor. The browser context menu is suppressed on the active Universe canvas only. Touch retains its existing single-finger pan behavior; keyboard controls and the DOM/no-WebGL index remain available.
+
+Mouse wheel and trackpad pinch continue to belong to the browser; the cinematic reveal and semantic zoom are not changed.
+
 ---
 
 ## 4. Cinematic transition
