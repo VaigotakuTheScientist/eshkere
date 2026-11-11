@@ -332,6 +332,7 @@ export function createUniverse(): UniverseApi | null {
         startY: event.clientY,
         moved: false,
       };
+      window.clearTimeout(regionTimer);
       if (event.button === 2) event.preventDefault();
       refs.canvas.setPointerCapture(event.pointerId);
     },
@@ -351,6 +352,7 @@ export function createUniverse(): UniverseApi | null {
             event.clientX - dragPointer.startX,
             event.clientY - dragPointer.startY
           ) > 6;
+          if (!dragPointer.moved) return;
           if (dragPointer.button === 'orbit') {
             stage.orbitBy(dx, dy);
           } else {

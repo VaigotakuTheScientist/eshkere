@@ -23,9 +23,8 @@ import { clamp, damp, easeInOutCubic, lerp, phase } from './util';
  * The universe stage: one WebGL scene, one camera on rails, and a single
  * `progress` value that carries the whole hero → universe transition.
  *
- * The camera is never free. Every view is an authored position and target,
- * reached along a curve, which is what keeps a map this dense readable — and
- * what stops the "escape" beat from ever framing an empty corner of space.
+ * Entry and semantic navigation use authored camera paths. Once the map
+ * resolves, pointer input can pan the overview or orbit its current focus.
  */
 
 const FOV = 50;
@@ -261,7 +260,10 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
   let hoveredId: string | null = null;
   let selectedId: string | null = null;
   let compositionScale = 1;
-  let pan = new THREE.Vector2(0, 0);
+  const pan = new THREE.Vector3();
+  const panShift = new THREE.Vector3();
+  const panRight = new THREE.Vector3();
+  const panUp = new THREE.Vector3();
   // Scratch objects for orbiting the camera without allocating per pointer move.
   const orbitOffset = new THREE.Vector3();
   const orbitSpherical = new THREE.Spherical();
@@ -319,6 +321,11 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
     if (width === laidOutFor.width && height === laidOutFor.height) return;
     laidOutFor = { width, height };
 
+    const previousView = mode === 'universe' && !timedTransition
+      ? { position: wanted.position.clone(), target: wanted.target.clone(),
+          authored: focusedView(), flying: !!flight }
+      : null;
+
     viewport.width = width;
     viewport.height = height;
     const aspect = viewport.width / Math.max(viewport.height, 1);
@@ -351,20 +358,21 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
     labels.remeasure();
     // Only worth rebuilding while the headline still has a part to play.
     if (progress < 0.6) buildHeadlineDust();
-    // Resizing shouldn't discard an orbit the visitor has chosen.
-    const previousView =
-      mode === 'universe' && !flight
-        ? {
-            position: wanted.position.clone(),
-            target: wanted.target.clone(),
-          }
-        : null;
     applyProgress(progress, true);
     if (previousView) {
-      wanted.position.copy(previousView.position);
-      wanted.target.copy(previousView.target);
-      view.position.copy(previousView.position);
-      view.target.copy(previousView.target);
+      const next = focusedView();
+      if (previousView.flying) {
+        // The destination moved with the responsive composition.
+        flyTo(next);
+      } else {
+        const offset = previousView.position.sub(previousView.target);
+        const oldDistance = previousView.authored.position.distanceTo(previousView.authored.target);
+        offset.multiplyScalar(next.position.distanceTo(next.target) / oldDistance);
+        wanted.target.copy(next.target);
+        wanted.position.copy(next.target).add(offset);
+        view.position.copy(wanted.position);
+        view.target.copy(wanted.target);
+      }
       render(0);
     }
   }
@@ -384,8 +392,8 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
 
   const OVERVIEW: View = { position: new THREE.Vector3(), target: new THREE.Vector3() };
   function universeView(): View {
-    OVERVIEW.position.set(pan.x, 40 * compositionScale + pan.y, UNIVERSE_DISTANCE);
-    OVERVIEW.target.set(pan.x, pan.y, 0);
+    OVERVIEW.position.set(pan.x, 40 * compositionScale + pan.y, UNIVERSE_DISTANCE + pan.z);
+    OVERVIEW.target.copy(pan);
     return OVERVIEW;
   }
 
@@ -671,6 +679,13 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
     };
   }
 
+  function focusedView(): View {
+    if (level === 3 && focusSystemId) return systemView(focusSystemId);
+    if (level === 2 && focusRegionId) return galaxyView(focusRegionId);
+    const overview = universeView();
+    return { position: overview.position.clone(), target: overview.target.clone() };
+  }
+
   function breadcrumb(): NodeRecord[] {
     const path: NodeRecord[] = [];
     if (focusRegionId) {
@@ -800,7 +815,7 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
   }
 
   function recentre() {
-    pan.set(0, 0);
+    pan.set(0, 0, 0);
     focusRegionId = null;
     focusSystemId = null;
     selectedId = null;
@@ -815,31 +830,28 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
 
   function panBy(dx: number, dy: number) {
     if (mode !== 'universe' || level !== 1) return;
-    const limit = 420 * compositionScale;
-    const previousX = pan.x;
-    const previousY = pan.y;
-    pan.x = clamp(pan.x - dx, -limit, limit);
-    pan.y = clamp(pan.y + dy, -limit, limit);
+    if (timedTransition) return;
     if (flight) {
-      // Panning interrupts a cinematic flight and returns to the overview.
+      wanted.position.copy(view.position);
+      wanted.target.copy(view.target);
+      pan.copy(view.target);
       flight = null;
-      const next = universeView();
-      wanted.position.copy(next.position);
-      wanted.target.copy(next.target);
-      return;
     }
-    // Shift both camera and target so panning preserves any orbital angle.
-    const shiftX = pan.x - previousX;
-    const shiftY = pan.y - previousY;
-    wanted.position.x += shiftX;
-    wanted.position.y += shiftY;
-    wanted.target.x += shiftX;
-    wanted.target.y += shiftY;
+    // Translate in the camera's screen plane, including after a quarter turn.
+    orbitOffset.copy(wanted.position).sub(wanted.target).normalize();
+    panRight.crossVectors(camera.up, orbitOffset).normalize();
+    panUp.crossVectors(orbitOffset, panRight).normalize();
+    panShift.copy(panRight).multiplyScalar(-dx).addScaledVector(panUp, dy);
+    const limit = 420 * compositionScale;
+    panShift.add(pan).clampScalar(-limit, limit).sub(pan);
+    pan.add(panShift);
+    wanted.position.add(panShift);
+    wanted.target.add(panShift);
   }
 
   /** Orbit the camera around its current focal point (pixel drag deltas). */
   function orbitBy(dx: number, dy: number) {
-    if (mode !== 'universe') return;
+    if (mode !== 'universe' || timedTransition || (dx === 0 && dy === 0)) return;
     if (flight) {
       // Dragging takes control from the authored flight, without snapping
       // the view to the flight's destination.
@@ -1013,6 +1025,9 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
         wanted.target.copy(flight.to.target);
         flight = null;
       }
+    } else if (mode === 'universe' && reducedMotion) {
+      view.position.copy(wanted.position);
+      view.target.copy(wanted.target);
     } else if (mode === 'universe') {
       view.position.set(
         damp(view.position.x, wanted.position.x, 3.4, dt),
@@ -1120,7 +1135,7 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
       focusSystemId = null;
       selectedId = null;
       level = 1;
-      pan.set(0, 0);
+      pan.set(0, 0, 0);
       flight = null;
       refreshFilaments();
       callbacks.onFocusChange(breadcrumb());

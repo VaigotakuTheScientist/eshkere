@@ -233,6 +233,8 @@ const gameGalaxies = regions.filter((region) => region.id !== 'health');
   }
 
   .universe__canvas {
+    /* Keep single-finger map drags; let the browser own pinch zoom. */
+    touch-action: pinch-zoom;
     position: absolute;
     inset: 0;
     width: 100%;

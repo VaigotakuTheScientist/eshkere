@@ -161,6 +161,8 @@ Once the Universe has finished opening, left-drag pans the overview and right-dr
 
 Mouse wheel and trackpad pinch continue to belong to the browser; the cinematic reveal and semantic zoom are not changed.
 
+Panning follows the camera screen plane after orbiting. Responsive relayout keeps the chosen orbit angle while re-anchoring galaxy/system focus and fitting its distance to the new viewport. Pointer motion below the click threshold does not move the camera or interrupt a flight. Under reduced motion, direct camera input has no trailing damping. Single-finger canvas drags pan; browser pinch zoom remains available.
+
 ---
 
 ## 4. Cinematic transition
