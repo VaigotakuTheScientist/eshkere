@@ -262,6 +262,9 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
   let selectedId: string | null = null;
   let compositionScale = 1;
   let pan = new THREE.Vector2(0, 0);
+  // Scratch objects for orbiting the camera without allocating per pointer move.
+  const orbitOffset = new THREE.Vector3();
+  const orbitSpherical = new THREE.Spherical();
   /**
    * Cross-fade weight for the hand-over from DOM to canvas. The dust and the
    * canvas rise together over the same ~140ms while nothing is moving yet,
@@ -348,7 +351,22 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
     labels.remeasure();
     // Only worth rebuilding while the headline still has a part to play.
     if (progress < 0.6) buildHeadlineDust();
+    // Resizing shouldn't discard an orbit the visitor has chosen.
+    const previousView =
+      mode === 'universe' && !flight
+        ? {
+            position: wanted.position.clone(),
+            target: wanted.target.clone(),
+          }
+        : null;
     applyProgress(progress, true);
+    if (previousView) {
+      wanted.position.copy(previousView.position);
+      wanted.target.copy(previousView.target);
+      view.position.copy(previousView.position);
+      view.target.copy(previousView.target);
+      render(0);
+    }
   }
 
   /* ---------------------------------------------------------- transition */
@@ -796,14 +814,48 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
   }
 
   function panBy(dx: number, dy: number) {
-    if (level !== 1) return;
+    if (mode !== 'universe' || level !== 1) return;
     const limit = 420 * compositionScale;
+    const previousX = pan.x;
+    const previousY = pan.y;
     pan.x = clamp(pan.x - dx, -limit, limit);
     pan.y = clamp(pan.y + dy, -limit, limit);
-    flight = null;
-    const next = universeView();
-    wanted.position.copy(next.position);
-    wanted.target.copy(next.target);
+    if (flight) {
+      // Panning interrupts a cinematic flight and returns to the overview.
+      flight = null;
+      const next = universeView();
+      wanted.position.copy(next.position);
+      wanted.target.copy(next.target);
+      return;
+    }
+    // Shift both camera and target so panning preserves any orbital angle.
+    const shiftX = pan.x - previousX;
+    const shiftY = pan.y - previousY;
+    wanted.position.x += shiftX;
+    wanted.position.y += shiftY;
+    wanted.target.x += shiftX;
+    wanted.target.y += shiftY;
+  }
+
+  /** Orbit the camera around its current focal point (pixel drag deltas). */
+  function orbitBy(dx: number, dy: number) {
+    if (mode !== 'universe') return;
+    if (flight) {
+      // Dragging takes control from the authored flight, without snapping
+      // the view to the flight's destination.
+      wanted.position.copy(view.position);
+      wanted.target.copy(view.target);
+      flight = null;
+    }
+    orbitOffset.copy(wanted.position).sub(wanted.target);
+    orbitSpherical.setFromVector3(orbitOffset);
+    orbitSpherical.theta -= (dx / Math.max(viewport.width, 1)) * Math.PI * 2;
+    orbitSpherical.phi = THREE.MathUtils.clamp(
+      orbitSpherical.phi - (dy / Math.max(viewport.height, 1)) * Math.PI,
+      0.22,
+      Math.PI - 0.22
+    );
+    wanted.position.copy(wanted.target).add(orbitOffset.setFromSpherical(orbitSpherical));
   }
 
   /* ------------------------------------------------------------ picking */
@@ -1172,6 +1224,7 @@ export function createStage(dom: StageDom, callbacks: StageCallbacks, reducedMot
     zoomOutOneLevel,
     recentre,
     panBy,
+    orbitBy,
     pick,
     setHover,
     select(node: NodeRecord | null) {
