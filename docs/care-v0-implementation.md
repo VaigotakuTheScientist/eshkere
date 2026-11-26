@@ -23,6 +23,8 @@ The focused browser check covers keyboard interaction, disclosures, module histo
 
 Review run passed `check`, `build`, `test:source`, `test:care` and the full `test:ui` suite. A separate `BASE_PATH=/` build confirmed that the Care entry and Universe return links work at the site root.
 
+After the Universe camera update, `test:care` also checks that orbit, pan and wheel depth move the Care label while keeping Health Core → Physical selected, then opens Care and verifies completion persists. `test:orbit` separately verifies the camera against the development server.
+
 ## Screenshots
 
 - [Hair on desktop, with a completed step and an open rationale](screenshots/care/hair-desktop.jpg)

@@ -178,13 +178,59 @@ try {
   const cosmic = await carePage({ viewport: { width: 1440, height: 900 } });
   await cosmic.page.goto(`${base}/`);
   await cosmic.page.locator('[data-universe-open]:not([data-universe-region])').click();
-  for (const id of ['health', 'health-physical', 'health-care']) {
+  for (const id of ['health', 'health-physical']) {
     const label = cosmic.page.locator(`.u-label[data-node-id="${id}"]`);
     await label.click({ timeout: 40000 });
   }
+
+  const destinationSelector = '.u-label[data-node-id="health-care"]';
+  const destination = cosmic.page.locator(destinationSelector);
+  await destination.click({ trial: true, timeout: 40000 });
+  const crumbs = cosmic.page.locator('[data-universe-crumbs] .u-crumb');
+  const physicalPath = ['Universe', 'Health Core', 'Physical'];
+  assert.deepEqual(await crumbs.allTextContents(), physicalPath);
+
+  const canvasPoint = await cosmic.page.evaluate(() => {
+    for (let x = 80; x < 320; x += 40) {
+      for (let y = 130; y < 330; y += 40) {
+        if (document.elementFromPoint(x, y)?.matches('[data-universe-canvas]')) return { x, y };
+      }
+    }
+    return null;
+  });
+  assert.ok(canvasPoint, 'a drag can start on the map canvas');
+  const { x, y } = canvasPoint;
+
+  for (const gesture of ['orbit', 'pan', 'dolly']) {
+    const before = await destination.boundingBox();
+    assert.ok(before, `Care is visible before ${gesture}`);
+    await cosmic.page.mouse.move(x, y);
+    if (gesture === 'dolly') {
+      await cosmic.page.mouse.wheel(0, -110);
+    } else {
+      const button = gesture === 'orbit' ? 'right' : 'left';
+      await cosmic.page.mouse.down({ button });
+      await cosmic.page.mouse.move(x + 48, y + 20, { steps: 8 });
+      await cosmic.page.mouse.up({ button });
+    }
+    await cosmic.page.waitForFunction(({ selector, before }) => {
+      const label = document.querySelector(selector)?.getBoundingClientRect();
+      return label && label.width > 0 && Math.hypot(label.x - before.x, label.y - before.y) > 1;
+    }, { selector: destinationSelector, before });
+    assert.deepEqual(await crumbs.allTextContents(), physicalPath, `${gesture} keeps Physical selected`);
+  }
+
+  await destination.click({ timeout: 40000 });
   await cosmic.page.waitForURL(careUrl);
+  const arrivingCheck = cosmic.page.getByRole('checkbox', { name: /Complete Check texture/ });
+  await arrivingCheck.check();
+  await cosmic.page.reload();
+  await arrivingCheck.waitFor();
+  assert.equal(await arrivingCheck.isChecked(), true);
+  await cosmic.page.getByRole('link', { name: /Universe home/ }).click();
+  await cosmic.page.waitForURL(`${base}/`);
   await cosmic.context.close();
-  console.log('Care destination in the text map and WebGL Health Core → Physical passed.');
+  console.log('Care works from the text map and after orbiting, panning and dollying in WebGL Health Core → Physical.');
 } finally {
   await browser.close();
 }
