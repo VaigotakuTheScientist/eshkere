@@ -1,0 +1,123 @@
+---
+import { cadences, preferenceId, sources, type CareModule, type Step, type Cadence } from '../../care/model';
+
+interface Props { module: CareModule }
+const { module } = Astro.props;
+const { id, title, subtitle, inventory, experiment } = module;
+const supplies = new Map(inventory.map((supply) => [supply.id, supply.title]));
+const cadenceLabel: Record<Cadence, string> = {
+  morning: 'Morning', evening: 'Evening', periodic: 'Periodic', 'as-needed': 'As needed',
+};
+const stepLabel: Record<Step['kind'], string> = {
+  core: 'Core', optional: 'Optional', conditional: 'As needed',
+};
+---
+
+<section class="care-module" id={id} data-module-panel={id} aria-labelledby={`${id}-title`}>
+  <header class="care-module__intro">
+    <h2 id={`${id}-title`}>{title} routine map</h2>
+    <p>{subtitle}</p>
+  </header>
+
+  <div class="care-layout">
+    <div class="care-map">
+      <div class="care-lanes">
+        {cadences.map((cadence) => {
+          const routine = module.routines.find(({ id }) => id === cadence);
+          if (!routine) return null;
+          const routineId = `${id}-${cadence}`;
+          return (
+            <section class="care-lane" data-routine={routineId} data-cadence={cadence} aria-labelledby={`${routineId}-title`}>
+              <header class="care-lane__header">
+                <span class="care-lane__symbol" aria-hidden="true"></span>
+                <div>
+                  <h3 id={`${routineId}-title`}>{cadenceLabel[cadence]}</h3>
+                  <p>{routine.timing}</p>
+                </div>
+                {routine.steps.length > 0 && <span data-routine-count class="care-count" hidden></span>}
+              </header>
+
+              {routine.steps.length > 0 ? (
+                <ol class="care-steps" role="list">
+                  {routine.steps.map((step, index) => {
+                    const stepId = preferenceId(id, step.id);
+                    const source = step.source && sources[step.source];
+                    const stepSupplies = step.supplies?.map((supply) => supplies.get(supply)).join(', ');
+                    return (
+                      <li class="care-step" data-step-kind={step.kind}>
+                        <div class="care-step__marker">
+                          <span class="care-step__order" aria-hidden="true">{index + 1}</span>
+                          <label class="care-check" data-state-control hidden>
+                            <input type="checkbox" data-step-id={stepId} autocomplete="off" />
+                            <span class="visually-hidden">Complete {step.title} ({cadenceLabel[cadence]})</span>
+                          </label>
+                        </div>
+                        <div class="care-step__body">
+                          <div class="care-step__top">
+                            <h4>{step.title}</h4><span class="care-step__kind">{stepLabel[step.kind]}</span>
+                          </div>
+                          <p>{step.action}</p>
+                          <details class="care-details">
+                            <summary>Why this step?<span class="visually-hidden"> {step.title}</span></summary>
+                            <p><strong>{step.basis === 'guidance' ? 'Health guidance' : 'Preference'}</strong> {step.why}</p>
+                            {stepSupplies && <p><strong>Supplies</strong> {stepSupplies}</p>}
+                            {step.precaution && <p><strong>Take care</strong> {step.precaution}</p>}
+                            {source && <p><a href={source[1]} rel="noreferrer">{source[0]}</a></p>}
+                          </details>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+              ) : <p class="care-lane__empty">There are no additional scheduled steps in this starter routine.</p>}
+
+              {routine.steps.length > 0 && <button type="button" class="care-clear" data-reset-routine hidden>Clear {cadenceLabel[cadence].toLowerCase()} checks</button>}
+            </section>
+          );
+        })}
+      </div>
+      <p class="care-escalation">{module.escalation}</p>
+    </div>
+
+    <aside class="care-side" aria-label={`${title} supplies and experiment`}>
+      <section class="care-panel" aria-labelledby={`${id}-inventory`}>
+        <header class="care-panel__header">
+          <h3 id={`${id}-inventory`}>Inventory</h3>
+          <p>Mark supplies you have or plan to get.</p>
+        </header>
+        <ul class="care-inventory">
+          {inventory.map((supply) => (
+            <li>
+              <div><span>{supply.title}</span><small>{supply.kind}</small></div>
+              <label data-state-control hidden>
+                <span class="visually-hidden">Status for {supply.title}</span>
+                <select data-supply-id={preferenceId(id, supply.id)} autocomplete="off">
+                  <option value="">Unmarked</option>
+                  <option value="owned">Owned</option>
+                  <option value="planned">Planned</option>
+                </select>
+              </label>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section class="care-panel care-experiment" aria-labelledby={`${id}-experiment`} data-experiment={experiment.id}>
+        <header class="care-panel__header">
+          <h3 id={`${id}-experiment`}>Experiment</h3>
+          <p>{experiment.title}</p>
+        </header>
+        <details class="care-trial">
+          <summary>Edit template</summary>
+          <p>{experiment.prompt} A personal comparison can help you decide what to repeat. Many factors can affect the result.</p>
+          <p>Use generic notes only. Draft edits are temporary.</p>
+          <label>Hypothesis<textarea rows="2" autocomplete="off">{experiment.hypothesis}</textarea></label>
+          <label>One thing to change<textarea rows="2" autocomplete="off">{experiment.variable}</textarea></label>
+          <label>Qualitative observations<textarea rows="3" autocomplete="off" placeholder="What was easier or harder to do?"></textarea></label>
+          <label>Evaluation date<input type="date" autocomplete="off" /></label>
+          <label>Stop criteria<textarea rows="2" autocomplete="off">{experiment.stop}</textarea></label>
+        </details>
+      </section>
+    </aside>
+  </div>
+</section>

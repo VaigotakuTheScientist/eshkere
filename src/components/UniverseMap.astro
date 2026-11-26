@@ -87,6 +87,13 @@ const gameGalaxies = regions.filter((region) => region.id !== 'health');
           {healthCore.systems.map((system) => (
             <li>
               <strong>{system.label}</strong> — {system.blurb}
+              {system.planets?.length && (
+                <ul>
+                  {system.planets.filter((planet) => planet.href).map((planet) => (
+                    <li><a href={planet.href}>{planet.label}</a> — {planet.blurb}</li>
+                  ))}
+                </ul>
+              )}
             </li>
           ))}
         </ul>

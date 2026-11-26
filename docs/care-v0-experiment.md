@@ -3,6 +3,8 @@
 Status: proposed experiment; not a launched product.
 Date: 2026-11-26.
 
+[Implementation decisions, verification and screenshots](care-v0-implementation.md)
+
 ## Purpose
 
 Turn personal-care knowledge into an attractive, usable set of routine maps. Test whether a person actually returns to the interface to understand, perform and improve care routines, rather than merely collecting advice or buying products.
