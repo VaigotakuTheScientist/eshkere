@@ -1799,13 +1799,13 @@ for (const viewport of viewports) {
     await context.close();
   }
 
-  // --- there is no gesture zoom any more
+  // --- wheel depth never scrubs entry or changes semantic level
   {
     /**
      * The reveal used to be scrubbable with a trackpad, which made entering
      * the map feel like operating a slider and left visitors parked inside a
      * transition that only reads as cinematic when it plays. Entry and exit
-     * are discrete now, and the wheel belongs to the page again.
+     * are discrete. Wheel input on the open map only changes camera depth.
      */
     const context = await browser.newContext({ ...CTX, viewport: { width: 1280, height: 720 } });
     const page = await context.newPage();
@@ -1860,7 +1860,7 @@ for (const viewport of viewports) {
         subtree: true,
       });
       for (let i = 0; i < 12; i += 1) {
-        window.dispatchEvent(
+        document.querySelector('[data-universe-canvas]').dispatchEvent(
           new WheelEvent('wheel', { deltaY: 120, cancelable: true, bubbles: true })
         );
       }
@@ -1871,7 +1871,7 @@ for (const viewport of viewports) {
     note(
       (await page.evaluate(() => document.querySelector('[data-universe-level]').textContent)) ===
         'Universe',
-      'and the map stays where it was put'
+      'and the semantic level stays Universe'
     );
     await page.screenshot({ path: `${SHOT_DIR}/universe-held.png` });
     await context.close();
