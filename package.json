@@ -9,6 +9,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",
+    "test:orbit": "node scripts/orbit-check.mjs",
     "test:ui": "node scripts/ui-check.mjs",
     "sync:source": "node scripts/fetch-current-source.mjs",
     "test:source": "node scripts/test-current-source.mjs"
