@@ -162,6 +162,17 @@ const healthCore: Region = {
       label: 'Physical',
       offset: [-118, -46, 26],
       blurb: 'Sleep, movement, nourishment, a body that works.',
+      planets: [
+        {
+          id: 'health-care',
+          label: 'ESHKERE Care',
+          shortLabel: 'Care',
+          type: 'map',
+          href: url('/care/'),
+          offset: [-48, 28, 11],
+          blurb: 'Routine maps for hair, nails and face.',
+        },
+      ],
     },
     {
       id: 'health-mental',

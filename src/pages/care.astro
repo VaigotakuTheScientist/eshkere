@@ -1,0 +1,48 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import CareModule from '../components/care/CareModule.astro';
+import { modules } from '../care/content';
+import { url } from '../lib/url';
+import '../care/care.css';
+---
+
+<BaseLayout title="ESHKERE Care" description="Routine maps for hair, nails and face, with supplies and simple experiments.">
+  <div class="care" data-care>
+    <header class="care-hero">
+      <div class="container care-hero__inner">
+        <p class="care-path"><a href={url('/')}>← Universe home</a><span aria-hidden="true">/</span> Health Core · Physical</p>
+        <h1><span>ESHKERE</span> Care</h1>
+        <p class="care-hero__lead">Routine maps for hair, nails and face.</p>
+        <div class="care-hero__art" aria-hidden="true"><i></i><i></i><i></i></div>
+      </div>
+    </header>
+
+    <div class="container care-workspace">
+      <nav class="care-modules" aria-label="Care modules">
+        {modules.map((module) => <a class="care-module-link" href={`#${module.id}`} data-module-link={module.id}>{module.title}</a>)}
+      </nav>
+
+      <noscript><p class="care-noscript">Routine maps and their explanations are available below. Enable JavaScript for checklists and inventory status.</p></noscript>
+
+      {modules.map((module) => <CareModule module={module} />)}
+
+      <section class="care-privacy" aria-labelledby="care-privacy-title">
+        <div>
+          <h2 id="care-privacy-title">On this browser</h2>
+          <p>Completion and inventory status are stored in this browser on this device. Anyone using the same browser profile can see them. Experiment edits are temporary.</p>
+          <p data-storage-warning role="status" hidden>Browser storage is unavailable. Changes may be lost when you leave or reload.</p>
+        </div>
+        <div class="care-privacy__action">
+          <button type="button" class="care-button" data-reset-all hidden>Reset saved Care data</button>
+          <span class="care-reset-status" data-reset-status role="status"></span>
+        </div>
+      </section>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  import { initCare } from '../care/client';
+  const care = document.querySelector<HTMLElement>('[data-care]');
+  if (care) initCare(care);
+</script>
